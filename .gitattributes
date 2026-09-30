@@ -1,0 +1,38 @@
+# Finales de línea: LF tanto en el repositorio como en la copia de trabajo,
+# también en Windows.
+#
+# `eol=lf` tiene prioridad sobre `core.autocrlf` (que en este repo está en
+# `true`). Sin esto, tras un clone o un checkout en Windows los archivos pasan a
+# CRLF en disco y `deno fmt --check` falla en local mientras pasa en el CI de
+# Linux, que es el tipo de fallo que cuesta más encontrar.
+* text=auto eol=lf
+
+# Los scripts de shell no admiten CRLF: con finales de línea de Windows, el
+# intérprete falla con un error de "bad interpreter" o "command not found".
+*.sh text eol=lf
+
+# Por si en el futuro se añaden scripts nativos de Windows, que sí los necesitan.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binarios: que git no intente normalizar finales de línea ni mostrar diffs de
+# texto sobre ellos.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+
+# Código generado por build_runner. Se versiona (el CI comprueba que está al
+# día), pero marcarlo hace que GitHub lo colapse en los diffs de las pull
+# requests y lo excluya de las estadísticas de lenguaje del repositorio, que así
+# reflejan solo el código escrito a mano.
+*.g.dart linguist-generated=true
+*.freezed.dart linguist-generated=true

@@ -107,6 +107,15 @@ inicial y autenticación), empezada el día anterior.
   `supabase/.gitignore` y en el `.gitignore` raiz, con `!.env.example`, y creada
   la plantilla `supabase/functions/.env.example`.
 
+- Anadido `.gitattributes` con `* text=auto eol=lf`: `core.autocrlf` estaba en
+  `true`, asi que tras un clone o checkout en Windows los `.ts` habrian pasado a
+  CRLF en disco y `deno fmt --check` habria fallado en local mientras pasaba en el
+  CI de Linux. Incluye `eol=lf` explicito para `*.sh` (con CRLF no arrancan),
+  marcas `binary` y `linguist-generated` para el codigo generado. Normalizados a
+  LF los cinco archivos que seguian con CRLF en disco.
+- Los `.sh` estaban versionados con modo 100644: en Linux habrian fallado con
+  "Permission denied". Corregido a 100755 con `git update-index --chmod=+x`.
+
 **Pendiente / notas:**
 - `docs/sql-schema.md` usa `using (auth.role() = 'authenticated')` en la política
   de lectura de `ejercicios`; las migraciones usan `to authenticated`. Ambos
