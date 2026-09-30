@@ -36,11 +36,14 @@ documentos, los resume para el trabajo del día a día.
 - Instalar dependencias: `flutter pub get`
 - Generar código (`freezed`, `json_serializable`, `riverpod_generator`):
   `dart run build_runner build --delete-conflicting-outputs`
-- Analizar/lint: `flutter analyze`
+- Analizar/lint: `dart analyze --fatal-infos` (no `flutter analyze`: solo
+  `dart analyze` carga el plugin de `riverpod_lint`)
 - Formatear: `dart format .`
 - Tests: `flutter test`
-- Build web: `flutter build web --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=... --dart-define=APP_ENV=...`
-- Supabase local: `supabase start` / aplicar migraciones: `supabase db push`
+- Build web: `flutter build web --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=... --dart-define=APP_ENV=...`
+- Supabase local: `supabase start` / aplicar migraciones y seed:
+  `supabase db reset`. `supabase db push` NO sirve para local: empuja a un
+  proyecto remoto y exige `supabase link` (falla con "Cannot find project ref").
 
 ## Convenciones
 
@@ -102,7 +105,7 @@ documentos, los resume para el trabajo del día a día.
 
 - ✅ **Siempre:** seguir la estructura de carpetas y las convenciones ya
   fijadas; usar `Result<T>` para errores; mantener bajas lógicas; correr
-  `dart format`/`flutter analyze` antes de dar un cambio por terminado.
+  `dart format`/`dart analyze --fatal-infos` antes de dar un cambio por terminado.
 - ⚠️ **Pregunta antes:** añadir una dependencia nueva a `pubspec.yaml`;
   crear una migración SQL nueva o modificar una política RLS existente;
   crear una Edge Function nueva; cambiar la estructura de carpetas o el
@@ -116,12 +119,33 @@ documentos, los resume para el trabajo del día a día.
 
 ## Verificación
 
-- `flutter analyze` y `flutter test` en verde antes de dar un cambio por
+- `dart analyze --fatal-infos` y `flutter test` en verde antes de dar un cambio por
   terminado.
 - Si se generó código (`freezed`/`riverpod`), confirmar que
   `build_runner build` no deja errores ni conflictos.
 - Si se tocó SQL, probar la migración contra Supabase local (`supabase
-  start` + `supabase db push`) antes de proponerla para `develop`/`main`.
+  start` + `supabase db reset`) antes de proponerla para `develop`/`main`.
 - Si se tocó una Edge Function, probarla localmente (`supabase functions
   serve`) con un token válido y otro inválido, para confirmar que el `403`
   sigue funcionando.
+
+
+Bitácora de trabajo
+
+Al terminar una tarea con cambios significativos (una funcionalidad, una corrección, un bug encontrado o algo pendiente relevante), añade una entrada a docs/bitacora.md. No reescribas ni borres entradas anteriores: solo añade al final del archivo. Si ya existe una entrada para el día de hoy, añade tu contenido dentro de ella en vez de crear una nueva.
+
+Formato de cada entrada:
+
+markdown
+### YYYY-MM-DD
+
+**Hecho:**
+- Qué se implementó (feature, CU o RF al que corresponde si aplica).
+
+**Corregido:**
+- Qué bug o error se solucionó, y su causa si es relevante.
+
+**Pendiente / notas:**
+- Qué queda a medias, qué decisión quedó abierta, qué probar después.
+
+Omite una sección si no aplica ese día (por ejemplo, un día sin bugs no lleva "Corregido"). Usa la fecha real del sistema, no una inventada.

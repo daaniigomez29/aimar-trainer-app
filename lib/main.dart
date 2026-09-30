@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
-  runApp(const MainApp());
-}
+import 'package:aimar_trainer_app/core/configuracion/configuracion_app.dart';
+import 'package:aimar_trainer_app/core/presentacion/app.dart';
+import 'package:aimar_trainer_app/core/presentacion/pantalla_configuracion_invalida.dart';
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
-    );
+  final configuracion = ConfiguracionApp.desdeEntorno();
+  if (!configuracion.esValida) {
+    // Sin SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY no hay nada que arrancar: se
+    // muestra el motivo en lugar de fallar con una excepcion opaca.
+    // Envuelta en ProviderScope aunque hoy no lea ningun provider: asi no se
+    // rompe en tiempo de ejecucion si esta pantalla pasa a consumir uno
+    // (riverpod_lint: missing_provider_scope).
+    runApp(const ProviderScope(child: PantallaConfiguracionInvalida()));
+    return;
   }
+
+  await Supabase.initialize(
+    url: configuracion.urlSupabase,
+    // `publishableKey` sustituye al parametro `anonKey`, ya obsoleto. Acepta
+    // tanto una clave `sb_publishable_...` como la clave anonima heredada.
+    publishableKey: configuracion.clavePublicaSupabase,
+    authOptions: const FlutterAuthClientOptions(
+      // La PWA recibe el enlace de recuperacion como fragmento en la URL; el
+      // cliente lo canjea al arrancar y emite `passwordRecovery`.
+      detectSessionInUri: true,
+    ),
+  );
+
+  runApp(const ProviderScope(child: AppAimarTrainer()));
 }

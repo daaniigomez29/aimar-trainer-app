@@ -4,6 +4,18 @@ Esquema SQL de referencia: tablas, tipos, restricciones, RLS y triggers.
 Corresponde 1:1 al modelo de `domain-model.md`. Vive versionado como
 migraciones en `supabase/migrations/`; este archivo es la vista de conjunto.
 
+**Sobre los `GRANT`:** el proyecto de Supabase tiene desactivada la opción
+"Automatically expose new tables" (recomendado por seguridad), así que cada
+tabla necesita su propio `grant ... to authenticated` explícito, además de
+`enable row level security` y sus políticas. Sin el `GRANT`, PostgREST
+deniega el acceso a la tabla antes de que RLS llegue a evaluarse — es un
+paso obligatorio, no opcional. `service_role` no necesita `GRANT`: ese rol
+se salta tanto los permisos de tabla como RLS por diseño de Supabase.
+Ninguna tabla concede `delete` salvo las que tienen un caso de uso real de
+borrado físico (plannings, sesiones, bloques, ejercicios planificados,
+series planificadas, fotos de progreso); clientes y ejercicios de la
+biblioteca nunca conceden `delete`, porque su baja es siempre lógica.
+
 ## Base: perfiles y funciones auxiliares
 
 ```sql
@@ -16,6 +28,10 @@ create table perfiles (
 );
 
 alter table perfiles enable row level security;
+
+-- Necesario si "Automatically expose new tables" está desactivada en el proyecto:
+-- sin este GRANT, PostgREST deniega el acceso antes de evaluar RLS.
+grant select on perfiles to authenticated;
 
 create policy "cada usuario ve su propio perfil"
   on perfiles for select
@@ -64,6 +80,8 @@ create unique index clientes_correo_activo_unico
 
 alter table clientes enable row level security;
 
+grant select, insert, update on clientes to authenticated;
+
 create policy "el cliente ve su propia ficha"
   on clientes for select
   using (id = auth.uid());
@@ -104,6 +122,8 @@ create unique index plannings_cliente_semana_unico
 
 alter table plannings_semanales enable row level security;
 
+grant select, insert, update, delete on plannings_semanales to authenticated;
+
 create policy "el cliente ve sus propios plannings"
   on plannings_semanales for select
   using (cliente_id = auth.uid());
@@ -136,6 +156,8 @@ create unique index sesiones_planning_fecha_unico
   on sesiones_entrenamiento (planning_id, fecha);
 
 alter table sesiones_entrenamiento enable row level security;
+
+grant select, insert, update, delete on sesiones_entrenamiento to authenticated;
 
 create policy "el cliente ve las sesiones de sus plannings"
   on sesiones_entrenamiento for select
@@ -190,6 +212,8 @@ create unique index bloques_sesion_orden_unico
 
 alter table bloques_ejercicio enable row level security;
 
+grant select, insert, update, delete on bloques_ejercicio to authenticated;
+
 create policy "el cliente ve los bloques de sus sesiones"
   on bloques_ejercicio for select
   using (
@@ -233,6 +257,8 @@ create unique index ejercicios_nombre_activo_unico
 
 alter table ejercicios enable row level security;
 
+grant select, insert, update on ejercicios to authenticated;
+
 create policy "cualquier usuario autenticado lee la biblioteca"
   on ejercicios for select
   using (auth.role() = 'authenticated');
@@ -273,6 +299,8 @@ create unique index ejer_planif_bloque_orden_unico
   on ejercicios_planificados (bloque_id, orden);
 
 alter table ejercicios_planificados enable row level security;
+
+grant select, insert, update, delete on ejercicios_planificados to authenticated;
 
 create policy "el cliente ve los ejercicios de sus bloques"
   on ejercicios_planificados for select
@@ -353,6 +381,8 @@ create unique index series_planif_numero_unico
 
 alter table series_planificadas enable row level security;
 
+grant select, insert, update, delete on series_planificadas to authenticated;
+
 create policy "visible a través del ejercicio planificado (lectura)"
   on series_planificadas for select
   using (
@@ -391,6 +421,8 @@ create unique index series_realiz_numero_unico
   on series_realizadas (ejercicio_planificado_id, numero_serie);
 
 alter table series_realizadas enable row level security;
+
+grant select, insert, update on series_realizadas to authenticated;
 
 create policy "el cliente registra sus propias series"
   on series_realizadas for insert
@@ -529,6 +561,8 @@ create unique index registros_medidas_cliente_fecha_unico
 
 alter table registros_medidas enable row level security;
 
+grant select, insert, update on registros_medidas to authenticated;
+
 create policy "el cliente gestiona sus propios registros de medidas"
   on registros_medidas for all
   using (cliente_id = auth.uid())
@@ -546,6 +580,8 @@ create table fotos_progreso (
 );
 
 alter table fotos_progreso enable row level security;
+
+grant select, insert, update, delete on fotos_progreso to authenticated;
 
 create policy "el cliente gestiona sus propias fotos"
   on fotos_progreso for all
@@ -590,6 +626,8 @@ create unique index checkins_cliente_fecha_unico
   on checkins_recuperacion (cliente_id, fecha);
 
 alter table checkins_recuperacion enable row level security;
+
+grant select, insert, update on checkins_recuperacion to authenticated;
 
 create policy "el cliente gestiona sus propios check-in"
   on checkins_recuperacion for all

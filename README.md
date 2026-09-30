@@ -1,3 +1,184 @@
-# aimar_trainer_app
+# Aimar Trainer
 
-A new Flutter project.
+App de gestión de rutinas de gimnasio (Flutter Web + Supabase). Un solo
+entrenador, sin registro libre de clientes.
+
+- Convenciones y reglas de dominio: [`AGENTS.md`](AGENTS.md)
+- Requisitos y casos de uso: [`docs/requirements.md`](docs/requirements.md)
+- Modelo de dominio: [`docs/domain-model.md`](docs/domain-model.md)
+- Arquitectura e infraestructura: [`docs/architecture.md`](docs/architecture.md)
+- Esquema de base de datos: [`docs/sql-schema.md`](docs/sql-schema.md)
+
+## Estado
+
+| Fase | Contenido | Estado |
+| --- | --- | --- |
+| 1 | Esqueleto, esquema base (`perfiles`, `clientes`, `ejercicios`), autenticación | Hecha |
+| 2 | Biblioteca de ejercicios | Pendiente |
+| 3 | Gestión de clientes (Edge Functions reales) | Pendiente |
+| 4 | Planificación semanal | Pendiente |
+| 5 | Progreso y bienestar | Pendiente |
+| 6 | Notificaciones y despliegue | Pendiente |
+
+## Puesta en marcha
+
+```bash
+flutter pub get
+dart run build_runner build
+```
+
+La configuración se inyecta desde `config/`. Los archivos con valores reales
+(`dev.json`, `prod.json`) están ignorados por git; las plantillas
+(`dev.example.json`, `prod.example.json`) sí se versionan. La primera vez:
+
+```bash
+cp config/dev.example.json config/dev.json
+```
+
+Rellena `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`: para Supabase local salen de
+`supabase status` (`API_URL` y `PUBLISHABLE_KEY`); para un proyecto de la nube, de
+*Settings > API*. Después:
+
+```bash
+./scripts/run_dev.sh
+```
+
+**Desde el IDE**, la configuración de ejecución tiene que pasar ese mismo
+argumento, o la app arrancará sin variables y mostrará la pantalla de
+configuración incompleta. No es opcional: `--dart-define` solo llega si se pasa
+en el comando.
+
+- **VS Code**: ya está en `.vscode/launch.json` (versionado), con las
+  configuraciones *Flutter (dev)*, *Flutter (dev, Chrome)* y *Flutter (prod,
+  Chrome)*. VS Code solo lee las configuraciones de lanzamiento desde `.vscode/`:
+  en cualquier otra carpeta se ignoran y F5 arranca `flutter run` sin argumentos.
+  Como alternativa, `"dart.flutterAdditionalArgs"` en `.vscode/settings.json`
+  aplica el argumento a todos los lanzamientos.
+- IntelliJ / Android Studio: campo *Additional run args* de la configuración de
+  Flutter, o la opción `additionalArgs` en `.idea/runConfigurations/*.xml`
+  (carpeta local, no se versiona).
+
+Ojo: cambiar `config/dev.json` con la app ya corriendo no surte efecto con un hot
+reload, porque `String.fromEnvironment` se resuelve en tiempo de compilación. Hay
+que reiniciar el proceso.
+
+`config/prod.json` es lo mismo a partir de `config/prod.example.json`, y
+`./scripts/build_prod.sh` lo usa para el build de Vercel. Hoy está vacío porque el
+proyecto de producción todavía no existe, así que ese script no funcionará hasta
+que se cree.
+
+Si falta `SUPABASE_URL` o `SUPABASE_PUBLISHABLE_KEY`, la app arranca en una
+pantalla que lo explica en lugar de fallar con una excepción opaca.
+
+**Nunca** pasar por `--dart-define` `SUPABASE_SERVICE_ROLE_KEY` ni
+`RESEND_API_KEY`: todo lo que entra ahí queda en el bundle público.
+
+## Comprobaciones
+
+```bash
+dart format .
+dart analyze --fatal-infos
+flutter test
+```
+
+**`dart analyze`, no `flutter analyze`.** `riverpod_lint` 3.x usa el sistema de
+plugins nuevo del analizador (`analysis_server_plugin`) y se declara en el bloque
+`plugins:` de `analysis_options.yaml`. Solo `dart analyze` carga esos plugins:
+con `flutter analyze` el proyecto sale limpio pero las reglas de Riverpod no se
+evalúan. `--fatal-infos` porque varias de ellas se reportan como `info`.
+
+## Base de datos
+
+```bash
+supabase start      # necesita Docker en marcha
+supabase db reset   # recrea la BD local: migraciones + supabase/seed.sql
+```
+
+`supabase db reset` es el comando para **local**. `supabase db push` empuja a un
+proyecto **remoto** vinculado y falla con `Cannot find project ref` si no se ha
+hecho `supabase link --project-ref <ref>` antes; en el flujo de este proyecto no
+hace falta usarlo a mano, porque las migraciones las aplica el pipeline al
+integrar en `develop` y en `main`.
+
+### Comandos locales vs. comandos contra la nube
+
+El CLI `supabase` mezcla las dos cosas, y es la causa más común de confusión. Los
+locales funcionan sin login ni vínculo; los remotos fallan con
+`AccessTokenRequiredError` o `ProjectRefNotLinkedError` si falta alguno.
+
+| Local (Docker) | Nube (necesita `login` y `link` o `--project-ref`) |
+| --- | --- |
+| `supabase start` / `stop` / `status` | `supabase login` |
+| `supabase db reset` | `supabase link --project-ref <ref>` |
+| `supabase migration up` | `supabase db push` |
+| `supabase functions serve` | `supabase functions deploy` |
+| | `supabase secrets set` / `list` / `unset` |
+
+Regla práctica: **si un comando pide login o vínculo, está actuando sobre la
+nube.** Los locales no lo piden nunca.
+
+A qué entorno habla **la app** es independiente de todo esto: lo decide solo
+`SUPABASE_URL` en `config/dev.json`. `supabase status` muestra el vínculo actual
+en `linked_project` (`null` = ninguno).
+
+Para aplicar solo las migraciones pendientes sin borrar los datos locales:
+
+```bash
+supabase migration up
+```
+
+### Comprobar que el entorno local está bien
+
+```bash
+./scripts/probar_local.sh
+```
+
+Verifica de punta a punta, por la API REST (el mismo camino que usa la app): el
+login de las tres cuentas del seed, el rechazo de credenciales incorrectas, las
+reglas RLS por rol, que no hay `DELETE` físico de clientes y la validación de rol
+de las Edge Functions. Para que se incluyan estas últimas hace falta, en otra
+terminal, `supabase functions serve --no-verify-jwt`; si no está arrancado, esa
+sección se omite.
+
+El script añade un par de ejercicios de prueba a la biblioteca; `supabase db
+reset` vuelve a dejar solo lo del seed.
+
+### Cuentas de prueba en local
+
+`supabase/seed.sql` (solo local, nunca se ejecuta contra dev ni producción) crea
+una cuenta de cada rol, porque el alta de entrenador y administrador se hace
+desde el panel de Supabase y en local no hay panel de la nube. Los correos y la
+contraseña están al principio de ese archivo.
+
+Correo de prueba (invitaciones, recuperación de contraseña): Mailpit en
+<http://127.0.0.1:54324>.
+
+### Edge Functions en local
+
+```bash
+supabase functions serve --no-verify-jwt
+```
+
+Con `--no-verify-jwt` la comprobación del token recae en la propia función, que
+es justo lo que interesa verificar. Ver `supabase/functions/README.md`.
+
+## Estructura
+
+```
+lib/
+  core/
+    configuracion/   ConfiguracionApp (--dart-define)
+    enrutado/        rutas y redirección por rol (go_router)
+    errores/         Result<T> y ErrorApp
+    plataforma/      interfaces para lo dependiente de plataforma (RNF-03)
+    presentacion/    tema, widgets compartidos y pantallas principales
+    supabase/        proveedores del cliente de Supabase
+  features/<feature>/
+    data/            repositorios Supabase (único sitio que habla con Supabase)
+    domain/          entidades, reglas de dominio e interfaces de repositorio
+    application/     Notifiers de Riverpod
+    presentation/    pantallas y widgets
+supabase/
+  migrations/        esquema versionado
+  functions/         Edge Functions (service_role solo aquí)
+```

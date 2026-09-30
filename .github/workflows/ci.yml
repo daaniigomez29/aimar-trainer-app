@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Análisis y tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      # El código generado (freezed / json_serializable / riverpod) se versiona,
+      # pero se regenera aquí para detectar que un .g.dart quedó desactualizado.
+      - name: Generar código
+        run: dart run build_runner build
+
+      - name: Comprobar que el código generado está al día
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "::error::Hay código generado sin comitear. Ejecuta 'dart run build_runner build' y añade los cambios."
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+
+      - name: Comprobar formato
+        run: dart format --output=none --set-exit-if-changed .
+
+      # `dart analyze`, no `flutter analyze`: riverpod_lint 3.x se declara en el
+      # bloque `plugins:` de analysis_options.yaml (sistema `analysis_server_plugin`)
+      # y solo `dart analyze` carga esos plugins. Con `flutter analyze` el proyecto
+      # sale limpio pero las reglas de Riverpod no se evaluan.
+      # `--fatal-infos` porque varias de esas reglas se reportan como `info` y sin
+      # la flag no cambiarian el codigo de salida.
+      - name: Analizar
+        run: dart analyze --fatal-infos
+
+      - name: Tests
+        run: flutter test
+
+  edge-functions:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Comprobar formato
+        run: deno fmt --check supabase/functions
+
+      - name: Lint
+        run: deno lint supabase/functions
+
+      # El import map vive en supabase/functions/deno.json, no en la raiz, asi
+      # que hay que pasarlo explicitamente.
+      - name: Comprobar tipos
+        run: >
+          deno check --config supabase/functions/deno.json
+          supabase/functions/crear-cliente/index.ts
+          supabase/functions/dar-de-baja-cliente/index.ts

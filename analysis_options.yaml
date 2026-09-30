@@ -4,5 +4,14 @@ analyzer:
   exclude:
     - build/**
     - web/**
-  plugins:
-    - custom_lint
+
+# riverpod_lint 3.x usa `analysis_server_plugin`, el sistema de plugins nuevo del
+# analizador: se declara en este bloque `plugins:` de nivel superior (NO dentro
+# de `analyzer:`, que es el sistema legacy y `flutter analyze` avisa de su
+# deprecacion).
+#
+# OJO: solo `dart analyze` carga estos plugins; `flutter analyze` los ignora en
+# silencio. Verificar con `dart analyze --fatal-infos` (varias reglas de
+# riverpod_lint se reportan como `info`).
+plugins:
+  riverpod_lint: ^3.1.9

@@ -1,0 +1,34 @@
+{
+  // VS Code solo lee las configuraciones de lanzamiento desde .vscode/launch.json.
+  // `toolArgs` son argumentos para `flutter run`: sin el --dart-define-from-file
+  // la app arranca sin SUPABASE_URL ni SUPABASE_PUBLISHABLE_KEY y muestra la
+  // pantalla de configuracion incompleta.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define-from-file=config/dev.json"]
+    },
+    {
+      "name": "Flutter (dev, Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": ["--dart-define-from-file=config/dev.json"]
+    },
+    {
+      // Requiere config/prod.json rellenado; hoy esta vacio porque el proyecto
+      // de produccion todavia no existe.
+      "name": "Flutter (prod, Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": ["--dart-define-from-file=config/prod.json"]
+    }
+  ]
+}

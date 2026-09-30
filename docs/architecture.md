@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
   const supabaseCliente = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    clavePublicaDelProyecto(),
     { global: { headers: { Authorization: authHeader } } }
   );
 
@@ -125,7 +125,7 @@ Respuesta `201`: `{ "clienteId": "uuid", "estado": "invitado" }`
 Errores: `401` sin token · `403` rol no autorizado · `409` correo ya
 registrado (activo) · `400` datos inválidos
 
-Variables de entorno: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+Variables de entorno: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`,
 `SUPABASE_SERVICE_ROLE_KEY` (inyectadas por Supabase), más
 `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`.
 
@@ -170,7 +170,7 @@ Mismas variables de entorno que `crear-cliente`.
 | Dónde | Nombre | Contenido |
 | --- | --- | --- |
 | Flutter (`--dart-define`) | `SUPABASE_URL` | URL pública del proyecto (dev/prod) |
-| Flutter (`--dart-define`) | `SUPABASE_ANON_KEY` | Clave pública |
+| Flutter (`--dart-define`) | `SUPABASE_PUBLISHABLE_KEY` | Clave pública (`sb_publishable_...`) |
 | Flutter (`--dart-define`) | `APP_ENV` | `development` \| `production` |
 | Supabase Edge Functions | `SUPABASE_SERVICE_ROLE_KEY` | Inyectada automáticamente, nunca a mano |
 | Supabase Edge Functions | `RESEND_API_KEY` | Clave de API de Resend |
@@ -178,7 +178,7 @@ Mismas variables de entorno que `crear-cliente`.
 | Supabase Edge Functions | `APP_BASE_URL` | URL pública de la PWA |
 | GitHub Actions | `SUPABASE_ACCESS_TOKEN` | Migraciones vía CLI |
 | GitHub Actions | `SUPABASE_PROJECT_ID_DEV` / `_PROD` | Referencia de proyecto por entorno |
-| GitHub Actions | `SUPABASE_URL_DEV` / `_PROD`, `SUPABASE_ANON_KEY_DEV` / `_PROD` | Para el build por entorno |
+| GitHub Actions | `SUPABASE_URL_DEV` / `_PROD`, `SUPABASE_PUBLISHABLE_KEY_DEV` / `_PROD` | Para el build por entorno |
 | GitHub Actions | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Despliegue a Vercel |
 
 **Nunca** en código Flutter ni en `--dart-define`: `SUPABASE_SERVICE_ROLE_KEY`,
