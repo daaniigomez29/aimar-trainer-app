@@ -53,6 +53,13 @@ class ControladorSesion extends _$ControladorSesion {
       state = const SesionCerrada();
       return;
     }
+    // Antes de resolver el perfil: un cliente recien invitado no tiene contrasena,
+    // y dejarle entrar le cerraria la puerta para siempre (ver CU-17).
+    if (repositorio.debeFijarContrasena) {
+      state = const SesionDebeFijarContrasena();
+      return;
+    }
+
     final resultado = await repositorio.perfilDeLaSesion();
     state = switch (resultado) {
       Success(:final valor) => SesionActiva(valor),

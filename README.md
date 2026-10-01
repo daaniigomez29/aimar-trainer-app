@@ -87,6 +87,41 @@ plugins nuevo del analizador (`analysis_server_plugin`) y se declara en el bloqu
 con `flutter analyze` el proyecto sale limpio pero las reglas de Riverpod no se
 evalúan. `--fatal-infos` porque varias de ellas se reportan como `info`.
 
+## Depuración
+
+La app es deliberadamente silenciosa: los repositorios capturan toda excepción y
+la convierten en un `ErrorApp` con un mensaje para la interfaz. Para que la causa
+real no se pierda, `lib/core/diagnostico/` la escribe en la consola de depuración
+**solo en modo debug**:
+
+- `Registro` saca los campos que los errores de Supabase esconden y que son los
+  que explican el fallo: `code`, `details` y `hint` de `PostgrestException`,
+  `code` y `statusCode` de `AuthException`, `status` y `details` de
+  `FunctionException`.
+- `ObservadorProviders` registra los errores que viajan dentro de los providers.
+  Hace falta porque un `Failure` no lanza ninguna excepción: sin él, un error que
+  la interfaz muestra como un aviso amable no deja ningún rastro.
+- `FlutterError.onError`, `PlatformDispatcher.onError` y una `runZonedGuarded`
+  capturan lo que se escape del árbol de widgets o de un `Future` sin `catch`.
+
+### Dónde mirar
+
+| Sitio | Qué se ve |
+| --- | --- |
+| **Debug Console** de VS Code | Todo lo anterior (va por `debugPrint`) |
+| **Consola del navegador** (F12) | Además, errores de JS, CORS y fallos de red |
+| **Pestaña Network** (F12) | Las peticiones a Supabase con su cuerpo y su código |
+| **Flutter DevTools** | Árbol de widgets, estado de providers, rendimiento |
+
+Si la consola solo muestra el arranque (`Supabase init completed`), es que no ha
+fallado nada: el registro solo escribe cuando hay algo que contar. Para
+comprobar que funciona, basta provocar un fallo (parar Supabase con
+`supabase stop` e intentar entrar).
+
+Para seguir un flujo paso a paso sin depender de que falle, `Registro.info('...')`
+escribe una línea suelta, y un punto de interrupción en el `case Failure` del
+repositorio correspondiente detiene la ejecución justo donde se traduce el error.
+
 ## Base de datos
 
 ```bash
@@ -152,6 +187,43 @@ contraseña están al principio de ese archivo.
 
 Correo de prueba (invitaciones, recuperación de contraseña): Mailpit en
 <http://127.0.0.1:54324>.
+
+### Probar la invitación de un cliente en local (CU-17)
+
+El cliente se crea **sin contraseña**: la elige al abrir el enlace del correo. Para
+probar ese flujo completo sin tener dominio verificado en Resend:
+
+1. `supabase/functions/.env` (cópialo de `.env.example`) con:
+
+   ```
+   CORREO_DEV_URL=http://supabase_inbucket_aimar_trainer_app:8025
+   APP_BASE_URL=http://127.0.0.1:3000
+   ```
+
+   Sin `RESEND_API_KEY`, la invitación se entrega en **Mailpit**, el buzón de
+   pruebas que ya trae `supabase start`. Mailpit no envía nada a internet: solo
+   guarda el mensaje para poder verlo.
+
+2. Arranca las funciones y la app:
+
+   ```bash
+   supabase functions serve --no-verify-jwt
+   ```
+
+   La app **tiene que servirse en `http://127.0.0.1:3000`** (ya lo hacen
+   `run_dev.sh` y las configuraciones de `.vscode/launch.json`), porque GoTrue solo
+   redirige el enlace a una URL permitida y ese es el `site_url` de
+   `supabase/config.toml`.
+
+3. Da de alta un cliente desde la app. La respuesta incluye
+   `invitacionEnviada: true` y `entregadoEnBuzonLocal: true`.
+
+4. Abre **<http://127.0.0.1:54324>**, busca el correo "Tu acceso a Aimar Trainer" y
+   pulsa el enlace. La app te llevará a *Elige tu contraseña*; al guardarla, entras
+   como cliente.
+
+Para enviar de verdad, rellena `RESEND_API_KEY` y `RESEND_FROM_EMAIL` y quita
+`CORREO_DEV_URL`. No hay que tocar código.
 
 ### Edge Functions en local
 

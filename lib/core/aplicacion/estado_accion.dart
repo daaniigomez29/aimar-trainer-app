@@ -3,8 +3,9 @@ import 'package:aimar_trainer_app/core/errores/error_app.dart';
 /// Estado de un formulario que dispara una unica accion contra el repositorio:
 /// inactivo, en curso, completado o con error.
 ///
-/// Se comparte entre login, solicitud de recuperacion y restablecimiento porque
-/// los tres tienen exactamente esta forma.
+/// Vive en `core/` porque lo comparten varias features: login, recuperacion y
+/// restablecimiento (CU-01, CU-24) y el formulario y la baja de la biblioteca de
+/// ejercicios (CU-02 a CU-04). Todos tienen exactamente esta forma.
 class EstadoAccion {
   const EstadoAccion({
     this.enCurso = false,

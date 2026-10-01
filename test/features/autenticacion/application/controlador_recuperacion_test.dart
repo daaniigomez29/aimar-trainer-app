@@ -18,6 +18,7 @@ void main() {
     repositorio = RepositorioFalso();
     when(() => repositorio.cambiosDeAutenticacion)
         .thenAnswer((_) => const Stream.empty());
+    when(() => repositorio.debeFijarContrasena).thenReturn(false);
     contenedor = ProviderContainer(
       overrides: [
         autenticacionRepositorioProvider.overrideWithValue(repositorio),

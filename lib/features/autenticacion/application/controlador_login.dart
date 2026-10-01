@@ -2,7 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
-import 'package:aimar_trainer_app/features/autenticacion/application/estado_accion.dart';
+import 'package:aimar_trainer_app/core/aplicacion/estado_accion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/credenciales.dart';
 
 part 'controlador_login.g.dart';

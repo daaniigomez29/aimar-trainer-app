@@ -20,6 +20,7 @@ void main() {
     repositorio = RepositorioFalso();
     when(() => repositorio.cambiosDeAutenticacion)
         .thenAnswer((_) => const Stream.empty());
+    when(() => repositorio.debeFijarContrasena).thenReturn(false);
   });
 
   Future<void> montar(WidgetTester tester) => tester.pumpWidget(

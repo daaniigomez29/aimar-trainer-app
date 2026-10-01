@@ -17,6 +17,13 @@ alter table perfiles enable row level security;
 -- lo necesita, se salta permisos de tabla y RLS por diseno.
 grant select on perfiles to authenticated;
 
+-- `service_role` salta RLS (tiene BYPASSRLS), pero NO los privilegios de tabla de
+-- Postgres: sin este GRANT, una Edge Function recibe "permission denied for table".
+-- No se le concede `delete`: las Edge Functions solo necesitan deshacer un alta a
+-- medias, y eso lo resuelve `auth.admin.deleteUser`, que cascadea por la FK a
+-- auth.users. Asi el borrado fisico sigue siendo imposible desde la API.
+grant select, insert on perfiles to service_role;
+
 -- Los privilegios por defecto del esquema `public` de Supabase dejan TRUNCATE,
 -- TRIGGER y REFERENCES a `anon` y `authenticated` incluso con la autoexposicion
 -- desactivada. TRUNCATE no pasa por RLS, asi que se revoca explicitamente: la

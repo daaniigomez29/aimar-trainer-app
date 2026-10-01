@@ -9,8 +9,13 @@ migraciones en `supabase/migrations/`; este archivo es la vista de conjunto.
 tabla necesita su propio `grant ... to authenticated` explícito, además de
 `enable row level security` y sus políticas. Sin el `GRANT`, PostgREST
 deniega el acceso a la tabla antes de que RLS llegue a evaluarse — es un
-paso obligatorio, no opcional. `service_role` no necesita `GRANT`: ese rol
-se salta tanto los permisos de tabla como RLS por diseño de Supabase.
+paso obligatorio, no opcional.
+
+`service_role` **también necesita `GRANT`** en las tablas que usen las Edge
+Functions. Ese rol se salta RLS (tiene `BYPASSRLS`), pero **no** los privilegios
+de tabla de Postgres: sin el `GRANT` recibe `permission denied for table`. Se le
+concede solo lo que usa y nunca `delete`: para deshacer un alta a medias basta
+`auth.admin.deleteUser`, que cascadea por la FK a `auth.users`.
 Ninguna tabla concede `delete` salvo las que tienen un caso de uso real de
 borrado físico (plannings, sesiones, bloques, ejercicios planificados,
 series planificadas, fotos de progreso); clientes y ejercicios de la

@@ -1,17 +1,25 @@
 // CU-17 / RF-17 · Dar de alta cliente.
 //
-// FASE 1: solo el esqueleto y la validación de rol. La creación real (usuario en
-// Auth, perfil, ficha en `clientes` e invitación por Resend) llega en la fase 3,
-// junto con la feature de gestión de clientes.
+// Crea el usuario en Auth, su fila en `perfiles` (rol `cliente`) y su ficha en
+// `clientes`, y le envía la invitación por correo.
 //
-// Contrato completo en docs/architecture.md ("Contrato de las Edge Functions").
+// SOBRE LA ATOMICIDAD: no hay transacción posible que cubra los tres pasos. Crear
+// el usuario en Auth es una llamada HTTP a GoTrue, un servicio aparte, y cada
+// petición a PostgREST va en su propia transacción. Así que se compensa a mano:
+// si falla un paso, se deshacen los anteriores en orden inverso. Borrar el usuario
+// de Auth aquí NO contradice la regla de "bajas siempre lógicas": no se está dando
+// de baja a un cliente, se está deshaciendo un alta que no llegó a completarse.
+//
+// Contrato en docs/architecture.md ("Contrato de las Edge Functions").
 
 import {
   autorizarGestorDeClientes,
+  clienteAdministrativo,
   respuestaError,
   respuestaJson,
   respuestaPreflight,
 } from "../_shared/autorizacion.ts";
+import { correoDeInvitacion, enviarCorreo } from "../_shared/correo.ts";
 
 interface PeticionCrearCliente {
   nombre: string;
@@ -65,18 +73,150 @@ Deno.serve(async (req) => {
     return respuestaError(400, "datos_invalidos", errorValidacion);
   }
 
-  // TODO(fase 3), con `clienteAdministrativo()`:
-  //   1. auth.admin.inviteUserByEmail(correo) -> id del nuevo usuario
-  //   2. insert into perfiles (id, rol = 'cliente')
-  //   3. insert into clientes (...datos recibidos)
-  //   4. correo de invitación vía Resend (RESEND_API_KEY, RESEND_FROM_EMAIL)
-  //   5. 409 si ya existe un cliente activo con ese correo
-  //      (índice clientes_correo_activo_unico)
-  // Respuesta prevista: 201 { clienteId, estado: "invitado" }
-  return respuestaJson(501, {
-    error: "no_implementado",
-    mensaje: "El alta de clientes se implementa en la fase 3.",
-    rolDelLlamante: autorizacion.rol,
+  const correo = cuerpo.correo.trim().toLowerCase();
+  const nombre = cuerpo.nombre.trim();
+  const admin = clienteAdministrativo();
+
+  // 409 si ya hay un cliente ACTIVO con ese correo. El índice único parcial lo
+  // garantiza igualmente, pero comprobarlo antes evita crear el usuario en Auth
+  // para luego tener que borrarlo.
+  const { data: yaExiste, error: errorConsulta } = await admin
+    .from("clientes")
+    .select("id")
+    .eq("estado", "activo")
+    .ilike("correo", correo)
+    .maybeSingle();
+
+  if (errorConsulta) {
+    return respuestaError(
+      500,
+      "error_interno",
+      `No se pudo comprobar el correo: ${errorConsulta.message}`,
+    );
+  }
+  if (yaExiste) {
+    return respuestaError(
+      409,
+      "correo_duplicado",
+      "Ya hay un cliente activo con ese correo.",
+    );
+  }
+
+  // Paso 1: crear el usuario en Auth y obtener el enlace de invitación.
+  // `generateLink` con tipo `invite` crea el usuario y devuelve el enlace SIN
+  // enviar ningún correo, que es justo lo que interesa: el correo lo manda Resend
+  // con plantilla propia.
+  const urlBase = Deno.env.get("APP_BASE_URL");
+  const { data: datosEnlace, error: errorEnlace } = await admin.auth.admin
+    .generateLink({
+      type: "invite",
+      email: correo,
+      // Marca para la app: un enlace de invitación hace que GoTrue emita
+      // `signedIn`, igual que un login normal, así que sin esta bandera el cliente
+      // entraría sin haber fijado contraseña y luego no podría volver a entrar.
+      // La app la lee y lo lleva a elegir contraseña; se limpia al guardarla.
+      data: { debe_fijar_contrasena: true },
+      options: urlBase ? { redirectTo: urlBase } : undefined,
+    });
+
+  if (errorEnlace || !datosEnlace?.user) {
+    const mensaje = errorEnlace?.message ?? "No se pudo crear el usuario.";
+    // Un correo que ya existe en Auth (por ejemplo, de un cliente dado de baja)
+    // no se puede reutilizar: Auth no admite dos usuarios con el mismo correo,
+    // aunque el índice de `clientes` sí permita reutilizarlo entre bajas.
+    const yaRegistrado = /already|exists|registered/i.test(mensaje);
+    return respuestaError(
+      yaRegistrado ? 409 : 500,
+      yaRegistrado ? "correo_duplicado" : "error_interno",
+      yaRegistrado
+        ? "Ese correo ya tiene una cuenta en el sistema. Si pertenece a un " +
+          "cliente dado de baja, usa otro correo o reactívalo."
+        : `No se pudo crear la cuenta: ${mensaje}`,
+    );
+  }
+
+  const clienteId = datosEnlace.user.id;
+  const enlaceInvitacion = datosEnlace.properties?.action_link;
+
+  /**
+   * Deshace el alta a medias. El cliente nunca llegó a existir, así que esto no
+   * contradice la regla de "bajas siempre lógicas".
+   *
+   * Basta con borrar el usuario de Auth: `perfiles.id` y `clientes.id` referencian
+   * `auth.users(id)` con `on delete cascade`, así que sus filas se van con él. Por
+   * eso `service_role` no necesita el privilegio `DELETE` sobre esas tablas.
+   */
+  async function compensar(): Promise<void> {
+    await admin.auth.admin.deleteUser(clienteId);
+  }
+
+  // Paso 2: perfil con rol `cliente`.
+  const { error: errorPerfil } = await admin
+    .from("perfiles")
+    .insert({ id: clienteId, rol: "cliente" });
+
+  if (errorPerfil) {
+    await compensar();
+    return respuestaError(
+      500,
+      "error_interno",
+      `No se pudo crear el perfil: ${errorPerfil.message}`,
+    );
+  }
+
+  // Paso 3: ficha en `clientes`.
+  const { error: errorFicha } = await admin.from("clientes").insert({
+    id: clienteId,
+    nombre,
+    correo,
+    fecha_nacimiento: cuerpo.fechaNacimiento ?? null,
+    altura_cm: cuerpo.alturaCm ?? null,
+    peso_inicial_kg: cuerpo.pesoInicialKg ?? null,
+    objetivos: cuerpo.objetivos?.trim() || null,
+    dia_control_preferido: cuerpo.diaControlPreferido,
+  });
+
+  if (errorFicha) {
+    await compensar();
+    // 23505 es la violación del índice único de correo entre activos: puede
+    // ocurrir si dos altas con el mismo correo llegan a la vez.
+    const duplicado = errorFicha.code === "23505";
+    return respuestaError(
+      duplicado ? 409 : 500,
+      duplicado ? "correo_duplicado" : "error_interno",
+      duplicado
+        ? "Ya hay un cliente activo con ese correo."
+        : `No se pudo crear la ficha: ${errorFicha.message}`,
+    );
+  }
+
+  // Paso 4: invitación por correo. Si falla, el alta SE MANTIENE y se informa:
+  // la ficha ya es válida y la invitación se puede reenviar.
+  const plantilla = correoDeInvitacion({
+    nombre,
+    enlace: enlaceInvitacion ?? (urlBase ?? ""),
+  });
+  const envio = enlaceInvitacion
+    ? await enviarCorreo({
+      destinatario: correo,
+      asunto: plantilla.asunto,
+      html: plantilla.html,
+      texto: plantilla.texto,
+    })
+    : {
+      enviado: false,
+      motivo: "Auth no devolvió el enlace de invitación.",
+    };
+
+  // `estado: "invitado"` es el del contrato y describe la invitación, no la
+  // columna `estado` de la ficha, que es `activo` (el enum solo admite
+  // activo/baja).
+  return respuestaJson(201, {
+    clienteId,
+    estado: "invitado",
+    invitacionEnviada: envio.enviado,
+    ...(envio.entregadoEnLocal ? { entregadoEnBuzonLocal: true } : {}),
+    ...(envio.enviado ? {} : { avisoInvitacion: envio.motivo }),
   });
 });
 

@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:aimar_trainer_app/core/configuracion/configuracion_app.dart';
+import 'package:aimar_trainer_app/core/diagnostico/observador_providers.dart';
+import 'package:aimar_trainer_app/core/diagnostico/registro.dart';
 import 'package:aimar_trainer_app/core/presentacion/app.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantalla_configuracion_invalida.dart';
 
-Future<void> main() async {
+void main() => ejecutarConRegistro(_arrancar);
+
+Future<void> _arrancar() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final configuracion = ConfiguracionApp.desdeEntorno();
@@ -16,9 +20,14 @@ Future<void> main() async {
     // Envuelta en ProviderScope aunque hoy no lea ningun provider: asi no se
     // rompe en tiempo de ejecucion si esta pantalla pasa a consumir uno
     // (riverpod_lint: missing_provider_scope).
+    Registro.info(
+      'Configuracion incompleta: falta SUPABASE_URL o SUPABASE_PUBLISHABLE_KEY.',
+    );
     runApp(const ProviderScope(child: PantallaConfiguracionInvalida()));
     return;
   }
+
+  Registro.info('Entorno: ${configuracion.entorno.name}');
 
   await Supabase.initialize(
     url: configuracion.urlSupabase,
@@ -32,5 +41,12 @@ Future<void> main() async {
     ),
   );
 
-  runApp(const ProviderScope(child: AppAimarTrainer()));
+  runApp(
+    ProviderScope(
+      // Deja en la consola de depuracion los errores que viajan dentro de los
+      // providers, que de otro modo solo se verian como un mensaje en pantalla.
+      observers: const [ObservadorProviders()],
+      child: const AppAimarTrainer(),
+    ),
+  );
 }

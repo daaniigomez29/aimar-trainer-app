@@ -60,6 +60,27 @@ class ErrorValidacion extends ErrorApp {
   final String? campo;
 }
 
+/// Ya existe un ejercicio activo con ese nombre (CU-02/CU-03, excepcion), o un
+/// cliente activo con ese correo (CU-17). Lo garantiza un indice unico parcial.
+class ErrorNombreDuplicado extends ErrorApp {
+  const ErrorNombreDuplicado([
+    super.mensaje = 'Ya existe un registro activo con ese nombre.',
+  ]);
+}
+
+/// Una Edge Function no responde: no esta desplegada, o en local falta
+/// `supabase functions serve`. Se distingue de [ErrorConexion] porque la red va
+/// bien; lo que no esta es ese servicio concreto.
+class ErrorServicioNoDisponible extends ErrorApp {
+  const ErrorServicioNoDisponible([String? servicio])
+    : super(
+        servicio == null
+            ? 'El servicio no esta disponible ahora mismo. Vuelve a intentarlo.'
+            : 'El servicio de $servicio no esta disponible ahora mismo. '
+                  'Vuelve a intentarlo.',
+      );
+}
+
 /// Fallo de red o servicio no alcanzable.
 class ErrorConexion extends ErrorApp {
   const ErrorConexion()

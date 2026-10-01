@@ -10,6 +10,8 @@ import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_inicio_en
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_login.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_biblioteca.dart';
+import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_recuperar_contrasena.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_restablecer_contrasena.dart';
 
@@ -50,14 +52,36 @@ GoRouter enrutador(Ref ref) {
       GoRoute(
         path: Rutas.inicioEntrenador,
         builder: (context, state) => const PantallaInicioEntrenador(),
+        routes: [
+          GoRoute(
+            path: Rutas.biblioteca,
+            builder: (context, state) => const PantallaBiblioteca(),
+          ),
+          GoRoute(
+            path: Rutas.clientes,
+            builder: (context, state) => const PantallaClientes(),
+          ),
+        ],
       ),
       GoRoute(
         path: Rutas.inicioCliente,
         builder: (context, state) => const PantallaInicioCliente(),
+        routes: [
+          GoRoute(
+            path: Rutas.biblioteca,
+            builder: (context, state) => const PantallaBiblioteca(),
+          ),
+        ],
       ),
       GoRoute(
         path: Rutas.inicioAdministrador,
         builder: (context, state) => const PantallaInicioAdministrador(),
+        routes: [
+          GoRoute(
+            path: Rutas.clientes,
+            builder: (context, state) => const PantallaClientes(),
+          ),
+        ],
       ),
     ],
   );
@@ -77,6 +101,9 @@ String? _destino(EstadoSesion estado, String rutaActual) {
       // usuario venga del enlace del correo (no hay que interrumpirlo).
       return rutaActual == Rutas.restablecerContrasena ? null : Rutas.cargando;
 
+    // Invitacion aceptada sin contrasena y recuperacion acaban en la misma
+    // pantalla; solo cambia el texto que se muestra.
+    case SesionDebeFijarContrasena():
     case SesionRecuperandoContrasena():
       return rutaActual == Rutas.restablecerContrasena
           ? null

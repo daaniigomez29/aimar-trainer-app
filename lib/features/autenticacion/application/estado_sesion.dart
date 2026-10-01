@@ -30,6 +30,15 @@ class SesionActiva extends EstadoSesion {
   int get hashCode => Object.hash(SesionActiva, perfil);
 }
 
+/// El usuario entro por una invitacion (CU-17) y todavia no tiene contrasena.
+///
+/// Hace falta un estado propio porque GoTrue emite `signedIn` para un enlace de
+/// invitacion, igual que para un login normal: sin distinguirlo, el cliente
+/// entraria en la app sin contrasena y despues no podria volver a entrar.
+class SesionDebeFijarContrasena extends EstadoSesion {
+  const SesionDebeFijarContrasena();
+}
+
 /// El usuario ha llegado por el enlace de recuperacion (CU-24). Tiene sesion,
 /// pero solo debe poder fijar una contrasena nueva.
 class SesionRecuperandoContrasena extends EstadoSesion {

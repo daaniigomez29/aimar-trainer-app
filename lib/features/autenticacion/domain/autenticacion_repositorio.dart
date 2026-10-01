@@ -23,6 +23,12 @@ abstract interface class AutenticacionRepositorio {
   /// Id de Auth del usuario con sesion abierta, o `null` si no hay sesion.
   String? get idUsuarioActual;
 
+  /// `true` si el usuario entro por una invitacion y aun no ha fijado contrasena.
+  ///
+  /// Lo marca `crear-cliente` en los metadatos del usuario al invitar, porque
+  /// GoTrue no distingue un enlace de invitacion de un login normal.
+  bool get debeFijarContrasena;
+
   /// Flujo de cambios de sesion. Emite el estado actual al suscribirse.
   Stream<EventoAutenticacion> get cambiosDeAutenticacion;
 

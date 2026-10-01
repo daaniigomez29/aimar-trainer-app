@@ -31,6 +31,7 @@ void main() {
     eventos = StreamController<EventoAutenticacion>.broadcast();
     when(() => repositorio.cambiosDeAutenticacion)
         .thenAnswer((_) => eventos.stream);
+    when(() => repositorio.debeFijarContrasena).thenReturn(false);
     contenedor = ProviderContainer(
       overrides: [
         autenticacionRepositorioProvider.overrideWithValue(repositorio),
@@ -159,5 +160,46 @@ void main() {
 
     verify(() => repositorio.cerrarSesion()).called(1);
     expect(contenedor.read(controladorSesionProvider), isA<SesionCerrada>());
+  });
+
+  group('CU-17: cliente recien invitado', () {
+    test('no entra en la app: va a fijar contrasena', () async {
+      // GoTrue emite `signedIn` para un enlace de invitacion, igual que para un
+      // login normal. Sin distinguirlo, el cliente entraria sin contrasena y
+      // despues no podria volver a entrar nunca.
+      when(() => repositorio.idUsuarioActual).thenReturn('id-invitado');
+      when(() => repositorio.debeFijarContrasena).thenReturn(true);
+      contenedor.listen(controladorSesionProvider, (_, _) {});
+
+      eventos.add(EventoAutenticacion.sesionIniciada);
+      await procesarEventos();
+
+      expect(
+        contenedor.read(controladorSesionProvider),
+        isA<SesionDebeFijarContrasena>(),
+      );
+      // Ni se consulta el perfil: no hay a donde enrutarlo todavia.
+      verifyNever(() => repositorio.perfilDeLaSesion());
+    });
+
+    test('tras fijar la contrasena ya entra con normalidad', () async {
+      when(() => repositorio.idUsuarioActual).thenReturn('id-invitado');
+      when(() => repositorio.debeFijarContrasena).thenReturn(true);
+      when(() => repositorio.perfilDeLaSesion())
+          .thenAnswer((_) async => Success(_perfilCliente));
+      contenedor.listen(controladorSesionProvider, (_, _) {});
+      eventos.add(EventoAutenticacion.sesionIniciada);
+      await procesarEventos();
+
+      // `establecerNuevaContrasena` limpia la marca y Auth emite userUpdated.
+      when(() => repositorio.debeFijarContrasena).thenReturn(false);
+      eventos.add(EventoAutenticacion.usuarioActualizado);
+      await procesarEventos();
+
+      expect(
+        contenedor.read(controladorSesionProvider),
+        SesionActiva(_perfilCliente),
+      );
+    });
   });
 }

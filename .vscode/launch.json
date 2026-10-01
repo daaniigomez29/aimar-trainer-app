@@ -10,7 +10,15 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "toolArgs": ["--dart-define-from-file=config/dev.json"]
+      // El puerto fijo 127.0.0.1:3000 debe coincidir con `site_url` de
+      // supabase/config.toml: GoTrue solo redirige el enlace de invitacion y el
+      // de recuperacion a una URL permitida, y `flutter run` usa un puerto
+      // aleatorio por defecto.
+      "toolArgs": [
+        "--dart-define-from-file=config/dev.json",
+        "--web-hostname=127.0.0.1",
+        "--web-port=3000"
+      ]
     },
     {
       "name": "Flutter (dev, Chrome)",
@@ -18,7 +26,15 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "chrome",
-      "toolArgs": ["--dart-define-from-file=config/dev.json"]
+      // El puerto fijo 127.0.0.1:3000 debe coincidir con `site_url` de
+      // supabase/config.toml: GoTrue solo redirige el enlace de invitacion y el
+      // de recuperacion a una URL permitida, y `flutter run` usa un puerto
+      // aleatorio por defecto.
+      "toolArgs": [
+        "--dart-define-from-file=config/dev.json",
+        "--web-hostname=127.0.0.1",
+        "--web-port=3000"
+      ]
     },
     {
       // Requiere config/prod.json rellenado; hoy esta vacio porque el proyecto

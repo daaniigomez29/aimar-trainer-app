@@ -48,6 +48,32 @@ void main() {
     });
   });
 
+  group('destinoDeLaRedireccion · invitacion aceptada (CU-17)', () {
+    test('fuerza la pantalla de fijar contrasena', () {
+      expect(
+        destinoDeLaRedireccion(
+          const SesionDebeFijarContrasena(),
+          Rutas.inicioCliente,
+        ),
+        Rutas.restablecerContrasena,
+      );
+    });
+
+    test('no la saca de ahi: sin contrasena no podria volver a entrar', () {
+      expect(
+        destinoDeLaRedireccion(const SesionDebeFijarContrasena(), Rutas.login),
+        Rutas.restablecerContrasena,
+      );
+      expect(
+        destinoDeLaRedireccion(
+          const SesionDebeFijarContrasena(),
+          Rutas.restablecerContrasena,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('destinoDeLaRedireccion · recuperacion de contrasena (CU-24)', () {
     test('fuerza la pantalla de restablecer desde cualquier otra ruta', () {
       expect(

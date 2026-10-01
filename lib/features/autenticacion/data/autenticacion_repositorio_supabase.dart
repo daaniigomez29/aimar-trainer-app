@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:aimar_trainer_app/core/configuracion/configuracion_app.dart';
+import 'package:aimar_trainer_app/core/diagnostico/registro.dart';
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/supabase/proveedores_supabase.dart';
@@ -38,6 +41,13 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
 
   @override
   String? get idUsuarioActual => _auth.currentUser?.id;
+
+  /// Clave del metadato que pone `crear-cliente` al invitar.
+  static const String _claveDebeFijarContrasena = 'debe_fijar_contrasena';
+
+  @override
+  bool get debeFijarContrasena =>
+      _auth.currentUser?.userMetadata?[_claveDebeFijarContrasena] == true;
 
   @override
   Stream<EventoAutenticacion> get cambiosDeAutenticacion => _auth
@@ -137,7 +147,15 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
       return const Failure(ErrorEnlaceCaducado());
     }
     try {
-      await _auth.updateUser(UserAttributes(password: contrasenaNueva));
+      // Se limpia la marca en la misma llamada: si se hiciera aparte y fallara, el
+      // usuario quedaria con contrasena pero atrapado en la pantalla de fijarla.
+      // `data` fusiona metadatos, no los reemplaza.
+      await _auth.updateUser(
+        UserAttributes(
+          password: contrasenaNueva,
+          data: const {_claveDebeFijarContrasena: false},
+        ),
+      );
       return const Success(null);
     } on AuthException catch (excepcion) {
       return Failure(_traducirErrorAuth(excepcion));
@@ -157,6 +175,15 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
           EventoAutenticacion.recuperacionContrasena,
         _ => null,
       };
+
+  /// Expuesto para test: el mapeo de `user_banned` es lo que hace que un cliente
+  /// dado de baja vea "esta cuenta no esta disponible" y no "credenciales
+  /// incorrectas" (CU-01, excepcion). Es facil de romper al reordenar el switch,
+  /// porque `user_banned` llega con `statusCode` 400, igual que las credenciales
+  /// invalidas.
+  @visibleForTesting
+  static ErrorApp traducirErrorAuth(AuthException excepcion) =>
+      _traducirErrorAuth(excepcion);
 
   static ErrorApp _traducirErrorAuth(AuthException excepcion) {
     final codigo = excepcion.code;
@@ -187,7 +214,11 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
       '403' => const ErrorCuentaNoDisponible(),
       '422' => const ErrorValidacion('Los datos enviados no son validos.'),
       '429' => const ErrorDemasiadasPeticiones(),
-      _ => ErrorInesperado(causa: excepcion),
+      _ => Registro.inesperado(
+        excepcion,
+        null,
+        contexto: 'el repositorio de autenticacion',
+      ),
     };
   }
 
@@ -197,7 +228,11 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
         'PGRST116' => const ErrorNoEncontrado(),
         // Violacion de una politica RLS.
         '42501' => const ErrorNoAutorizado(),
-        _ => ErrorInesperado(causa: excepcion),
+        _ => Registro.inesperado(
+          excepcion,
+          null,
+          contexto: 'el repositorio de autenticacion',
+        ),
       };
 
   static ErrorApp _traducirErrorGenerico(Object error, StackTrace traza) {
@@ -209,6 +244,7 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
     if (nombre == 'ClientException' || nombre == 'SocketException') {
       return const ErrorConexion();
     }
+    Registro.fallo(error, traza, contexto: 'el repositorio de autenticacion');
     return ErrorInesperado(causa: error, traza: traza);
   }
 }

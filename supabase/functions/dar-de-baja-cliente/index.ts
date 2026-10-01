@@ -1,12 +1,13 @@
 // CU-18 / RF-18 · Dar de baja cliente (baja SIEMPRE lógica).
 //
-// FASE 1: solo el esqueleto y la validación de rol. La baja real (update de
-// `clientes` y bloqueo en Auth) llega en la fase 3.
+// Marca la ficha como `baja` con su `fecha_baja` y bloquea el acceso del usuario
+// en Auth. El histórico se conserva íntegro: nunca se borra nada.
 //
-// Contrato completo en docs/architecture.md ("Contrato de las Edge Functions").
+// Contrato en docs/architecture.md ("Contrato de las Edge Functions").
 
 import {
   autorizarGestorDeClientes,
+  clienteAdministrativo,
   respuestaError,
   respuestaJson,
   respuestaPreflight,
@@ -18,6 +19,9 @@ interface PeticionDarDeBaja {
 
 const FORMATO_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 100 años: el bloqueo es indefinido en la práctica. */
+const DURACION_BLOQUEO = "876000h";
 
 Deno.serve(async (req) => {
   const preflight = respuestaPreflight(req);
@@ -49,15 +53,70 @@ Deno.serve(async (req) => {
     );
   }
 
-  // TODO(fase 3), con `clienteAdministrativo()`:
-  //   1. 404 si el cliente no existe; 409 si ya estaba de baja
-  //   2. update clientes set estado = 'baja', fecha_baja = now() where id = ...
-  //      (NUNCA delete: la baja es lógica y el histórico se conserva)
-  //   3. auth.admin.updateUserById(clienteId, { ban_duration: "876000h" })
-  // Respuesta prevista: 200 { clienteId, estado: "baja" }
-  return respuestaJson(501, {
-    error: "no_implementado",
-    mensaje: "La baja de clientes se implementa en la fase 3.",
-    rolDelLlamante: autorizacion.rol,
-  });
+  const admin = clienteAdministrativo();
+
+  const { data: ficha, error: errorConsulta } = await admin
+    .from("clientes")
+    .select("id, estado")
+    .eq("id", cuerpo.clienteId)
+    .maybeSingle();
+
+  if (errorConsulta) {
+    return respuestaError(
+      500,
+      "error_interno",
+      `No se pudo leer la ficha: ${errorConsulta.message}`,
+    );
+  }
+  if (!ficha) {
+    return respuestaError(404, "no_encontrado", "Ese cliente no existe.");
+  }
+  if (ficha.estado === "baja") {
+    return respuestaError(
+      409,
+      "ya_de_baja",
+      "Ese cliente ya estaba dado de baja.",
+    );
+  }
+
+  // Baja lógica. El constraint `baja_coherente` exige que `fecha_baja` sea
+  // posterior a `fecha_alta`, así que se usa la hora del servidor de base de
+  // datos y no la del runtime de la función.
+  const { error: errorBaja } = await admin
+    .from("clientes")
+    .update({ estado: "baja", fecha_baja: new Date().toISOString() })
+    .eq("id", cuerpo.clienteId)
+    .eq("estado", "activo");
+
+  if (errorBaja) {
+    return respuestaError(
+      500,
+      "error_interno",
+      `No se pudo dar de baja la ficha: ${errorBaja.message}`,
+    );
+  }
+
+  // Bloqueo en Auth: a partir de aquí el login devuelve `user_banned`, que la app
+  // traduce a "esta cuenta no está disponible" (CU-01, excepción).
+  const { error: errorBloqueo } = await admin.auth.admin.updateUserById(
+    cuerpo.clienteId,
+    { ban_duration: DURACION_BLOQUEO },
+  );
+
+  if (errorBloqueo) {
+    // La ficha ya está de baja pero el cliente aún podría entrar: se revierte la
+    // baja para no dejar un estado contradictorio, y se informa del fallo.
+    await admin
+      .from("clientes")
+      .update({ estado: "activo", fecha_baja: null })
+      .eq("id", cuerpo.clienteId);
+    return respuestaError(
+      500,
+      "error_interno",
+      `No se pudo bloquear el acceso, la baja se ha revertido: ` +
+        errorBloqueo.message,
+    );
+  }
+
+  return respuestaJson(200, { clienteId: cuerpo.clienteId, estado: "baja" });
 });
