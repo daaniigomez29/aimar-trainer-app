@@ -21,6 +21,12 @@ abstract final class Rutas {
   static const String bibliotecaEntrenador = '$inicioEntrenador/$biblioteca';
   static const String bibliotecaCliente = '$inicioCliente/$biblioteca';
 
+  /// Planning del cliente con la sesion abierta (CU-23 desde su lado). Solo
+  /// lectura: planificar es del entrenador, que llega a los plannings desde la
+  /// ficha del cliente, no por ruta propia.
+  static const String planning = 'planning';
+  static const String planningCliente = '$inicioCliente/$planning';
+
   /// Gestion de clientes (CU-17 a CU-19). La ven el entrenador y el
   /// administrador; el cliente no tiene esta seccion.
   static const String clientes = 'clientes';

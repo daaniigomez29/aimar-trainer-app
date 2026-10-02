@@ -6,6 +6,11 @@ manual en hojas de Excel. Un único entrenador, sin registro libre de clientes.
 
 ## Documentación ampliada
 
+**Empieza por `docs/estado-actual.md`**: dice en qué fase está el proyecto, cómo
+arrancar el entorno, las trampas ya pisadas (con su causa verificada), las
+decisiones tomadas y los pendientes abiertos. Es lo que no se deduce leyendo el
+código. El histórico cronológico está en `docs/bitacora.md`.
+
 Este archivo es un resumen operativo. Antes de un cambio importante de dominio,
 seguridad o infraestructura, consulta el ERS completo (Doc del proyecto), que
 contiene: casos de uso y requisitos funcionales, diseño de dominio (10

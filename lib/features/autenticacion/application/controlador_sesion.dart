@@ -75,6 +75,17 @@ class ControladorSesion extends _$ControladorSesion {
   }
 }
 
+/// Id de la cuenta con sesion activa, o `null` si no hay sesion resuelta.
+///
+/// Es el mismo uuid que `auth.users.id` y, para un cliente, que `clientes.id`:
+/// una pantalla del cliente puede usarlo para pedir lo suyo sin recibir el id
+/// por parametro.
+@riverpod
+String? idUsuarioActual(Ref ref) {
+  final estado = ref.watch(controladorSesionProvider);
+  return estado is SesionActiva ? estado.perfil.id : null;
+}
+
 /// Rol del usuario con sesion activa, o `null` si no hay sesion resuelta.
 @riverpod
 RolUsuario? rolActual(Ref ref) {

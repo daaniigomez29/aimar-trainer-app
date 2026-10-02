@@ -74,6 +74,64 @@ abstract class _$ControladorSesion extends $Notifier<EstadoSesion> {
   }
 }
 
+/// Id de la cuenta con sesion activa, o `null` si no hay sesion resuelta.
+///
+/// Es el mismo uuid que `auth.users.id` y, para un cliente, que `clientes.id`:
+/// una pantalla del cliente puede usarlo para pedir lo suyo sin recibir el id
+/// por parametro.
+
+@ProviderFor(idUsuarioActual)
+final idUsuarioActualProvider = IdUsuarioActualProvider._();
+
+/// Id de la cuenta con sesion activa, o `null` si no hay sesion resuelta.
+///
+/// Es el mismo uuid que `auth.users.id` y, para un cliente, que `clientes.id`:
+/// una pantalla del cliente puede usarlo para pedir lo suyo sin recibir el id
+/// por parametro.
+
+final class IdUsuarioActualProvider
+    extends $FunctionalProvider<String?, String?, String?>
+    with $Provider<String?> {
+  /// Id de la cuenta con sesion activa, o `null` si no hay sesion resuelta.
+  ///
+  /// Es el mismo uuid que `auth.users.id` y, para un cliente, que `clientes.id`:
+  /// una pantalla del cliente puede usarlo para pedir lo suyo sin recibir el id
+  /// por parametro.
+  IdUsuarioActualProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'idUsuarioActualProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$idUsuarioActualHash();
+
+  @$internal
+  @override
+  $ProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String? create(Ref ref) {
+    return idUsuarioActual(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$idUsuarioActualHash() => r'91ea0c0650d3cf60de401a61c333e9d57e65bc6a';
+
 /// Rol del usuario con sesion activa, o `null` si no hay sesion resuelta.
 
 @ProviderFor(rolActual)

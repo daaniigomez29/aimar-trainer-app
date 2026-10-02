@@ -58,6 +58,29 @@ en el comando.
   Flutter, o la opción `additionalArgs` en `.idea/runConfigurations/*.xml`
   (carpeta local, no se versiona).
 
+### Si el puerto falla con "errno 10013" en Windows
+
+```
+Failed to create server socket (OS Error: Intento de acceso a un socket no
+permitido por sus permisos de acceso, errno = 10013), port = 3000
+```
+
+No significa que el puerto este ocupado, sino que **Windows lo tiene reservado**.
+Hyper-V y Docker reservan bloques del rango dinamico de TCP, que aqui va de 1024 a
+15000. Para ver los bloques tomados:
+
+```bash
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Por eso la app usa el **54330**: esta fuera de ese rango y no puede quedar
+reservado. Si alguna vez hay que cambiarlo, el puerto nuevo tiene que ir a la vez
+en `scripts/run_dev.sh`, `.vscode/launch.json`, `site_url` y
+`additional_redirect_urls` de `supabase/config.toml`, y `APP_BASE_URL` de
+`supabase/functions/.env`; si no, los enlaces de invitacion y de recuperacion
+dejaran de llegar a la app. Un cambio en `config.toml` necesita
+`supabase stop && supabase start`.
+
 Ojo: cambiar `config/dev.json` con la app ya corriendo no surte efecto con un hot
 reload, porque `String.fromEnvironment` se resuelve en tiempo de compilación. Hay
 que reiniciar el proceso.
@@ -197,7 +220,7 @@ probar ese flujo completo sin tener dominio verificado en Resend:
 
    ```
    CORREO_DEV_URL=http://supabase_inbucket_aimar_trainer_app:8025
-   APP_BASE_URL=http://127.0.0.1:3000
+   APP_BASE_URL=http://127.0.0.1:54330
    ```
 
    Sin `RESEND_API_KEY`, la invitación se entrega en **Mailpit**, el buzón de
@@ -210,7 +233,7 @@ probar ese flujo completo sin tener dominio verificado en Resend:
    supabase functions serve --no-verify-jwt
    ```
 
-   La app **tiene que servirse en `http://127.0.0.1:3000`** (ya lo hacen
+   La app **tiene que servirse en `http://127.0.0.1:54330`** (ya lo hacen
    `run_dev.sh` y las configuraciones de `.vscode/launch.json`), porque GoTrue solo
    redirige el enlace a una URL permitida y ese es el `site_url` de
    `supabase/config.toml`.

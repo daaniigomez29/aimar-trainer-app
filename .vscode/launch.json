@@ -10,14 +10,15 @@
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      // El puerto fijo 127.0.0.1:3000 debe coincidir con `site_url` de
-      // supabase/config.toml: GoTrue solo redirige el enlace de invitacion y el
-      // de recuperacion a una URL permitida, y `flutter run` usa un puerto
-      // aleatorio por defecto.
+      // 54330 esta fuera del rango dinamico de Windows (1024-15000), del que
+      // Hyper-V y Docker reservan bloques: el 3000 dejo de poder bindearse
+      // justo por eso (errno 10013). Debe coincidir con `site_url` de
+      // supabase/config.toml, porque GoTrue solo redirige los enlaces de
+      // invitacion y recuperacion a una URL permitida.
       "toolArgs": [
         "--dart-define-from-file=config/dev.json",
         "--web-hostname=127.0.0.1",
-        "--web-port=3000"
+        "--web-port=54330"
       ]
     },
     {
@@ -26,14 +27,15 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "chrome",
-      // El puerto fijo 127.0.0.1:3000 debe coincidir con `site_url` de
-      // supabase/config.toml: GoTrue solo redirige el enlace de invitacion y el
-      // de recuperacion a una URL permitida, y `flutter run` usa un puerto
-      // aleatorio por defecto.
+      // 54330 esta fuera del rango dinamico de Windows (1024-15000), del que
+      // Hyper-V y Docker reservan bloques: el 3000 dejo de poder bindearse
+      // justo por eso (errno 10013). Debe coincidir con `site_url` de
+      // supabase/config.toml, porque GoTrue solo redirige los enlaces de
+      // invitacion y recuperacion a una URL permitida.
       "toolArgs": [
         "--dart-define-from-file=config/dev.json",
         "--web-hostname=127.0.0.1",
-        "--web-port=3000"
+        "--web-port=54330"
       ]
     },
     {

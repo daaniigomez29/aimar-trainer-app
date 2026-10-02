@@ -364,3 +364,165 @@ Gestion de clientes: RF-17 a RF-19, CU-17 a CU-19.
   `debe_fijar_contrasena`, asi que esos clientes entrarian sin contrasena. En local
   se arregla con `supabase db reset`; en la nube habria que volver a invitarlos.
 
+### 2026-10-02 (fase 4)
+
+Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
+
+**Hecho:**
+- Tres migraciones nuevas, agrupadas por dependencia de FK:
+  `20261002090000_plannings_y_sesiones`, `..._090100_bloques_y_ejercicios_planificados`
+  y `..._090200_series`. Las seis tablas con sus indices unicos, constraints, RLS,
+  `GRANT` y `revoke truncate/trigger/references`.
+- `series_realizadas` creada en esta fase por integridad referencial, con sus
+  politicas del cliente, pero **sin interfaz ni logica de escritura**: eso es CU-20.
+  Sin `delete`: lo que el cliente registra es historico, se corrige con update.
+- Los dos triggers de validacion, ambos con `set search_path = public, pg_temp`
+  aunque no sean `security definer`: se ejecutan con los privilegios de quien
+  escribe, y sin fijarlo una tabla homonima en `pg_temp` podria puentear la
+  comprobacion. Lanzan con `errcode = 'check_violation'` para que el repositorio
+  los distinga de un fallo cualquiera.
+- Feature `planificacion_semanal` con sus cuatro capas. Cinco entidades freezed
+  (`PlanningSemanal`, `SesionEntrenamiento`, `BloqueEjercicio`,
+  `EjercicioPlanificado`, `SeriePlanificada`) y tres enums alineados con Postgres.
+- El planning completo se trae **en una sola consulta** con relaciones incrustadas
+  de PostgREST (planning → sesiones → bloques → ejercicios → ejercicio de biblioteca
+  + series). Una semana cabe de sobra en memoria, y asi la pantalla valida fechas y
+  ordenes duplicados sin ir al servidor. PostgREST no garantiza el orden de lo
+  incrustado, asi que se ordena en el repositorio.
+- Interfaz: historico de plannings por cliente (CU-23), vista de la semana con un
+  dia por fila (los dias sin sesion se marcan como descanso), y formularios en
+  dialogo para planning, sesion y bloque. El de ejercicio planificado va en pantalla
+  propia porque su tabla de series no cabe en un dialogo.
+- **El formulario de ejercicio cambia segun el tipo** (punto 6): al elegir un
+  ejercicio de Fuerza se pintan series, peso, RIR y descanso; al elegir uno de
+  Cardio, solo minutos. Los campos del otro tipo **no existen en el arbol de
+  widgets**, asi que no hay forma de construir la combinacion imposible. El
+  `aJson()` pone a `null` lo que no aplica, de modo que una edicion que cambie de
+  tipo limpia los restos en lugar de dejar una fila que el trigger rechazaria.
+- La misma pantalla sirve al cliente en modo lectura (punto 7): RLS ya le deja ver
+  su planning y basto con no ofrecerle acciones. Un planning archivado tampoco
+  admite cambios, ni para el entrenador.
+- Archivar/reactivar planning como alternativa no destructiva a eliminarlo, y
+  avisos de cascada en CU-13 a CU-16 que dicen cuantas sesiones y ejercicios se
+  van a perder.
+- 52 tests nuevos (223 en total): validaciones de dominio, el controlador con
+  `mocktail` y widget tests del formulario que comprueban que el campo de minutos
+  no existe para Fuerza y que el de series no existe para Cardio.
+- `scripts/probar_local.sh` ampliado a 74 comprobaciones, con los dos triggers, los
+  indices unicos, el rango de RIR y la cascada de borrado.
+
+**Pendiente / notas:**
+- **Las migraciones de esta fase NO se han aplicado todavia**: Docker Desktop se
+  cerro a mitad y no se pudo arrancar Supabase local. El SQL esta sin ejecutar ni
+  una vez, asi que puede tener errores de sintaxis. Hay que correr
+  `supabase db reset` y despues `./scripts/probar_local.sh`.
+- Los triggers de recalculo de `estado_registro` y `resultado_registrado` no se
+  crean aqui: solo tienen efecto cuando el cliente registra resultados (CU-20) y el
+  propio `sql-schema.md` deja pendiente completar el caso de cardio con un tercer
+  trigger `after update`. Se resolveran juntos en la fase 5.
+- `_reemplazarSeries` (borrar las anteriores e insertar las nuevas al editar) no es
+  atomico: PostgREST no agrupa dos peticiones en una transaccion. En el alta se
+  compensa borrando el ejercicio; en la edicion, si falla el insert el ejercicio se
+  queda sin series y el entrenador tiene que volver a guardar. Una funcion RPC lo
+  resolveria.
+- Sigue pendiente la migracion correctiva de los `grant ... to service_role`, que en
+  la fase 3 se anadieron editando migraciones ya aplicadas en lugar de creando una
+  nueva.
+
+**Corregido:**
+- La app no arrancaba: `SocketException ... errno = 10013` al bindear el 127.0.0.1:3000
+  que yo habia fijado en el turno anterior. No era que el puerto estuviera ocupado
+  (no habia nada escuchando): Windows lo tenia **reservado**. Hyper-V y Docker
+  reservan bloques del rango dinamico de TCP, que en esta maquina va de 1024 a 15000,
+  y el 3000 cayo dentro del bloque 2919-3018. Esos bloques se reasignan al
+  arrancar o parar Docker, de ahi que antes funcionara.
+  - Puerto cambiado al **54330**, fuera del rango dinamico, asi que no puede quedar
+    reservado. Actualizado a la vez en `scripts/run_dev.sh`,
+    `.vscode/launch.json`, `site_url` y `additional_redirect_urls` de
+    `supabase/config.toml`, y `APP_BASE_URL` del `.env` y su plantilla: si no
+    coinciden todos, los enlaces de invitacion y recuperacion no llegan a la app.
+  - De paso, `additional_redirect_urls` tenia `https://` en una URL local, donde no
+    hay TLS; ahora es `http://`.
+  - Documentado en el README con el comando para ver los bloques reservados.
+
+**Hecho (cierre de la fase 4):**
+- Migraciones de la fase 4 **verificadas**: las ocho aplican limpias con
+  `supabase db reset` y el script local pasa **89/89**.
+- `guardar_ejercicio_planificado`, funcion de Postgres que guarda el ejercicio y
+  sus series en **una sola transaccion**. Sustituye a las tres peticiones que hacia
+  el repositorio (upsert, borrar series, insertar series), cada una en su propia
+  transaccion. Es `security invoker`, asi que RLS y los triggers siguen actuando
+  dentro: verificado que un cliente que la invoque recibe
+  "violates row-level security policy", y que `anon` no puede ni ejecutarla.
+  Verificada la atomicidad: una serie con RIR 11 tumba la operacion completa y las
+  series anteriores quedan intactas, aunque la funcion las borre antes de insertar.
+- Los cuatro triggers de recalculo de `estado_registro` y `resultado_registrado`,
+  incluido el que el doc dejaba pendiente para Cardio. Son `security definer`
+  porque al registrar una serie hay que escribir en
+  `sesiones_entrenamiento.resultado_registrado`, y las politicas de esa tabla solo
+  dan `update` al entrenador: con `security invoker` el registro del cliente
+  fallaria. No aceptan datos del usuario, solo recalculan valores derivados.
+- `grant select` a `service_role` en las seis tablas de planificacion. Hoy ninguna
+  Edge Function las toca, pero el recordatorio de CU-22 (fase 6) tendra que leer las
+  sesiones del dia siguiente, y asi no se repite el tropiezo que bloqueo
+  `crear-cliente` en la fase 3.
+- El script local sube a 89 comprobaciones, con los triggers y la atomicidad de la
+  RPC, y avisa si el cliente del seed esta de baja en lugar de fallar en cascada:
+  el propio script lo da de baja al comprobar el bloqueo de acceso, asi que una
+  segunda pasada necesita `supabase db reset`.
+
+**Corregido:**
+- El trigger `propagar_estado_registro` estaba declarado como
+  `after update OF estado_registro`, y asi **no se disparaba nunca** en el camino de
+  Cardio: Postgres decide `UPDATE OF columna` por las columnas **mencionadas en la
+  sentencia**, no por las que cambian. El registro de cardio es
+  `update ... set minutos_realizados = X`, y es el trigger `before` quien toca
+  `estado_registro`. Resultado: el ejercicio quedaba registrado pero la sesion nunca
+  se marcaba como completa. Quitado el `OF`; el `when` si compara los valores reales.
+  Lo encontro la prueba de los triggers, no la revision del codigo.
+- Dos fallos en el propio script de pruebas, que daban falsos negativos: `psql`
+  necesita `-q` o un `insert ... returning id` pega la linea de estado
+  ("INSERT 0 1") al uuid y lo corrompe; y el bloque no limpiaba los restos de la
+  pasada anterior, con lo que el indice unico de planning por semana lo tumbaba.
+
+**Hecho (preparando la fase 5):**
+- El cliente ya puede entrar a su planning: nueva pantalla `PantallaMisPlannings`
+  (`/cliente/planning`), con sus semanas activas y el historico de las archivadas.
+  Abre la semana con la misma `PantallaPlanning` del entrenador, que ya decide por
+  rol si ofrece acciones de escritura, asi que el cliente la ve en solo lectura sin
+  duplicar pantalla.
+- La tarjeta de la semana en curso dice **lo que toca hoy** ("Hoy: Empuje · 4
+  ejercicios" o "Hoy toca descanso"). La lista de plannings es una consulta plana,
+  sin sesiones, asi que para eso observa `planningCompletoProvider`: es la misma
+  peticion que hara la pantalla de la semana al abrirla, con lo que no se repite.
+- Providers nuevos: `idUsuarioActual` (en `controlador_sesion`) y `misPlannings`.
+  Este ultimo **no recibe el id del cliente por parametro**, lo toma de la sesion:
+  asi la pantalla del cliente no puede pedir el historico de otro ni por error. RLS
+  ya lo impide en el servidor; esto evita siquiera intentarlo.
+- Verificado contra Supabase local que la politica "el cliente ve sus propios
+  plannings" cubre justo la consulta que hace `listarDeCliente`: impersonando por
+  `request.jwt.claims`, el dueno ve su planning y otro cliente ve 0 filas (todo
+  dentro de una transaccion con `rollback`, sin tocar los datos locales).
+- 6 tests de widget nuevos (229 en total), `dart analyze --fatal-infos` limpio.
+  Sin cambios de esquema ni de RLS: todo lo que hace falta ya estaba de la fase 4.
+
+**Pendiente / notas:**
+- **Bucket de Storage de las fotos de progreso**: se decide crearlo por
+  configuracion, no a mano. En local va en `[storage.buckets.fotos-progreso]` de
+  `supabase/config.toml` (`public = false`), y en la nube hay que crearlo tambien
+  desde el panel: lo del panel no existe en local. Al ser privado **no hay URL
+  publica**; `ruta_storage` guarda la ruta y la foto se muestra con una URL firmada
+  y caducable. Un bucket publico dejaria ver las fotos a cualquiera que conociera la
+  ruta, incluido el administrador, que por ERS no debe tener acceso.
+- La captura que paso Daniel (app de gimnasio, con historico de series arriba e
+  inputs de peso/reps con +/- abajo) queda como **diseno de referencia para la
+  pantalla de registro de serie de CU-20**, que es ya fase 5.
+- Bucket `fotos-progreso` declarado en `config.toml` (Daniel) y comprobado en
+  local: privado, 20 MiB, png/jpeg. Le quite el `objects_path = "./images"` que
+  venia del ejemplo comentado: precarga en el bucket los ficheros de esa carpeta y,
+  si no existe, el sembrado falla con `NotFound: FileSystem.stat`. La carpeta
+  estaba vacia, y git no versiona carpetas vacias, asi que en una copia recien
+  clonada o en CI el arranque habria fallado. Verificado el fallo y verificado que
+  sin esa linea `supabase seed buckets --local` deja el bucket actualizado.
+- Para la nube, `supabase config push` empuja lo declarado en `config.toml` al
+  proyecto enlazado; queda por confirmar cuando exista el proyecto.

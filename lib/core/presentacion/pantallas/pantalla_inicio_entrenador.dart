@@ -19,14 +19,11 @@ class PantallaInicioEntrenador extends StatelessWidget {
       ),
       AccesoSeccion(
         titulo: 'Clientes',
-        descripcion: 'Dar de alta, editar fichas y dar de baja',
+        descripcion: 'Fichas, plannings semanales y altas/bajas',
         icono: Icons.people_outline,
         ruta: Rutas.clientesEntrenador,
       ),
     ],
-    pendientes: [
-      'Planificacion semanal (fase 4)',
-      'Progreso de clientes (fase 5)',
-    ],
+    pendientes: ['Progreso de clientes (fase 5)'],
   );
 }

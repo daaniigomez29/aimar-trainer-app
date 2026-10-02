@@ -7,6 +7,7 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_fich
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/dialogos_cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_plannings_cliente.dart';
 
 /// Ficha completa de un cliente. El entrenador puede editarla y dar de baja.
 class PantallaDetalleCliente extends ConsumerWidget {
@@ -86,6 +87,25 @@ class _Contenido extends ConsumerWidget {
           ],
         ),
         const Divider(height: 32),
+        if (esEntrenador)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Card(
+              child: ListTile(
+                key: const Key('acceso_plannings'),
+                leading: const Icon(Icons.calendar_month),
+                title: const Text('Plannings'),
+                subtitle: const Text('Planificacion semanal e historico'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PantallaPlanningsCliente(clienteId: cliente.id),
+                  ),
+                ),
+              ),
+            ),
+          ),
         _Dato(etiqueta: 'Correo', valor: cliente.correo),
         if (edad != null) _Dato(etiqueta: 'Edad', valor: '$edad años'),
         if (cliente.alturaCm case final altura?)

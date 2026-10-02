@@ -12,6 +12,12 @@ class PantallaInicioCliente extends StatelessWidget {
     titulo: 'Mi entrenamiento',
     accesos: [
       AccesoSeccion(
+        titulo: 'Mi planning',
+        descripcion: 'La semana que te ha preparado tu entrenador',
+        icono: Icons.calendar_month,
+        ruta: Rutas.planningCliente,
+      ),
+      AccesoSeccion(
         titulo: 'Biblioteca de ejercicios',
         descripcion: 'Consulta la tecnica y los videos de ejemplo',
         icono: Icons.fitness_center,
@@ -19,7 +25,6 @@ class PantallaInicioCliente extends StatelessWidget {
       ),
     ],
     pendientes: [
-      'Planning de la semana (fase 4)',
       'Registro de resultado de sesion (fase 5)',
       'Medidas, fotos y check-in (fase 5)',
     ],

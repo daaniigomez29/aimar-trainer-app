@@ -137,6 +137,31 @@ Errores: `401` · `403` · `404` cliente no encontrado · `409` ya estaba de baj
 
 Mismas variables de entorno que `crear-cliente`.
 
+## Almacenamiento de ficheros (Storage)
+
+- Un único bucket, `fotos-progreso`, **privado**. Es el único sitio donde la
+  app guarda ficheros.
+- Se declara en `supabase/config.toml` (`[storage.buckets.fotos-progreso]`,
+  `public = false`, 20 MiB, `image/png` e `image/jpeg`). En local lo crea
+  `supabase start` / `supabase db reset`. Para dev y producción, la declaración
+  no viaja sola: hay que crearlo en el panel de Supabase o empujar la
+  configuración con `supabase config push` sobre el proyecto enlazado. Un bucket
+  creado en el panel **no existe en local**, y al revés.
+- Sin `objects_path`: ese ajuste precarga en el bucket los ficheros de una
+  carpeta local, y si la carpeta no existe (una copia recién clonada, o CI) el
+  arranque falla al sembrar el bucket. No hay objetos de ejemplo que precargar.
+- Las políticas de acceso al bucket son políticas RLS sobre `storage.objects`,
+  así que viven en `supabase/migrations` como el resto del esquema, no en el
+  panel.
+- En base de datos solo se guarda la ruta (`fotos_progreso.ruta_storage`),
+  nunca el fichero ni una URL. La imagen se muestra con una **URL firmada de
+  corta duración**, generada en el momento.
+- El bucket no puede ser público: con la ruta bastaría para ver la foto de
+  cualquier cliente, incluido el administrador, que por diseño no debe tener
+  acceso a las fotos de progreso.
+- Convención de ruta prevista: `<clienteId>/<registroMedidasId>/<archivo>`, de
+  modo que la política pueda resolver el propietario por el primer segmento.
+
 ## Notificaciones y correo
 
 - Proveedor único: Resend, con dominio propio verificado (puede ser un

@@ -12,6 +12,7 @@ import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesi
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_login.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_biblioteca.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mis_plannings.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_recuperar_contrasena.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_restablecer_contrasena.dart';
 
@@ -70,6 +71,10 @@ GoRouter enrutador(Ref ref) {
           GoRoute(
             path: Rutas.biblioteca,
             builder: (context, state) => const PantallaBiblioteca(),
+          ),
+          GoRoute(
+            path: Rutas.planning,
+            builder: (context, state) => const PantallaMisPlannings(),
           ),
         ],
       ),
