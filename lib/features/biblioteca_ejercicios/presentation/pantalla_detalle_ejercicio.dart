@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_baja_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/video_ejemplo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 
@@ -76,6 +79,21 @@ class _Contenido extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        if (ejercicio.imagenRuta case final ruta?) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              ref.read(ejercicioRepositorioProvider).urlPublicaDeImagen(ruta),
+              height: 260,
+              width: double.infinity,
+              // `contain` y no `cover`: una ilustracion de tecnica recortada
+              // puede dejar fuera justo la parte que importa.
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         Text(ejercicio.nombre, style: textos.headlineSmall),
         const SizedBox(height: 8),
         Wrap(
@@ -113,7 +131,7 @@ class _Contenido extends ConsumerWidget {
           const Divider(height: 32),
           Text('Video de ejemplo', style: textos.titleMedium),
           const SizedBox(height: 8),
-          _EnlaceVideo(url: url),
+          _Video(url: url),
         ],
         if (esEntrenador) ...[
           const Divider(height: 32),
@@ -173,6 +191,44 @@ class _Dato extends StatelessWidget {
 /// No se abre directamente ni se incrusta un reproductor: abrir URLs externas
 /// necesitaria `url_launcher`, una dependencia nueva que hay que acordar antes
 /// (AGENTS.md). Copiar al portapapeles resuelve el caso sin anadirla.
+/// El video de ejemplo, reproducido dentro de la app cuando se puede.
+///
+/// Los videos del entrenador son shorts de YouTube, que se incrustan con su
+/// propio reproductor: el cliente los ve sin salir de la ficha. Si el enlace no
+/// es de YouTube (o no hay navegador detras, como en los tests) se cae al enlace
+/// copiable de siempre, que sigue funcionando.
+class _Video extends StatelessWidget {
+  const _Video({required this.url});
+
+  final String url;
+
+  /// Ancho maximo del reproductor. Un short es vertical: a pantalla completa en
+  /// un portatil quedaria una columna de video absurdamente alta.
+  static const double anchoMaximo = 320;
+
+  @override
+  Widget build(BuildContext context) {
+    final incrustada = VideoEjemplo.urlIncrustada(url);
+    if (incrustada == null || !ReproductorVideo.estaSoportado) {
+      return _EnlaceVideo(url: url);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: anchoMaximo),
+          child: ReproductorVideo(url: incrustada),
+        ),
+        const SizedBox(height: 8),
+        // El enlace sigue a mano: hay videos que su dueno no deja incrustar, y
+        // entonces el reproductor muestra un aviso de YouTube y no hay mas.
+        _EnlaceVideo(url: url),
+      ],
+    );
+  }
+}
+
 class _EnlaceVideo extends StatelessWidget {
   const _EnlaceVideo({required this.url});
 

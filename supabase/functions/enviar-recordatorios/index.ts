@@ -27,7 +27,7 @@ import {
 } from "../_shared/autorizacion.ts";
 import {
   correoDeControlSemanal,
-  correoDeSesionDeManana,
+  correoDeSemanaNueva,
   enviarCorreo,
 } from "../_shared/correo.ts";
 import {
@@ -53,15 +53,12 @@ type TipoAviso = "sesion" | "control";
 type CanalAviso = "correo" | "push";
 type EstadoAviso = "enviado" | "omitido" | "fallido";
 
-/** Lo que devuelve la consulta de sesiones, con sus recursos incrustados. */
-interface FilaSesion {
+/** Lo que devuelve la consulta de plannings que arrancan hoy. */
+interface FilaPlanning {
   readonly id: string;
-  readonly fecha: string;
-  readonly nombre: string;
-  readonly plannings_semanales: {
-    readonly estado: string;
-    readonly clientes: ClienteAvisado | null;
-  } | null;
+  readonly fecha_inicio: string;
+  readonly sesiones_entrenamiento: readonly { readonly id: string }[] | null;
+  readonly clientes: ClienteAvisado | null;
 }
 
 interface ClienteAvisado {
@@ -102,54 +99,59 @@ Deno.serve(async (req) => {
 
   const supabase = clienteAdministrativo();
   const hoy = fechaEnZona(new Date(), 0);
-  const manana = fechaEnZona(new Date(), 1);
   const diaDeControl = DIAS[diaSemanaEnZona(new Date())];
   const urlApp = Deno.env.get("APP_BASE_URL") ?? "";
 
   const avisos: Aviso[] = [];
 
-  // --- 1. Sesiones de mañana -------------------------------------------------
+  // --- 1. Semanas que arrancan hoy ------------------------------------------
 
+  // Las sesiones ya no tienen fecha planificada: el entrenador decide "cuatro
+  // sesiones esta semana" y el cliente las hace cuando puede. Asi que no se
+  // puede avisar de "manana toca Empuje A"; lo que se manda es el resumen de la
+  // semana el dia en que empieza.
+  //
   // Solo plannings activos: una semana archivada ya no se entrena.
-  const { data: sesiones, error: errorSesiones } = await supabase
-    .from("sesiones_entrenamiento")
+  const { data: plannings, error: errorPlannings } = await supabase
+    .from("plannings_semanales")
     .select(
-      "id, fecha, nombre, plannings_semanales!inner(estado, clientes!inner(id, nombre, correo, estado))",
+      "id, fecha_inicio, sesiones_entrenamiento(id), clientes!inner(id, nombre, correo, estado)",
     )
-    .eq("fecha", manana)
-    .eq("plannings_semanales.estado", "activo")
-    .eq("plannings_semanales.clientes.estado", "activo");
+    .eq("fecha_inicio", hoy)
+    .eq("estado", "activo")
+    .eq("clientes.estado", "activo");
 
-  if (errorSesiones) {
+  if (errorPlannings) {
     return respuestaError(
       500,
       "error_consulta",
-      `No se pudieron leer las sesiones: ${errorSesiones.message}`,
+      `No se pudieron leer los plannings: ${errorPlannings.message}`,
     );
   }
 
-  // El cliente de supabase-js no sabe inferir el tipo de un `select` con
-  // recursos incrustados, asi que se le pone nombre aqui en vez de usar `any`.
-  for (const sesion of (sesiones ?? []) as unknown as FilaSesion[]) {
-    const cliente = sesion.plannings_semanales?.clientes;
-    if (!cliente) continue;
+  for (const planning of (plannings ?? []) as unknown as FilaPlanning[]) {
+    const cliente = planning.clientes;
+    const cuantas = planning.sesiones_entrenamiento?.length ?? 0;
+    // Una semana sin sesiones no da pie a ningun aviso.
+    if (!cliente || cuantas === 0) continue;
 
     avisos.push(
       ...await avisar({
         supabase,
         cliente,
         tipo: "sesion",
-        fechaReferencia: manana,
-        correo: correoDeSesionDeManana({
+        fechaReferencia: planning.fecha_inicio,
+        correo: correoDeSemanaNueva({
           nombre: cliente.nombre,
-          nombreSesion: sesion.nombre,
-          fecha: comoFechaLegible(manana),
-          enlace: `${urlApp}/#/cliente/planning`,
+          sesiones: cuantas,
+          enlace: `${urlApp}/#/cliente`,
         }),
         push: {
-          titulo: `Mañana: ${sesion.nombre}`,
-          cuerpo: "Tienes sesión programada. Toca para ver los ejercicios.",
-          ruta: "/cliente/planning",
+          titulo: "Nueva semana de entrenamiento",
+          cuerpo: cuantas === 1
+            ? "Tienes 1 sesion esta semana."
+            : `Tienes ${cuantas} sesiones esta semana.`,
+          ruta: "/cliente",
         },
       }),
     );
@@ -193,7 +195,6 @@ Deno.serve(async (req) => {
 
   return respuestaJson(200, {
     fechaDeHoy: hoy,
-    fechaDeManana: manana,
     diaDeControl,
     resumen: resumir(avisos),
     avisos,
@@ -416,10 +417,4 @@ function diaSemanaEnZona(ahora: Date): number {
     nombre,
   );
   return indice < 0 ? 0 : indice;
-}
-
-/** `2026-10-04` -> `04/10/2026`, para el cuerpo del correo. */
-function comoFechaLegible(fecha: string): string {
-  const [anio, mes, dia] = fecha.split("-");
-  return `${dia}/${mes}/${anio}`;
 }

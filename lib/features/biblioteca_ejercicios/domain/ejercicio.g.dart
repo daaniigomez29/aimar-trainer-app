@@ -16,6 +16,7 @@ _Ejercicio _$EjercicioFromJson(Map<String, dynamic> json) => _Ejercicio(
   grupoMuscular: json['grupo_muscular'] as String?,
   equipamiento: json['equipamiento'] as String?,
   videoEjemploUrl: json['video_ejemplo_url'] as String?,
+  imagenRuta: json['imagen_ruta'] as String?,
 );
 
 Map<String, dynamic> _$EjercicioToJson(_Ejercicio instance) =>
@@ -29,6 +30,7 @@ Map<String, dynamic> _$EjercicioToJson(_Ejercicio instance) =>
       'grupo_muscular': instance.grupoMuscular,
       'equipamiento': instance.equipamiento,
       'video_ejemplo_url': instance.videoEjemploUrl,
+      'imagen_ruta': instance.imagenRuta,
     };
 
 const _$TipoEjercicioEnumMap = {

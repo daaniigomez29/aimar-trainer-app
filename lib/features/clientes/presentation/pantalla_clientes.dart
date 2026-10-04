@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
@@ -32,69 +34,85 @@ class PantallaClientes extends ConsumerWidget {
     ref.watch(controladorBajaClienteProvider);
     ref.watch(controladorFichaClienteProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clientes'),
-        actions: [
-          IconButton(
-            tooltip: 'Recargar',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(listaClientesProvider),
-          ),
-        ],
-      ),
-      floatingActionButton: puedeGestionar
-          ? FloatingActionButton.extended(
-              key: const Key('boton_nuevo_cliente'),
-              onPressed: () => abrirFormularioCliente(context, ref),
-              icon: const Icon(Icons.person_add_alt),
-              label: const Text('Nuevo cliente'),
-            )
-          : null,
-      body: Column(
-        children: [
-          if (puedeConsultar) const _Filtros(),
-          if (!puedeConsultar)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.privacy_tip_outlined),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Como administrador puedes dar de alta y de baja '
-                          'clientes, pero no consultar sus fichas ni sus datos '
-                          'de salud.',
-                        ),
+    final barra = AppBar(
+      title: const Text('Clientes'),
+      actions: [
+        IconButton(
+          tooltip: 'Recargar',
+          icon: const Icon(Icons.refresh),
+          onPressed: () => ref.invalidate(listaClientesProvider),
+        ),
+      ],
+    );
+    final botonNuevo = puedeGestionar
+        ? FloatingActionButton.extended(
+            key: const Key('boton_nuevo_cliente'),
+            onPressed: () => abrirFormularioCliente(context, ref),
+            icon: const Icon(Icons.person_add_alt),
+            label: const Text('Nuevo cliente'),
+          )
+        : null;
+
+    final cuerpo = Column(
+      children: [
+        if (puedeConsultar) const _Filtros(),
+        if (!puedeConsultar)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.privacy_tip_outlined),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Como administrador puedes dar de alta y de baja '
+                        'clientes, pero no consultar sus fichas ni sus datos '
+                        'de salud.',
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          const Divider(height: 1),
-          Expanded(
-            child: clientes.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => _Mensaje(
-                icono: Icons.error_outline,
-                texto: mensajeDeErrorCliente(error),
-                accion: TextButton(
-                  onPressed: () => ref.invalidate(listaClientesProvider),
-                  child: const Text('Reintentar'),
-                ),
-              ),
-              data: (lista) => lista.isEmpty
-                  ? _SinResultados(puedeConsultar: puedeConsultar)
-                  : _Listado(clientes: lista, puedeGestionar: puedeGestionar),
             ),
           ),
-        ],
-      ),
+        const Divider(height: 1),
+        Expanded(
+          child: clientes.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => _Mensaje(
+              icono: Icons.error_outline,
+              texto: mensajeDeErrorCliente(error),
+              accion: TextButton(
+                onPressed: () => ref.invalidate(listaClientesProvider),
+                child: const Text('Reintentar'),
+              ),
+            ),
+            data: (lista) => lista.isEmpty
+                ? _SinResultados(puedeConsultar: puedeConsultar)
+                : _Listado(clientes: lista, puedeGestionar: puedeGestionar),
+          ),
+        ),
+      ],
+    );
+
+    // El administrador tambien entra aqui, pero su navegacion no es la del
+    // entrenador: se queda con la pantalla suelta y vuelve con la flecha.
+    if (rol != RolUsuario.entrenador) {
+      return Scaffold(
+        appBar: barra,
+        floatingActionButton: botonNuevo,
+        body: cuerpo,
+      );
+    }
+
+    return PantallaEntrenador(
+      rutaActual: Rutas.clientesEntrenador,
+      appBar: barra,
+      botonFlotante: botonNuevo,
+      cuerpo: cuerpo,
     );
   }
 }

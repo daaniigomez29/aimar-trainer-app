@@ -124,22 +124,37 @@ class _Semana extends ConsumerWidget {
       children: [
         _Cabecera(planning: planning, puedeEditar: puedeEditar),
         const Divider(height: 24),
-        // Un dia por fila, con o sin sesion: asi se ve de un vistazo qué dias son
-        // de descanso.
-        for (final dia in planning.dias)
-          _FilaDia(
-            dia: dia,
-            sesion: planning.sesionDe(dia),
+        // Una sesion por fila, numeradas: ya no hay dias de la semana que
+        // mostrar, porque la sesion no cae en ninguno.
+        for (final sesion in planning.sesionesOrdenadas)
+          _FilaSesion(
+            sesion: sesion,
             planning: planning,
             puedeEditar: puedeEditar,
             puedeRegistrar: puedeRegistrar,
           ),
+        if (puedeEditar && planning.esEditable) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('boton_anadir_sesion'),
+              onPressed: () => pedirDatosSesion(
+                context: context,
+                ref: ref,
+                planning: planning,
+              ),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text('Anadir dia ${planning.siguienteOrden}'),
+            ),
+          ),
+        ],
         if (planning.sesiones.isEmpty) ...[
           const SizedBox(height: 16),
           Center(
             child: Text(
               puedeEditar
-                  ? 'Anade una sesion a cualquier dia para empezar.'
+                  ? 'Anade la primera sesion para empezar.'
                   : 'Esta semana no tiene sesiones.',
               style: textos.bodySmall,
             ),
@@ -229,18 +244,16 @@ class _Cabecera extends ConsumerWidget {
   }
 }
 
-/// Un dia de la semana, con su sesion si la tiene.
-class _FilaDia extends ConsumerWidget {
-  const _FilaDia({
-    required this.dia,
+/// Una sesion de la semana, numerada.
+class _FilaSesion extends ConsumerWidget {
+  const _FilaSesion({
     required this.sesion,
     required this.planning,
     required this.puedeEditar,
     required this.puedeRegistrar,
   });
 
-  final DateTime dia;
-  final SesionEntrenamiento? sesion;
+  final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final bool puedeEditar;
   final bool puedeRegistrar;
@@ -259,103 +272,108 @@ class _FilaDia extends ConsumerWidget {
           Row(
             children: [
               Text(
-                '${_nombreDia(dia)} ${_comoFecha(dia)}',
+                'Dia ${sesion.orden}',
                 style: textos.titleSmall?.copyWith(color: esquema.primary),
               ),
               const Spacer(),
-              if (actual == null && puedeEditar)
-                TextButton.icon(
-                  key: Key('boton_anadir_sesion_${dia.day}'),
-                  onPressed: () async {
-                    await pedirDatosSesion(
-                      context: context,
-                      ref: ref,
-                      planning: planning,
-                      fechaSugerida: dia,
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Anadir sesion'),
-                ),
+              if (sesion.fechaRealizada case final hecha?)
+                Text('Hecha el ${_comoFecha(hecha)}', style: textos.bodySmall),
             ],
           ),
-          if (actual == null)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, top: 2),
-              child: Text('Descanso', style: textos.bodySmall),
-            )
-          else
-            TarjetaSesion(
-              sesion: actual,
-              planning: planning,
-              puedeEditar: puedeEditar,
-              onRegistrar: !puedeRegistrar
-                  ? null
-                  : () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PantallaRegistroSesion(
-                          planningId: planning.id,
-                          sesionId: actual.id,
-                          clienteId: planning.clienteId,
-                        ),
+          const SizedBox(height: 4),
+          TarjetaSesion(
+            sesion: actual,
+            planning: planning,
+            puedeEditar: puedeEditar,
+            onRegistrar: !puedeRegistrar
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PantallaRegistroSesion(
+                        planningId: planning.id,
+                        sesionId: actual.id,
+                        clienteId: planning.clienteId,
                       ),
                     ),
-              onAnadirBloque: () => pedirDatosBloque(
-                context: context,
-                ref: ref,
-                sesion: actual,
-                planningId: planning.id,
-              ),
-              onEditarSesion: () => pedirDatosSesion(
-                context: context,
-                ref: ref,
-                planning: planning,
-                sesion: actual,
-              ),
-              onEliminarSesion: () => confirmarEliminarSesion(
-                context: context,
-                ref: ref,
-                sesion: actual,
-                planningId: planning.id,
-              ),
-              onEditarBloque: (bloque) => pedirDatosBloque(
-                context: context,
-                ref: ref,
-                sesion: actual,
-                planningId: planning.id,
-                bloque: bloque,
-              ),
-              onEliminarBloque: (bloque) => confirmarEliminarBloque(
-                context: context,
-                ref: ref,
-                bloque: bloque,
-                planningId: planning.id,
-              ),
-              onAnadirEjercicio: (bloque) => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PantallaFormularioEjercicioPlanificado(
-                    bloque: bloque,
-                    planningId: planning.id,
                   ),
+            onAnadirBloque: () => pedirDatosBloque(
+              context: context,
+              ref: ref,
+              sesion: actual,
+              planningId: planning.id,
+            ),
+            onEditarSesion: () => pedirDatosSesion(
+              context: context,
+              ref: ref,
+              planning: planning,
+              sesion: actual,
+            ),
+            onEliminarSesion: () => confirmarEliminarSesion(
+              context: context,
+              ref: ref,
+              sesion: actual,
+              planningId: planning.id,
+            ),
+            onEditarBloque: (bloque) => pedirDatosBloque(
+              context: context,
+              ref: ref,
+              sesion: actual,
+              planningId: planning.id,
+              bloque: bloque,
+            ),
+            onEliminarBloque: (bloque) => confirmarEliminarBloque(
+              context: context,
+              ref: ref,
+              bloque: bloque,
+              planningId: planning.id,
+            ),
+            onAnadirEjercicio: (bloque) => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PantallaFormularioEjercicioPlanificado(
+                  bloque: bloque,
+                  planningId: planning.id,
                 ),
               ),
-              onEditarEjercicio: (bloque, ejercicio) =>
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PantallaFormularioEjercicioPlanificado(
-                        bloque: bloque,
-                        planningId: planning.id,
-                        ejercicioPlanificado: ejercicio,
-                      ),
+            ),
+            onEditarEjercicio: (bloque, ejercicio) =>
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => PantallaFormularioEjercicioPlanificado(
+                      bloque: bloque,
+                      planningId: planning.id,
+                      ejercicioPlanificado: ejercicio,
                     ),
                   ),
-              onEliminarEjercicio: (ejercicio) => confirmarEliminarEjercicio(
-                context: context,
-                ref: ref,
-                ejercicio: ejercicio,
-                planningId: planning.id,
-              ),
+                ),
+            onEliminarEjercicio: (ejercicio) => confirmarEliminarEjercicio(
+              context: context,
+              ref: ref,
+              ejercicio: ejercicio,
+              planningId: planning.id,
             ),
+            // Solo si se puede editar: en un planning archivado o en la vista
+            // del cliente no hay asa que arrastrar.
+            onMoverBloque: !puedeEditar
+                ? null
+                : (desde, hasta) => moverBloque(
+                    context: context,
+                    ref: ref,
+                    sesion: actual,
+                    planningId: planning.id,
+                    desde: desde,
+                    hasta: hasta,
+                  ),
+            onMoverEjercicio: !puedeEditar
+                ? null
+                : (bloque, desde, hasta) => moverEjercicio(
+                    context: context,
+                    ref: ref,
+                    bloque: bloque,
+                    planningId: planning.id,
+                    desde: desde,
+                    hasta: hasta,
+                  ),
+          ),
         ],
       ),
     );
@@ -365,13 +383,3 @@ class _FilaDia extends ConsumerWidget {
 String _comoFecha(DateTime fecha) =>
     '${fecha.day.toString().padLeft(2, '0')}/'
     '${fecha.month.toString().padLeft(2, '0')}';
-
-String _nombreDia(DateTime fecha) => switch (fecha.weekday) {
-  DateTime.monday => 'Lunes',
-  DateTime.tuesday => 'Martes',
-  DateTime.wednesday => 'Miercoles',
-  DateTime.thursday => 'Jueves',
-  DateTime.friday => 'Viernes',
-  DateTime.saturday => 'Sabado',
-  _ => 'Domingo',
-};

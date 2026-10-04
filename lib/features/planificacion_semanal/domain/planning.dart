@@ -44,15 +44,25 @@ extension SemanaDelPlanning on PlanningSemanal {
       DateTime(fechaInicio.year, fechaInicio.month, fechaInicio.day + i),
   ];
 
-  /// La sesion de un dia concreto, o `null` si ese dia es de descanso.
-  SesionEntrenamiento? sesionDe(DateTime dia) => sesiones
-      .where(
-        (s) =>
-            s.fecha.year == dia.year &&
-            s.fecha.month == dia.month &&
-            s.fecha.day == dia.day,
-      )
-      .firstOrNull;
+  /// Las sesiones en su orden (Dia 1, Dia 2...).
+  List<SesionEntrenamiento> get sesionesOrdenadas =>
+      [...sesiones]..sort((a, b) => a.orden.compareTo(b.orden));
+
+  /// La sesion con ese numero, o `null` si no existe.
+  SesionEntrenamiento? sesionNumero(int orden) =>
+      sesiones.where((s) => s.orden == orden).firstOrNull;
+
+  /// Numero que le toca a la siguiente sesion que se anada.
+  int get siguienteOrden =>
+      sesiones.fold<int>(
+        0,
+        (maximo, s) => s.orden > maximo ? s.orden : maximo,
+      ) +
+      1;
+
+  /// La primera sesion que el cliente no ha terminado, que es por la que seguir.
+  SesionEntrenamiento? get siguientePendiente =>
+      sesionesOrdenadas.where((s) => !s.resultadoRegistrado).firstOrNull;
 
   bool contiene(DateTime fecha) {
     final dia = DateTime(fecha.year, fecha.month, fecha.day);
@@ -69,15 +79,26 @@ extension SemanaDelPlanning on PlanningSemanal {
   bool get esEditable => estado.esActivo;
 }
 
-/// Sesion de entrenamiento (entidad 3). Se planifica sobre una fecha real de
-/// calendario, no un dia de la semana suelto.
+/// Sesion de entrenamiento (entidad 3).
+///
+/// **No tiene fecha planificada**: se numera dentro de su planning (Dia 1, Dia
+/// 2...). El entrenador planifica cuantas sesiones hay, no en que dia de la
+/// semana caen, para que al cliente no le penalice entrenar el jueves lo que
+/// estaba previsto para el miercoles.
+///
+/// Lo que si se guarda es [fechaRealizada]: el dia en que el cliente la hizo.
 @freezed
 abstract class SesionEntrenamiento with _$SesionEntrenamiento {
   const factory SesionEntrenamiento({
     required String id,
     required String planningId,
-    required DateTime fecha,
+    required int orden,
     required String nombre,
+
+    /// Dia en que el cliente registro algo de esta sesion. `null` mientras no la
+    /// haya empezado. La rellena un trigger en el primer registro; la app no la
+    /// escribe nunca.
+    DateTime? fechaRealizada,
     @Default(false) bool resultadoRegistrado,
     @Default([])
     @JsonKey(name: 'bloques_ejercicio')

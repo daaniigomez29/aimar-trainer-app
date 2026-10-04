@@ -58,6 +58,10 @@ abstract final class Rutas {
     RolUsuario.administrador => inicioAdministrador,
   };
 
+  /// Ajustes del entrenador: cuarto destino de su navegacion.
+  static const String ajustes = 'ajustes';
+  static const String ajustesEntrenador = '$inicioEntrenador/$ajustes';
+
   /// Rutas accesibles sin sesion.
   static const Set<String> publicas = {login, recuperarContrasena};
 }

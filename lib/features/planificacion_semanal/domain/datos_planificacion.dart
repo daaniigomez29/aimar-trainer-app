@@ -35,17 +35,21 @@ class DatosPlanning {
 }
 
 /// Datos de alta y edicion de una sesion (CU-06, CU-10).
+///
+/// Sin fecha: la sesion se numera dentro del planning. El `orden` no lo escribe
+/// el entrenador, lo propone el planning (`siguienteOrden`) y solo cambia si se
+/// reordenan las sesiones.
 class DatosSesion {
   const DatosSesion({
     required this.planningId,
-    required this.fecha,
+    required this.orden,
     required this.nombre,
   });
 
   static const int longitudMaximaNombre = 120;
 
   final String planningId;
-  final DateTime fecha;
+  final int orden;
   final String nombre;
 
   String get nombreNormalizado => nombre.trim();
@@ -67,34 +71,23 @@ class DatosSesion {
     return null;
   }
 
-  /// La fecha debe caer dentro de la semana del planning. El trigger
-  /// `validar_fecha_sesion` lo garantiza en la base de datos; esto es para avisar
-  /// antes de llegar ahi (CU-06, excepcion).
-  static ErrorValidacion? validarFechaEnPlanning({
-    required DateTime fecha,
-    required PlanningSemanal planning,
-  }) {
-    if (!planning.contiene(fecha)) {
-      return const ErrorValidacion(
-        'La fecha debe estar dentro de la semana del planning.',
-        campo: 'fecha',
-      );
-    }
-    return null;
-  }
-
-  /// No puede haber dos sesiones con la misma fecha en el mismo planning. Lo
+  /// No puede haber dos sesiones con el mismo numero en el mismo planning. Lo
   /// garantiza un indice unico; esto evita el viaje de ida y vuelta.
-  static ErrorValidacion? validarFechaLibre({
-    required DateTime fecha,
+  static ErrorValidacion? validarOrdenLibre({
+    required int orden,
     required PlanningSemanal planning,
     String? idSesionQueSeEdita,
   }) {
-    final ocupada = planning.sesionDe(fecha);
-    if (ocupada != null && ocupada.id != idSesionQueSeEdita) {
+    if (orden < 1) {
+      return const ErrorValidacion('El dia empieza en 1.', campo: 'orden');
+    }
+    final ocupado = planning.sesiones
+        .where((s) => s.orden == orden && s.id != idSesionQueSeEdita)
+        .firstOrNull;
+    if (ocupado != null) {
       return ErrorValidacion(
-        'Ese dia ya tiene la sesion "${ocupada.nombre}".',
-        campo: 'fecha',
+        'El dia $orden ya es "${ocupado.nombre}".',
+        campo: 'orden',
       );
     }
     return null;
@@ -105,16 +98,15 @@ class DatosSesion {
     String? idSesionQueSeEdita,
   }) =>
       validarNombre(nombre) ??
-      validarFechaEnPlanning(fecha: fecha, planning: planning) ??
-      validarFechaLibre(
-        fecha: fecha,
+      validarOrdenLibre(
+        orden: orden,
         planning: planning,
         idSesionQueSeEdita: idSesionQueSeEdita,
       );
 
   Map<String, dynamic> aJson() => {
     'planning_id': planningId,
-    'fecha': soloFecha(fecha),
+    'orden': orden,
     'nombre': nombreNormalizado,
   };
 }
@@ -421,3 +413,39 @@ String soloFecha(DateTime fecha) =>
     '${fecha.year.toString().padLeft(4, '0')}-'
     '${fecha.month.toString().padLeft(2, '0')}-'
     '${fecha.day.toString().padLeft(2, '0')}';
+
+/// Comprueba que una reordenacion es una permutacion completa de lo que hay
+/// (CU-11, CU-12).
+///
+/// La funcion de Postgres rechaza igualmente una lista incompleta o con
+/// repetidos, pero ese viaje sobra: si la pantalla manda algo asi es que ha
+/// perdido el hilo de lo que muestra, y eso se ve mejor aqui que en un error del
+/// servidor. Tambien evita la llamada cuando no hay nada que mover.
+ErrorValidacion? validarReordenacion({
+  required List<String> idsEnOrden,
+  required List<String> idsActuales,
+}) {
+  if (idsEnOrden.length != idsActuales.length ||
+      idsEnOrden.toSet().length != idsEnOrden.length ||
+      !idsEnOrden.toSet().containsAll(idsActuales)) {
+    return const ErrorValidacion(
+      'La lista no coincide con lo que hay: recarga el planning.',
+    );
+  }
+  return null;
+}
+
+/// Aplica un arrastre a una lista: saca el elemento de [desde] y lo mete en
+/// [hasta], que es su posicion **final**.
+///
+/// Son los indices que da `onReorderItem` de `ReorderableListView`, ya
+/// corregidos por Flutter. Con el `onReorder` antiguo habria que restar uno al
+/// arrastrar hacia abajo, porque daba el destino contando el hueco que deja el
+/// elemento movido; por eso se usa el nuevo.
+List<T> reordenarLista<T>(List<T> original, int desde, int hasta) {
+  final copia = [...original];
+  if (desde < 0 || desde >= copia.length) return copia;
+  final destino = hasta.clamp(0, copia.length - 1);
+  copia.insert(destino, copia.removeAt(desde));
+  return copia;
+}

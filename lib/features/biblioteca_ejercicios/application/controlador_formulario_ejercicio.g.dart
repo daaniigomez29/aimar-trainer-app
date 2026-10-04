@@ -55,7 +55,7 @@ final class ControladorFormularioEjercicioProvider
 }
 
 String _$controladorFormularioEjercicioHash() =>
-    r'92fe1686583ce0372a8e35d3c724f4d9b85ebf05';
+    r'084090ab6c571b9eeeb18883f13a560cb8ba4d5a';
 
 /// CU-02 (anadir) y CU-03 (editar) ejercicio.
 ///

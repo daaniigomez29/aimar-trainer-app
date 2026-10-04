@@ -121,6 +121,37 @@
     };
   </script>
 
+  <!--
+    Reproductor de video incrustado (ficha del ejercicio).
+
+    Flutter web pinta sobre un canvas, asi que un iframe no se puede crear desde
+    Dart: se registra como "vista de plataforma" y el motor lo coloca encima. Este
+    factory es lo que devuelve el elemento; el widget que lo monta esta en
+    `reproductor_video_web.dart`.
+  -->
+  <script>
+    window.aimarVideo = {
+      crearIframe: function (url) {
+        const marco = document.createElement("iframe");
+        marco.src = url;
+        marco.style.border = "0";
+        marco.style.width = "100%";
+        marco.style.height = "100%";
+        marco.setAttribute("loading", "lazy");
+        marco.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+        marco.setAttribute("title", "Video de ejemplo del ejercicio");
+        // Lo minimo para que el reproductor funcione: sin `fullscreen` el boton
+        // de pantalla completa aparece pero no hace nada.
+        marco.setAttribute(
+          "allow",
+          "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        );
+        marco.allowFullscreen = true;
+        return marco;
+      },
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

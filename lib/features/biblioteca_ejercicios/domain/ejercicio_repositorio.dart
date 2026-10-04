@@ -1,4 +1,5 @@
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 
 /// Puerto de dominio de la biblioteca de ejercicios (CU-02, CU-03, CU-04).
@@ -29,6 +30,21 @@ abstract interface class EjercicioRepositorio {
   /// Reactiva un ejercicio dado de baja. No es un caso de uso del ERS, pero la
   /// baja logica lo hace trivial y evita que un descuido sea irreversible.
   Future<Result<Ejercicio>> reactivar(String id);
+
+  // --- Imagen ilustrativa ---
+
+  /// Sube la ilustracion al bucket publico y devuelve su **ruta**, que es lo que
+  /// se guarda en la fila. Subir no toca la base de datos: si luego falla el
+  /// guardado, la pantalla manda borrar el fichero.
+  Future<Result<String>> subirImagen(ImagenParaSubir imagen);
+
+  /// Borra una imagen del bucket. Se usa al reemplazarla por otra y al deshacer
+  /// una subida cuyo guardado fallo.
+  Future<Result<void>> eliminarImagen(String ruta);
+
+  /// URL publica de una ruta del bucket. Es sincrona porque el bucket es publico:
+  /// no hay que firmar nada, solo componer la direccion.
+  String urlPublicaDeImagen(String ruta);
 
   /// Cuantos bloques de plannings **activos** referencian el ejercicio (CU-04:
   /// hay que avisar antes de darlo de baja).

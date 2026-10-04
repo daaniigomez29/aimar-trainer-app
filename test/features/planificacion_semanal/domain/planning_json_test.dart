@@ -25,7 +25,8 @@ const Map<String, dynamic> _respuestaReal = {
   'sesiones_entrenamiento': [
     {
       'id': '1dd3eb64-2091-4577-b1d4-0f98a436329a',
-      'fecha': '2026-11-24',
+      'orden': 1,
+      'fecha_realizada': '2026-11-26',
       'nombre': 'Empuje',
       'planning_id': '9a1720f5-8d4c-4f1c-980b-40b04b91bad0',
       'resultado_registrado': true,
@@ -95,15 +96,13 @@ void main() {
     test('las sesiones llegan, no una lista vacia', () {
       expect(planning.sesiones, hasLength(1));
       expect(planning.sesiones.single.nombre, 'Empuje');
-      expect(planning.sesiones.single.fecha, DateTime(2026, 11, 24));
+      expect(planning.sesiones.single.orden, 1);
     });
 
-    test('la sesion cae dentro de la semana del planning', () {
-      // Es lo que hace `_FilaDia` para decidir si un dia tiene sesion o es
-      // descanso: si esto falla, la semana se pinta vacia.
-      expect(planning.sesionDe(DateTime(2026, 11, 24)), isNotNull);
-      expect(planning.sesionDe(DateTime(2026, 11, 25)), isNull);
-      expect(planning.dias, contains(DateTime(2026, 11, 24)));
+    test('la fecha que llega es la de realizacion, no una planificada', () {
+      expect(planning.sesiones.single.fechaRealizada, DateTime(2026, 11, 26));
+      expect(planning.sesionNumero(1), isNotNull);
+      expect(planning.sesionNumero(2), isNull);
     });
 
     test('los bloques y sus ejercicios tambien', () {

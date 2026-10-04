@@ -104,8 +104,8 @@ create policy "el cliente edita datos limitados de su ficha"
 
 `id` es el mismo `auth.users.id` (1:1, sin id propio duplicado). La
 unicidad de correo solo aplica a clientes activos. `dia_control_preferido`
-usa el enum `dia_semana` porque representa una preferencia recurrente, a
-diferencia de la fecha real de una sesión (ver más abajo).
+usa el enum `dia_semana` porque representa una preferencia recurrente, que se
+repite cada semana; no es la fecha de ningún hecho concreto.
 
 ## Planning semanal
 
@@ -145,20 +145,31 @@ duplicados entre plannings activos; uno archivado con la misma
 
 ## Sesión de entrenamiento
 
-Se planifica sobre calendario real: usa `fecha` (date), no un día de semana
-suelto.
+**No se planifica sobre el calendario**: la sesión se numera dentro de su
+planning (Día 1, Día 2…). El entrenador decide *cuántas* sesiones tiene la
+semana, no en qué día caen, para que entrenar el jueves lo previsto para el
+miércoles no desplace ni duplique nada. Hasta la fase 6 sí tenía `fecha` (date)
+planificada y un trigger que la validaba dentro de la semana; lo cambió
+`20261004100000_sesiones_por_orden.sql`.
+
+Lo que sí se guarda es `fecha_realizada`: **el día en que el cliente la hizo**,
+que es un dato distinto. Es nullable (una sesión no empezada no tiene fecha), la
+rellena el trigger de recálculo en el primer registro y la app nunca la escribe.
+Hoy no condiciona ninguna regla: solo queda registrada y sirve de eje en las
+vistas de progreso (CU-21), donde antes se usaba la fecha planificada.
 
 ```sql
 create table sesiones_entrenamiento (
   id uuid primary key default gen_random_uuid(),
   planning_id uuid not null references plannings_semanales(id) on delete cascade,
-  fecha date not null,
+  orden integer not null check (orden > 0),
   nombre text not null,
+  fecha_realizada date,
   resultado_registrado boolean not null default false
 );
 
-create unique index sesiones_planning_fecha_unico
-  on sesiones_entrenamiento (planning_id, fecha);
+create unique index sesiones_planning_orden_unico
+  on sesiones_entrenamiento (planning_id, orden);
 
 alter table sesiones_entrenamiento enable row level security;
 
@@ -178,26 +189,14 @@ create policy "el entrenador gestiona todas las sesiones"
   using (es_entrenador())
   with check (es_entrenador());
 
-create function validar_fecha_sesion() returns trigger
-  language plpgsql as $$
-declare
-  v_inicio date;
-begin
-  select fecha_inicio into v_inicio from plannings_semanales where id = new.planning_id;
-  if new.fecha < v_inicio or new.fecha > v_inicio + 6 then
-    raise exception 'La fecha de la sesión debe estar dentro de la semana del planning';
-  end if;
-  return new;
-end;
-$$;
-
-create trigger comprobar_fecha_sesion
-  before insert or update on sesiones_entrenamiento
-  for each row execute function validar_fecha_sesion();
 ```
 
-No hay `orden`: se ordenan por `fecha`. `resultado_registrado` es una
-columna calculada y mantenida por triggers (ver más abajo).
+No hay trigger de validación de fecha: sin fecha planificada no hay nada que
+validar, y el índice único ya impide dos sesiones con el mismo número. Tanto
+`resultado_registrado` como `fecha_realizada` son columnas calculadas y
+mantenidas por `recalcular_resultado_sesion` (ver más abajo): la fecha se fija
+en el primer ejercicio registrado (con `coalesce`, para que sea la del primer
+registro y no la del último) y vuelve a `null` si el cliente deshace todo.
 
 ## Bloque de ejercicio
 
@@ -235,8 +234,9 @@ create policy "el entrenador gestiona todos los bloques"
   with check (es_entrenador());
 ```
 
-Aquí sí se mantiene `orden`: varios bloques comparten la misma sesión sin
-una fecha propia que los distinga.
+Aquí también hay `orden`, por el mismo motivo que en la sesión: varios bloques
+comparten la misma sesión sin nada más que los distinga. Se reordena
+arrastrando, con `reordenar_bloques` (ver más abajo).
 
 ## Ejercicio (biblioteca) y Ejercicio planificado
 
@@ -251,6 +251,9 @@ create table ejercicios (
   equipamiento text,
   descripcion text not null,
   video_ejemplo_url text,
+  -- Ruta dentro del bucket publico `imagenes-ejercicios` (no la URL: el dominio
+  -- cambia entre local y la nube). Anadida en la migracion 20261004090000.
+  imagen_ruta text,
   tipo tipo_ejercicio not null,
   estado estado_ejercicio not null default 'activo',
   creado_en timestamptz not null default now()
@@ -364,6 +367,13 @@ técnicamente escribir toda la fila, no solo `minutos_realizados`. Se acepta
 por ahora vía RLS + interfaz. Pendiente a futuro: separar en columnas con
 `GRANT` por columna o mover el registro del cliente a tabla propia si se
 necesita mayor garantía.
+
+Esto se comprobó al añadir el reordenado por arrastre (2026-10-04): con solo
+RLS, un cliente **sí** podía renumerar los ejercicios de su propio planning
+(la prueba devolvía 204 donde se esperaba 403), mientras que con los bloques
+se quedaba en 403 porque ahí no tiene política de `update`. Por eso
+`reordenar_ejercicios_planificados` comprueba `es_entrenador()` además de
+apoyarse en RLS. La nota sigue abierta para el `update` directo a la tabla.
 
 ## Serie planificada y Serie realizada
 
@@ -669,13 +679,41 @@ A diferencia de aquélla, aquí **no se borra y se vuelve a insertar**, sino
 `series_realizadas` no se le concede `delete` a propósito. Consecuencia conocida:
 si el cliente registra 3 series y luego corrige a 2, la tercera sigue ahí.
 
+### `reordenar_bloques` y `reordenar_ejercicios_planificados` (CU-11, CU-12)
+
+Renumeran `orden` cuando el entrenador arrastra un bloque dentro de su sesión o
+un ejercicio dentro de su bloque. Reciben la lista **completa** de ids en el
+orden que debe quedar.
+
+No se puede hacer con `update` sueltos: `(sesion_id, orden)` y
+`(bloque_id, orden)` son índices únicos y se comprueban fila a fila, así que
+cualquier renumeración pasa por un estado intermedio con dos filas en la misma
+posición. Las funciones lo resuelven en dos fases dentro de una transacción:
+primero restan un millón a todos los órdenes de ese padre (un desplazamiento
+uniforme, que mantiene la unicidad) y luego escriben los definitivos.
+
+Validan que la lista traiga todos los elementos y ninguno repetido, y
+comprueban `es_entrenador()` (ver la nota de seguridad de "Ejercicio
+planificado"). Son `security invoker`, así que RLS sigue aplicando encima.
+Después del primer `update` miran `row_count`: con RLS, un `update` prohibido
+no da error, simplemente no toca filas, y sin esa comprobación la función se
+iría sin excepción y sin haber reordenado nada.
+
 ### Vistas `vista_progreso_ejercicios` y `vista_ejercicios_con_registro` (CU-21)
 
 Aplanan la cadena `series_realizadas → ejercicios_planificados → bloques →
-sesiones → plannings` y exponen la fecha de la **sesión** (no la de
-`fecha_hora_registro`). Incluyen también el cardio, con sus minutos. Se declaran
+sesiones → plannings` y exponen la `fecha_realizada` de la **sesión** (no la de
+`fecha_hora_registro`), filtrando las sesiones que aún no la tienen. Incluyen también el cardio, con sus minutos. Se declaran
 `with (security_invoker = on)`: sin esa opción la vista correría con los permisos
 de su dueño y sería un agujero que puentearía RLS.
+
+### Bucket `imagenes-ejercicios`
+
+El segundo bucket, y el único **público**: la ilustración de un ejercicio no es
+dato personal, la ven todos los clientes y se pinta en una lista. Con un bucket
+privado habría que firmar una URL por ejercicio cada vez que se abre la
+biblioteca, y ninguna se podría cachear. Las políticas sobre `storage.objects`
+solo gobiernan la **escritura**: subir, reemplazar y borrar es del entrenador.
 
 ### Políticas del bucket `fotos-progreso`
 

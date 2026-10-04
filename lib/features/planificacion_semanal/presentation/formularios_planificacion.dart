@@ -161,34 +161,28 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
 }
 
 /// CU-06 / CU-10: crear o editar una sesion en una fecha de la semana.
+/// CU-06 / CU-10: crear o editar una sesion.
+///
+/// Ya no pide dia: la sesion se numera sola dentro del planning. Lo unico que
+/// escribe el entrenador es el nombre.
 Future<bool> pedirDatosSesion({
   required BuildContext context,
   required WidgetRef ref,
   required PlanningSemanal planning,
-  DateTime? fechaSugerida,
   SesionEntrenamiento? sesion,
 }) async {
   ref.read(controladorPlanificacionProvider.notifier).reiniciar();
   final guardado = await showDialog<bool>(
     context: context,
-    builder: (_) => _DialogoSesion(
-      planning: planning,
-      fechaSugerida: fechaSugerida,
-      sesion: sesion,
-    ),
+    builder: (_) => _DialogoSesion(planning: planning, sesion: sesion),
   );
   return guardado ?? false;
 }
 
 class _DialogoSesion extends ConsumerStatefulWidget {
-  const _DialogoSesion({
-    required this.planning,
-    this.fechaSugerida,
-    this.sesion,
-  });
+  const _DialogoSesion({required this.planning, this.sesion});
 
   final PlanningSemanal planning;
-  final DateTime? fechaSugerida;
   final SesionEntrenamiento? sesion;
 
   @override
@@ -197,16 +191,15 @@ class _DialogoSesion extends ConsumerStatefulWidget {
 
 class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
   late final TextEditingController _nombre;
-  late DateTime _fecha;
+
+  /// Al crear, el numero que toca; al editar, el que ya tenia.
+  late final int _orden =
+      widget.sesion?.orden ?? widget.planning.siguienteOrden;
 
   @override
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.sesion?.nombre ?? '');
-    _fecha =
-        widget.sesion?.fecha ??
-        widget.fechaSugerida ??
-        widget.planning.fechaInicio;
   }
 
   @override
@@ -218,7 +211,7 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
   Future<void> _guardar() async {
     final datos = DatosSesion(
       planningId: widget.planning.id,
-      fecha: _fecha,
+      orden: _orden,
       nombre: _nombre.text,
     );
     final controlador = ref.read(controladorPlanificacionProvider.notifier);
@@ -254,31 +247,20 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
             ),
             const SizedBox(height: 12),
           ],
-          // Solo los dias de la semana del planning: asi no se puede elegir una
-          // fecha que el trigger rechazaria (CU-06, excepcion).
-          DropdownButtonFormField<DateTime>(
-            key: const Key('selector_dia_sesion'),
-            initialValue: _fecha,
-            decoration: InputDecoration(
-              labelText: 'Dia *',
-              errorText: estado.errorDelCampo('fecha'),
+          // El dia no se elige: es el numero que le toca dentro del planning.
+          // Se muestra para que el entrenador sepa que esta creando.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Dia $_orden',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            items: [
-              for (final dia in widget.planning.dias)
-                DropdownMenuItem(
-                  value: dia,
-                  child: Text(
-                    '${_nombreDia(dia)} ${_comoFecha(dia)}'
-                    '${_ocupadoPor(dia)}',
-                  ),
-                ),
-            ],
-            onChanged: estado.enCurso
-                ? null
-                : (dia) {
-                    controlador.limpiarError();
-                    if (dia != null) setState(() => _fecha = dia);
-                  },
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Las sesiones van numeradas, no atadas a un dia de la semana: el '
+            'cliente la hace cuando puede.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
           TextField(
@@ -307,13 +289,6 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
         ),
       ],
     );
-  }
-
-  /// Marca en el desplegable los dias que ya tienen sesion.
-  String _ocupadoPor(DateTime dia) {
-    final ocupada = widget.planning.sesionDe(dia);
-    if (ocupada == null || ocupada.id == widget.sesion?.id) return '';
-    return '  (ocupado)';
   }
 }
 
@@ -481,13 +456,3 @@ class _EstadoDialogoBloque extends ConsumerState<_DialogoBloque> {
 String _comoFecha(DateTime fecha) =>
     '${fecha.day.toString().padLeft(2, '0')}/'
     '${fecha.month.toString().padLeft(2, '0')}';
-
-String _nombreDia(DateTime fecha) => switch (fecha.weekday) {
-  DateTime.monday => 'Lun',
-  DateTime.tuesday => 'Mar',
-  DateTime.wednesday => 'Mie',
-  DateTime.thursday => 'Jue',
-  DateTime.friday => 'Vie',
-  DateTime.saturday => 'Sab',
-  _ => 'Dom',
-};

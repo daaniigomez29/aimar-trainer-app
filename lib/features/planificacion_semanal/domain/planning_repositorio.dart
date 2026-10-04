@@ -59,6 +59,17 @@ abstract interface class PlanningRepositorio {
 
   Future<Result<void>> eliminarBloque(String id);
 
+  /// Renumera los bloques de la sesion en el orden recibido (CU-11).
+  ///
+  /// La lista tiene que traer **todos** los bloques de la sesion y cada uno una
+  /// sola vez: la operacion renumera del 1 al N, no mueve uno suelto. Va en una
+  /// sola transaccion porque el indice unico de `(sesion_id, orden)` no admite
+  /// estados intermedios con dos bloques en la misma posicion.
+  Future<Result<void>> reordenarBloques({
+    required String sesionId,
+    required List<String> idsEnOrden,
+  });
+
   // --- Ejercicio planificado y sus series (CU-08, CU-12, CU-16) ---
 
   /// Crea el ejercicio planificado y, si es de Fuerza, sus series en el mismo
@@ -76,4 +87,11 @@ abstract interface class PlanningRepositorio {
 
   /// Quita el ejercicio del bloque. No toca la biblioteca (CU-16).
   Future<Result<void>> eliminarEjercicioPlanificado(String id);
+
+  /// Renumera los ejercicios del bloque en el orden recibido (CU-12). Mismas
+  /// condiciones que [reordenarBloques].
+  Future<Result<void>> reordenarEjerciciosPlanificados({
+    required String bloqueId,
+    required List<String> idsEnOrden,
+  });
 }

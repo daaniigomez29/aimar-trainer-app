@@ -24,7 +24,7 @@ void main() {
       DatosPlanning(clienteId: 'cli-1', fechaInicio: DateTime(2026, 10, 5)),
     );
     registerFallbackValue(
-      DatosSesion(planningId: 'p-1', fecha: DateTime(2026, 10, 5), nombre: 'x'),
+      const DatosSesion(planningId: 'p-1', orden: 1, nombre: 'x'),
     );
     registerFallbackValue(
       const DatosBloque(sesionId: 's-1', tipo: TipoBloque.fuerza, orden: 1),
@@ -92,35 +92,25 @@ void main() {
   group('CU-06 crear sesion', () {
     final planning = planningDePrueba(fechaInicio: DateTime(2026, 10, 5));
 
-    test(
-      'no llama al repositorio si la fecha cae fuera de la semana',
-      () async {
-        final resultado = await controlador().crearSesion(
-          datos: DatosSesion(
-            planningId: 'p-1',
-            fecha: DateTime(2026, 10, 20),
-            nombre: 'Empuje',
-          ),
-          planning: planning,
-        );
+    test('no llama al repositorio si falta el nombre', () async {
+      final resultado = await controlador().crearSesion(
+        datos: const DatosSesion(planningId: 'p-1', orden: 1, nombre: '  '),
+        planning: planning,
+      );
 
-        expect(resultado.errorONulo, isA<ErrorValidacion>());
-        verifyNever(() => repositorio.crearSesion(any()));
-      },
-    );
+      expect(resultado.errorONulo, isA<ErrorValidacion>());
+      verifyNever(() => repositorio.crearSesion(any()));
+    });
 
-    test('no llama al repositorio si el dia ya tiene sesion', () async {
+    test('no llama al repositorio si ese dia ya existe', () async {
+      // Dos sesiones no pueden ocupar el mismo numero dentro del planning.
       final ocupado = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
-        sesiones: [sesionDePrueba(fecha: DateTime(2026, 10, 6))],
+        sesiones: [sesionDePrueba(orden: 1)],
       );
 
       final resultado = await controlador().crearSesion(
-        datos: DatosSesion(
-          planningId: 'p-1',
-          fecha: DateTime(2026, 10, 6),
-          nombre: 'Otra',
-        ),
+        datos: const DatosSesion(planningId: 'p-1', orden: 1, nombre: 'Otra'),
         planning: ocupado,
       );
 
@@ -128,16 +118,12 @@ void main() {
       verifyNever(() => repositorio.crearSesion(any()));
     });
 
-    test('crea cuando la fecha es valida', () async {
+    test('crea con el siguiente numero libre', () async {
       when(() => repositorio.crearSesion(any()))
           .thenAnswer((_) async => Success(sesionDePrueba()));
 
       final resultado = await controlador().crearSesion(
-        datos: DatosSesion(
-          planningId: 'p-1',
-          fecha: DateTime(2026, 10, 6),
-          nombre: 'Empuje',
-        ),
+        datos: const DatosSesion(planningId: 'p-1', orden: 1, nombre: 'Empuje'),
         planning: planning,
       );
 
@@ -249,6 +235,103 @@ void main() {
 
       expect((await controlador().archivarPlanning('p-1')).esExito, isTrue);
       verify(() => repositorio.archivarPlanning('p-1')).called(1);
+    });
+  });
+
+  group('CU-11 y CU-12: reordenar arrastrando', () {
+    final bloque1 = bloqueDePrueba(id: 'b-1', orden: 1);
+    final bloque2 = bloqueDePrueba(id: 'b-2', orden: 2);
+    final sesion = sesionDePrueba(bloques: [bloque1, bloque2]);
+
+    test('manda los bloques en el orden nuevo', () async {
+      when(
+        () => repositorio.reordenarBloques(
+          sesionId: any(named: 'sesionId'),
+          idsEnOrden: any(named: 'idsEnOrden'),
+        ),
+      ).thenAnswer((_) async => const Success(null));
+
+      final resultado = await controlador().reordenarBloques(
+        sesion: sesion,
+        idsEnOrden: const ['b-2', 'b-1'],
+        planningId: 'p-1',
+      );
+
+      expect(resultado.esExito, isTrue);
+      verify(
+        () => repositorio.reordenarBloques(
+          sesionId: 's-1',
+          idsEnOrden: const ['b-2', 'b-1'],
+        ),
+      ).called(1);
+    });
+
+    test('una lista que no cuadra no llega al repositorio', () async {
+      final resultado = await controlador().reordenarBloques(
+        sesion: sesion,
+        idsEnOrden: const ['b-1'],
+        planningId: 'p-1',
+      );
+
+      expect(resultado.esFallo, isTrue);
+      verifyNever(
+        () => repositorio.reordenarBloques(
+          sesionId: any(named: 'sesionId'),
+          idsEnOrden: any(named: 'idsEnOrden'),
+        ),
+      );
+    });
+
+    test('lo mismo con los ejercicios de un bloque', () async {
+      final bloque = bloqueDePrueba(
+        ejercicios: [
+          ejercicioPlanificadoDePrueba(id: 'ep-1', orden: 1),
+          ejercicioPlanificadoDePrueba(id: 'ep-2', orden: 2),
+        ],
+      );
+      when(
+        () => repositorio.reordenarEjerciciosPlanificados(
+          bloqueId: any(named: 'bloqueId'),
+          idsEnOrden: any(named: 'idsEnOrden'),
+        ),
+      ).thenAnswer((_) async => const Success(null));
+
+      final resultado = await controlador().reordenarEjercicios(
+        bloque: bloque,
+        idsEnOrden: const ['ep-2', 'ep-1'],
+        planningId: 'p-1',
+      );
+
+      expect(resultado.esExito, isTrue);
+      verify(
+        () => repositorio.reordenarEjerciciosPlanificados(
+          bloqueId: 'b-1',
+          idsEnOrden: const ['ep-2', 'ep-1'],
+        ),
+      ).called(1);
+    });
+
+    test('un ejercicio repetido tampoco pasa', () async {
+      final bloque = bloqueDePrueba(
+        ejercicios: [
+          ejercicioPlanificadoDePrueba(id: 'ep-1', orden: 1),
+          ejercicioPlanificadoDePrueba(id: 'ep-2', orden: 2),
+        ],
+      );
+
+      final resultado = await controlador().reordenarEjercicios(
+        bloque: bloque,
+        idsEnOrden: const ['ep-1', 'ep-1'],
+        planningId: 'p-1',
+      );
+
+      expect(resultado.esFallo, isTrue);
+      verifyNever(
+        () => repositorio.reordenarEjerciciosPlanificados(
+          bloqueId: any(named: 'bloqueId'),
+          idsEnOrden: any(named: 'idsEnOrden'),
+        ),
+      );
     });
   });
 

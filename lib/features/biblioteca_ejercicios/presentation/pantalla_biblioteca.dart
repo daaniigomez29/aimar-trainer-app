@@ -1,28 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
+import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_baja_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_detalle_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/tarjeta_ejercicio.dart';
 
-/// Biblioteca de ejercicios.
+/// Biblioteca de ejercicios (`docs/ui-design.md`, 6.4).
 ///
 /// Una sola pantalla para los dos roles: el entrenador ve las acciones de alta,
-/// edicion y baja (CU-02 a CU-04); el cliente solo consulta (RF-04 del lado de
-/// lectura). Quien manda de verdad es RLS: aunque se forzara la interfaz, el
-/// `insert` de un cliente lo rechaza la politica.
-class PantallaBiblioteca extends ConsumerWidget {
+/// edicion y baja (CU-02 a CU-04); el cliente solo consulta. Quien manda de
+/// verdad es RLS: aunque se forzara la interfaz, el `insert` de un cliente lo
+/// rechaza la politica.
+class PantallaBiblioteca extends ConsumerStatefulWidget {
   const PantallaBiblioteca({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PantallaBiblioteca> createState() => _PantallaBibliotecaState();
+}
+
+class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
+  final _busqueda = TextEditingController();
+
+  @override
+  void dispose() {
+    _busqueda.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final esEntrenador = ref.watch(rolActualProvider)?.esEntrenador ?? false;
     final ejercicios = ref.watch(ejerciciosFiltradosProvider);
     // Se observa, aunque no se use su valor aqui, para que el provider siga vivo
@@ -30,58 +46,126 @@ class PantallaBiblioteca extends ConsumerWidget {
     // dialogos y, sin un oyente, Riverpod lo desecharia entre medias.
     ref.watch(controladorBajaEjercicioProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Biblioteca de ejercicios'),
-        actions: [
-          IconButton(
-            tooltip: 'Recargar',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(bibliotecaEjerciciosProvider),
+    final cuerpo = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Tokens.margenPantalla,
+            8,
+            Tokens.margenPantalla,
+            0,
           ),
-        ],
-      ),
-      floatingActionButton: esEntrenador
-          ? FloatingActionButton.extended(
-              key: const Key('boton_nuevo_ejercicio'),
-              onPressed: () => _abrirFormulario(context, ref),
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo'),
-            )
-          : null,
-      body: Column(
-        children: [
-          _Filtros(mostrarEliminados: esEntrenador),
-          const Divider(height: 1),
-          Expanded(
-            child: ejercicios.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => _Mensaje(
-                icono: Icons.error_outline,
-                texto: mensajeDeError(error),
-                accion: TextButton(
-                  onPressed: () => ref.invalidate(bibliotecaEjerciciosProvider),
-                  child: const Text('Reintentar'),
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Biblioteca',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
-              data: (lista) => lista.isEmpty
-                  ? _SinResultados(esEntrenador: esEntrenador)
-                  : _Listado(ejercicios: lista, esEntrenador: esEntrenador),
-            ),
+              const SizedBox(height: 4),
+              _Resumen(ejercicios: ejercicios),
+              const SizedBox(height: 14),
+              CampoBusqueda(
+                clave: const Key('campo_busqueda'),
+                controlador: _busqueda,
+                onCambio: (texto) => ref
+                    .read(filtroBibliotecaProvider.notifier)
+                    .cambiarTexto(texto),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        _ChipsDeGrupo(mostrarEliminados: esEntrenador),
+        const SizedBox(height: 4),
+        Expanded(
+          child: ejercicios.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => _Mensaje(
+              icono: Icons.error_outline,
+              texto: mensajeDeError(error),
+              accion: TextButton(
+                onPressed: () => ref.invalidate(bibliotecaEjerciciosProvider),
+                child: const Text('Reintentar'),
+              ),
+            ),
+            data: (lista) => lista.isEmpty
+                ? _SinResultados(esEntrenador: esEntrenador)
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(
+                      Tokens.margenPantalla,
+                      8,
+                      Tokens.margenPantalla,
+                      24,
+                    ),
+                    itemCount: lista.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, indice) => TarjetaEjercicio(
+                      ejercicio: lista[indice],
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PantallaDetalleEjercicio(
+                            idEjercicio: lista[indice].id,
+                          ),
+                        ),
+                      ),
+                      onEditar: esEntrenador
+                          ? () => abrirFormularioEjercicio(
+                              context,
+                              ref,
+                              ejercicio: lista[indice],
+                            )
+                          : null,
+                      onDarDeBaja: esEntrenador
+                          ? () => confirmarBajaEjercicio(
+                              context: context,
+                              ref: ref,
+                              ejercicio: lista[indice],
+                            )
+                          : null,
+                      onReactivar: esEntrenador
+                          ? () => reactivarEjercicio(
+                              context: context,
+                              ref: ref,
+                              ejercicio: lista[indice],
+                            )
+                          : null,
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
+
+    final boton = esEntrenador
+        ? FloatingActionButton.extended(
+            key: const Key('boton_nuevo_ejercicio'),
+            onPressed: () => abrirFormularioEjercicio(context, ref),
+            icon: const Icon(Icons.add),
+            label: const Text('Nuevo'),
+          )
+        : null;
+
+    // El cliente llega desde su barra inferior; el entrenador, desde la suya.
+    if (esEntrenador) {
+      return PantallaEntrenador(
+        rutaActual: Rutas.bibliotecaEntrenador,
+        botonFlotante: boton,
+        cuerpo: cuerpo,
+      );
+    }
+    return PantallaCliente(rutaActual: Rutas.bibliotecaCliente, cuerpo: cuerpo);
   }
 }
 
-Future<void> _abrirFormulario(
+/// Abre el formulario de alta o edicion, reiniciando el controlador para que no
+/// arrastre el error ni el "completada" de la vez anterior.
+Future<void> abrirFormularioEjercicio(
   BuildContext context,
   WidgetRef ref, {
   Ejercicio? ejercicio,
 }) async {
-  // Se reinicia antes de abrir para que el formulario no arrastre el error ni el
-  // "completada" de la vez anterior.
   ref.read(controladorFormularioEjercicioProvider.notifier).reiniciar();
   await Navigator.of(context).push<Ejercicio>(
     MaterialPageRoute(
@@ -90,130 +174,74 @@ Future<void> _abrirFormulario(
   );
 }
 
-class _Listado extends ConsumerWidget {
-  const _Listado({required this.ejercicios, required this.esEntrenador});
+/// "13 ejercicios · 4 con video de ejemplo", contando lo que hay de verdad.
+class _Resumen extends StatelessWidget {
+  const _Resumen({required this.ejercicios});
 
-  final List<Ejercicio> ejercicios;
-  final bool esEntrenador;
+  final AsyncValue<List<Ejercicio>> ejercicios;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => ListView.builder(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    itemCount: ejercicios.length,
-    itemBuilder: (context, indice) {
-      final ejercicio = ejercicios[indice];
-      return TarjetaEjercicio(
-        key: Key('ejercicio_${ejercicio.id}'),
-        ejercicio: ejercicio,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PantallaDetalleEjercicio(idEjercicio: ejercicio.id),
-          ),
-        ),
-        acciones: esEntrenador
-            ? [
-                IconButton(
-                  tooltip: 'Editar',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () =>
-                      _abrirFormulario(context, ref, ejercicio: ejercicio),
-                ),
-                if (ejercicio.estado.esActivo)
-                  IconButton(
-                    tooltip: 'Dar de baja',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => confirmarBajaEjercicio(
-                      context: context,
-                      ref: ref,
-                      ejercicio: ejercicio,
-                    ),
-                  )
-                else
-                  IconButton(
-                    tooltip: 'Reactivar',
-                    icon: const Icon(Icons.restore_from_trash_outlined),
-                    onPressed: () => reactivarEjercicio(
-                      context: context,
-                      ref: ref,
-                      ejercicio: ejercicio,
-                    ),
-                  ),
-              ]
-            : const [],
-      );
-    },
-  );
+  Widget build(BuildContext context) {
+    final lista = ejercicios.value;
+    if (lista == null) return const SizedBox(height: 18);
+
+    final conVideo = lista.where((e) => e.videoEjemploUrl != null).length;
+    return Text(
+      [
+        '${lista.length} ${lista.length == 1 ? "ejercicio" : "ejercicios"}',
+        if (conVideo > 0) '$conVideo con video de ejemplo',
+      ].join(' · '),
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
 }
 
-class _Filtros extends ConsumerWidget {
-  const _Filtros({required this.mostrarEliminados});
+/// Chips de grupo muscular. Salen de los datos, no de una lista fija: el grupo
+/// es texto libre en la entidad, asi que la unica fuente fiable es la biblioteca.
+class _ChipsDeGrupo extends ConsumerWidget {
+  const _ChipsDeGrupo({required this.mostrarEliminados});
 
   final bool mostrarEliminados;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final grupos =
+        ref.watch(gruposMuscularesProvider).value ?? const <String>[];
     final filtro = ref.watch(filtroBibliotecaProvider);
-    final controlador = ref.read(filtroBibliotecaProvider.notifier);
-    final grupos = ref.watch(gruposMuscularesProvider).value ?? const [];
+    final notificador = ref.read(filtroBibliotecaProvider.notifier);
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.margenPantalla),
         children: [
-          TextField(
-            key: const Key('campo_busqueda'),
-            onChanged: controlador.cambiarTexto,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              labelText: 'Buscar',
-              helperText: 'Por nombre, grupo muscular o equipamiento',
-              isDense: true,
-            ),
+          ChipFiltro(
+            etiqueta: 'Todos',
+            activo: filtro.grupoMuscular == null,
+            onPulsar: () => notificador.cambiarGrupoMuscular(null),
           ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                FilterChip(
-                  label: const Text('Todos'),
-                  selected: filtro.tipo == null,
-                  onSelected: (_) => controlador.cambiarTipo(null),
-                ),
-                for (final tipo in TipoEjercicio.values) ...[
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    label: Text(tipo.etiqueta),
-                    selected: filtro.tipo == tipo,
-                    onSelected: (elegido) =>
-                        controlador.cambiarTipo(elegido ? tipo : null),
-                  ),
-                ],
-                if (grupos.isNotEmpty) ...[
-                  const SizedBox(width: 16),
-                  DropdownButton<String?>(
-                    value: filtro.grupoMuscular,
-                    hint: const Text('Grupo muscular'),
-                    onChanged: controlador.cambiarGrupoMuscular,
-                    items: [
-                      const DropdownMenuItem(child: Text('Todos')),
-                      for (final grupo in grupos)
-                        DropdownMenuItem(value: grupo, child: Text(grupo)),
-                    ],
-                  ),
-                ],
-                if (mostrarEliminados) ...[
-                  const SizedBox(width: 16),
-                  FilterChip(
-                    label: const Text('Ver dados de baja'),
-                    selected: filtro.incluirEliminados,
-                    onSelected: (incluir) =>
-                        controlador.alternarEliminados(incluir: incluir),
-                  ),
-                ],
-              ],
+          for (final grupo in grupos) ...[
+            const SizedBox(width: 8),
+            ChipFiltro(
+              etiqueta: grupo,
+              activo: filtro.grupoMuscular == grupo,
+              onPulsar: () => notificador.cambiarGrupoMuscular(
+                filtro.grupoMuscular == grupo ? null : grupo,
+              ),
             ),
-          ),
+          ],
+          if (mostrarEliminados) ...[
+            const SizedBox(width: 8),
+            ChipFiltro(
+              etiqueta: 'Dados de baja',
+              activo: filtro.incluirEliminados,
+              onPulsar: () => notificador.alternarEliminados(
+                incluir: !filtro.incluirEliminados,
+              ),
+            ),
+          ],
+          const SizedBox(width: Tokens.margenPantalla),
         ],
       ),
     );
@@ -228,23 +256,22 @@ class _SinResultados extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filtro = ref.watch(filtroBibliotecaProvider);
-    // Se distingue "la biblioteca esta vacia" de "el filtro no encuentra nada":
-    // CU-08 preve ofrecer ir a CU-02 cuando la biblioteca esta vacia.
-    if (!filtro.estaVacio) {
-      return _Mensaje(
-        icono: Icons.search_off,
-        texto: 'Ningun ejercicio coincide con la busqueda.',
-        accion: TextButton(
-          onPressed: ref.read(filtroBibliotecaProvider.notifier).limpiar,
-          child: const Text('Quitar filtros'),
-        ),
-      );
-    }
+    final conFiltro = !filtro.estaVacio;
+
     return _Mensaje(
-      icono: Icons.fitness_center,
-      texto: esEntrenador
+      icono: Icons.search_off,
+      texto: conFiltro
+          ? 'Ningun ejercicio coincide con la busqueda.'
+          : esEntrenador
           ? 'La biblioteca esta vacia. Anade el primer ejercicio.'
           : 'Tu entrenador todavia no ha anadido ejercicios.',
+      accion: conFiltro
+          ? TextButton(
+              onPressed: () =>
+                  ref.read(filtroBibliotecaProvider.notifier).limpiar(),
+              child: const Text('Quitar filtros'),
+            )
+          : null,
     );
   }
 }
@@ -263,10 +290,14 @@ class _Mensaje extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icono, size: 48, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(height: 16),
-          Text(texto, textAlign: TextAlign.center),
-          if (accion != null) ...[const SizedBox(height: 8), accion!],
+          Icon(icono, size: 44, color: Tokens.textoTenue),
+          const SizedBox(height: 14),
+          Text(
+            texto,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          if (accion case final boton?) ...[const SizedBox(height: 8), boton],
         ],
       ),
     ),

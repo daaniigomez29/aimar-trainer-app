@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
 
 /// Una sesion con sus bloques y los ejercicios de cada bloque.
 ///
@@ -20,6 +22,8 @@ class TarjetaSesion extends StatelessWidget {
     required this.onEditarEjercicio,
     required this.onEliminarEjercicio,
     this.onRegistrar,
+    this.onMoverBloque,
+    this.onMoverEjercicio,
     super.key,
   });
 
@@ -38,6 +42,12 @@ class TarjetaSesion extends StatelessWidget {
   /// Solo lo recibe el cliente, para registrar su resultado (CU-20). El
   /// entrenador planifica; registrar es cosa de quien entrena.
   final VoidCallback? onRegistrar;
+
+  /// Arrastre de bloques y de ejercicios (CU-11, CU-12). `null` desactiva el
+  /// asa: al cliente no le llegan, y en un planning archivado tampoco.
+  final void Function(int desde, int hasta)? onMoverBloque;
+  final void Function(BloqueEjercicio bloque, int desde, int hasta)?
+  onMoverEjercicio;
 
   @override
   Widget build(BuildContext context) {
@@ -90,17 +100,32 @@ class TarjetaSesion extends StatelessWidget {
                 ),
               )
             else
-              for (final bloque in sesion.bloques)
-                _Bloque(
-                  bloque: bloque,
-                  puedeEditar: puedeEditar,
-                  onEditar: () => onEditarBloque(bloque),
-                  onEliminar: () => onEliminarBloque(bloque),
-                  onAnadirEjercicio: () => onAnadirEjercicio(bloque),
-                  onEditarEjercicio: (ejercicio) =>
-                      onEditarEjercicio(bloque, ejercicio),
-                  onEliminarEjercicio: onEliminarEjercicio,
-                ),
+              ListaArrastrable(
+                onMover: puedeEditar ? onMoverBloque : null,
+                hijos: [
+                  for (final (indice, bloque) in sesion.bloques.indexed)
+                    _Bloque(
+                      key: Key('bloque_${bloque.id}'),
+                      bloque: bloque,
+                      indice: indice,
+                      sePuedeMover:
+                          puedeEditar &&
+                          onMoverBloque != null &&
+                          sesion.bloques.length > 1,
+                      puedeEditar: puedeEditar,
+                      onEditar: () => onEditarBloque(bloque),
+                      onEliminar: () => onEliminarBloque(bloque),
+                      onAnadirEjercicio: () => onAnadirEjercicio(bloque),
+                      onEditarEjercicio: (ejercicio) =>
+                          onEditarEjercicio(bloque, ejercicio),
+                      onEliminarEjercicio: onEliminarEjercicio,
+                      onMoverEjercicio: onMoverEjercicio == null
+                          ? null
+                          : (desde, hasta) =>
+                                onMoverEjercicio!(bloque, desde, hasta),
+                    ),
+                ],
+              ),
             if (onRegistrar != null && sesion.bloques.isNotEmpty)
               Align(
                 alignment: Alignment.centerLeft,
@@ -135,15 +160,22 @@ class TarjetaSesion extends StatelessWidget {
 class _Bloque extends StatelessWidget {
   const _Bloque({
     required this.bloque,
+    required this.indice,
+    required this.sePuedeMover,
     required this.puedeEditar,
     required this.onEditar,
     required this.onEliminar,
     required this.onAnadirEjercicio,
     required this.onEditarEjercicio,
     required this.onEliminarEjercicio,
+    required this.onMoverEjercicio,
+    super.key,
   });
 
   final BloqueEjercicio bloque;
+  final int indice;
+  final bool sePuedeMover;
+  final void Function(int desde, int hasta)? onMoverEjercicio;
   final bool puedeEditar;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
@@ -157,7 +189,6 @@ class _Bloque extends StatelessWidget {
     final esquema = Theme.of(context).colorScheme;
 
     return Container(
-      key: Key('bloque_${bloque.id}'),
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -169,6 +200,10 @@ class _Bloque extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (puedeEditar) ...[
+                AsaDeArrastre(indice: indice, activa: sePuedeMover, tamano: 18),
+                const SizedBox(width: 4),
+              ],
               Text(
                 '${bloque.orden}. ${bloque.tipo.etiqueta}',
                 style: textos.labelLarge,
@@ -196,13 +231,24 @@ class _Bloque extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(notas, style: textos.bodySmall),
             ),
-          for (final ejercicio in bloque.ejercicios)
-            _Ejercicio(
-              ejercicio: ejercicio,
-              puedeEditar: puedeEditar,
-              onEditar: () => onEditarEjercicio(ejercicio),
-              onEliminar: () => onEliminarEjercicio(ejercicio),
-            ),
+          ListaArrastrable(
+            onMover: puedeEditar ? onMoverEjercicio : null,
+            hijos: [
+              for (final (indice, ejercicio) in bloque.ejercicios.indexed)
+                _Ejercicio(
+                  key: Key('ejercicio_planificado_${ejercicio.id}'),
+                  ejercicio: ejercicio,
+                  indice: indice,
+                  sePuedeMover:
+                      puedeEditar &&
+                      onMoverEjercicio != null &&
+                      bloque.ejercicios.length > 1,
+                  puedeEditar: puedeEditar,
+                  onEditar: () => onEditarEjercicio(ejercicio),
+                  onEliminar: () => onEliminarEjercicio(ejercicio),
+                ),
+            ],
+          ),
           if (puedeEditar)
             Align(
               alignment: Alignment.centerLeft,
@@ -225,12 +271,17 @@ class _Bloque extends StatelessWidget {
 class _Ejercicio extends StatelessWidget {
   const _Ejercicio({
     required this.ejercicio,
+    required this.indice,
+    required this.sePuedeMover,
     required this.puedeEditar,
     required this.onEditar,
     required this.onEliminar,
+    super.key,
   });
 
   final EjercicioPlanificado ejercicio;
+  final int indice;
+  final bool sePuedeMover;
   final bool puedeEditar;
   final VoidCallback onEditar;
   final VoidCallback onEliminar;
@@ -241,14 +292,22 @@ class _Ejercicio extends StatelessWidget {
     final nombre = ejercicio.ejercicio?.nombre ?? 'Ejercicio';
 
     return Padding(
-      key: Key('ejercicio_planificado_${ejercicio.id}'),
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 4, right: 6),
-            child: Icon(Icons.drag_indicator, size: 14),
+          if (puedeEditar)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 6),
+              child: AsaDeArrastre(
+                indice: indice,
+                activa: sePuedeMover,
+                tamano: 14,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: MiniaturaEjercicio(ejercicio: ejercicio.ejercicio, lado: 36),
           ),
           Expanded(
             child: Column(

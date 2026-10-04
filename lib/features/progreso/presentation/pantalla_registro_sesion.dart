@@ -100,7 +100,13 @@ class _Sesion extends StatelessWidget {
       children: [
         Text(sesion.nombre, style: textos.headlineSmall),
         const SizedBox(height: 4),
-        Text(_comoFecha(sesion.fecha), style: textos.bodyMedium),
+        Text(
+          sesion.fechaRealizada == null
+              ? 'Dia ${sesion.orden}'
+              : 'Dia ${sesion.orden} · hecha el '
+                    '${_comoFecha(sesion.fechaRealizada!)}',
+          style: textos.bodyMedium,
+        ),
         const SizedBox(height: 12),
         if (!puedeRegistrar)
           Card(
@@ -129,6 +135,7 @@ class _Sesion extends StatelessWidget {
           for (final (bloque, ejercicio) in ejercicios)
             _FilaEjercicio(
               bloque: bloque,
+              sesion: sesion,
               ejercicio: ejercicio,
               planningId: planning.id,
               clienteId: clienteId,
@@ -142,6 +149,7 @@ class _Sesion extends StatelessWidget {
 class _FilaEjercicio extends StatelessWidget {
   const _FilaEjercicio({
     required this.bloque,
+    required this.sesion,
     required this.ejercicio,
     required this.planningId,
     required this.clienteId,
@@ -149,6 +157,10 @@ class _FilaEjercicio extends StatelessWidget {
   });
 
   final BloqueEjercicio bloque;
+
+  /// La sesion completa, para que el registro sepa en que punto esta
+  /// ("ejercicio 2 de 5") y pueda encadenar con el siguiente.
+  final SesionEntrenamiento sesion;
   final EjercicioPlanificado ejercicio;
   final String planningId;
   final String clienteId;
@@ -179,6 +191,7 @@ class _FilaEjercicio extends StatelessWidget {
                     ejercicio: ejercicio,
                     planningId: planningId,
                     clienteId: clienteId,
+                    sesion: sesion,
                   ),
                 ),
               )

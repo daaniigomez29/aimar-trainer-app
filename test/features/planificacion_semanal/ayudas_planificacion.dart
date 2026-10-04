@@ -28,15 +28,17 @@ PlanningSemanal planningDePrueba({
 SesionEntrenamiento sesionDePrueba({
   String id = 's-1',
   String planningId = 'p-1',
-  DateTime? fecha,
+  int orden = 1,
   String nombre = 'Empuje',
+  DateTime? fechaRealizada,
   bool resultadoRegistrado = false,
   List<BloqueEjercicio> bloques = const [],
 }) => SesionEntrenamiento(
   id: id,
   planningId: planningId,
-  fecha: fecha ?? DateTime(2026, 10, 5),
+  orden: orden,
   nombre: nombre,
+  fechaRealizada: fechaRealizada,
   resultadoRegistrado: resultadoRegistrado,
   bloques: bloques,
 );

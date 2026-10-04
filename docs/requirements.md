@@ -11,13 +11,13 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-01** — Iniciar sesión con usuario/correo y contraseña, validando credenciales antes de dar acceso según rol.
 
 ### Biblioteca de ejercicios
-- **RF-02** — Añadir ejercicio (nombre, grupo muscular, descripción), sin nombres duplicados entre activos.
+- **RF-02** — Añadir ejercicio (nombre, grupo muscular, descripción, imagen ilustrativa opcional), sin nombres duplicados entre activos.
 - **RF-03** — Editar un ejercicio existente sin afectar referencias ya usadas en plannings anteriores.
 - **RF-04** — Eliminar (baja lógica) un ejercicio, avisando si está referenciado en bloques activos.
 
 ### Planificación semanal
 - **RF-05** — Crear planning semanal para un cliente (fecha de inicio, cliente).
-- **RF-06** — Añadir sesiones de entrenamiento (con fecha real) dentro de un planning.
+- **RF-06** — Añadir sesiones de entrenamiento (numeradas: Día 1, Día 2…) dentro de un planning.
 - **RF-07** — Añadir bloques de entrenamiento dentro de una sesión (tipo: calentamiento/fuerza/cardio/movilidad/otro).
 - **RF-08** — Añadir ejercicios de la biblioteca a un bloque, con series/reps/peso/descanso (Fuerza) o minutos (Cardio).
 - **RF-09 a RF-12** — Editar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente.
@@ -56,7 +56,7 @@ postcondición, excepciones.
 
 **CU-02 Añadir ejercicio**
 - Precondición: el entrenador ha iniciado sesión.
-- Secuencia: (1) solicita añadir ejercicio (2) sistema pide nombre/grupo muscular/equipamiento/descripción (3) el entrenador los introduce (4) valida datos y nombre no duplicado (5) guarda (6) notifica éxito.
+- Secuencia: (1) solicita añadir ejercicio (2) sistema pide nombre/grupo muscular/equipamiento/descripción, y opcionalmente una imagen que ilustre la ejecución (3) el entrenador los introduce (4) valida datos y nombre no duplicado (5) guarda (6) notifica éxito.
 - Excepciones: datos incompletos o nombre duplicado → error, vuelta al paso 2.
 
 **CU-03 Editar ejercicio**
@@ -77,8 +77,9 @@ postcondición, excepciones.
 
 **CU-06 Añadir sesión de entrenamiento**
 - Precondición: existe un planning.
-- Secuencia: selecciona planning, solicita añadir sesión → pide fecha y nombre → valida fecha dentro de la semana y sin duplicar → añade → notifica.
-- Excepciones: fecha ya usada en ese planning o fuera de semana → error.
+- Secuencia: selecciona planning, solicita añadir sesión → el sistema propone el número que toca (Día N) y pide el nombre → valida → añade → notifica.
+- Excepciones: nombre vacío o número ya ocupado → error.
+- Nota: la sesión **no se ata a un día del calendario** (cambio del 2026-10-04). Lo que se guarda es el día en que el cliente la hizo, y lo rellena el sistema.
 
 **CU-07 Añadir bloque de entrenamiento**
 - Secuencia: selecciona sesión → pide tipo y orden → valida orden no repetido → añade → notifica.
@@ -88,7 +89,8 @@ postcondición, excepciones.
 - Excepciones: parámetros inválidos → error; biblioteca vacía → ofrece ir a CU-02.
 
 **CU-09 a CU-12 Editar planning / sesión / bloque / ejercicio en bloque**
-- Mismo patrón: seleccionar → mostrar datos actuales → modificar → validar → guardar → notificar. Excepción común: datos inválidos o conflicto (fecha/orden duplicado) → error, vuelta a editar.
+- Mismo patrón: seleccionar → mostrar datos actuales → modificar → validar → guardar → notificar. Excepción común: datos inválidos o conflicto (orden duplicado) → error, vuelta a editar.
+- CU-11 y CU-12 incluyen **cambiar el orden arrastrando**: el entrenador mueve un bloque dentro de su sesión, o un ejercicio dentro de su bloque, y el sistema renumera el conjunto en una sola operación. Solo el entrenador; el cliente ve el orden pero no lo toca.
 
 **CU-13 a CU-16 Eliminar planning / sesión / bloque / ejercicio en bloque**
 - Mismo patrón: seleccionar y solicitar eliminar → advertencia de cascada (salvo CU-16, que no elimina de biblioteca) → confirmar → eliminar → notificar. Excepción común: cancelación → sin cambios.
@@ -124,7 +126,7 @@ postcondición, excepciones.
 
 **CU-22 Recibir notificación de sesión programada**
 - Precondición: planning activo con sesiones y notificaciones activadas.
-- Secuencia (automática): comprueba sesiones del día siguiente → localiza clientes → genera y envía notificación.
+- Secuencia (automática): el día en que arranca un planning, resume cuántas sesiones tiene esa semana → localiza al cliente → genera y envía notificación. Antes avisaba de "mañana tienes sesión"; al dejar las sesiones de tener fecha planificada, ese aviso ya no es posible (cambio del 2026-10-04).
 - Excepciones: notificaciones desactivadas → no se envía, se registra como omitido.
 
 **CU-23 Consultar histórico de plannings de cliente**

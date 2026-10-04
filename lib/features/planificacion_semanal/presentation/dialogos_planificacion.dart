@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 
 /// Confirmaciones de borrado de CU-13 a CU-16.
@@ -184,6 +185,74 @@ Future<void> alternarArchivadoPlanning({
     exito: archivar ? 'Planning archivado.' : 'Planning reactivado.',
     fallo: 'No se ha podido cambiar el estado del planning.',
   );
+}
+
+/// CU-11: mover un bloque dentro de su sesion arrastrandolo.
+///
+/// No pide confirmacion ni avisa cuando sale bien: el resultado se ve, y un
+/// cartel por cada arrastre seria ruido. Solo se habla si falla, y entonces hay
+/// que decirlo, porque la lista se habra recolocado sola al recargar.
+Future<bool> moverBloque({
+  required BuildContext context,
+  required WidgetRef ref,
+  required SesionEntrenamiento sesion,
+  required String planningId,
+  required int desde,
+  required int hasta,
+}) async {
+  final resultado = await ref
+      .read(controladorPlanificacionProvider.notifier)
+      .reordenarBloques(
+        sesion: sesion,
+        idsEnOrden: [
+          for (final bloque in reordenarLista(sesion.bloques, desde, hasta))
+            bloque.id,
+        ],
+        planningId: planningId,
+      );
+  if (context.mounted && resultado.esFallo) {
+    _avisar(
+      context,
+      resultado,
+      exito: '',
+      fallo: 'No se ha podido mover el bloque.',
+    );
+  }
+  return resultado.esExito;
+}
+
+/// CU-12: mover un ejercicio dentro de su bloque arrastrandolo.
+Future<bool> moverEjercicio({
+  required BuildContext context,
+  required WidgetRef ref,
+  required BloqueEjercicio bloque,
+  required String planningId,
+  required int desde,
+  required int hasta,
+}) async {
+  final resultado = await ref
+      .read(controladorPlanificacionProvider.notifier)
+      .reordenarEjercicios(
+        bloque: bloque,
+        idsEnOrden: [
+          for (final ejercicio in reordenarLista(
+            bloque.ejercicios,
+            desde,
+            hasta,
+          ))
+            ejercicio.id,
+        ],
+        planningId: planningId,
+      );
+  if (context.mounted && resultado.esFallo) {
+    _avisar(
+      context,
+      resultado,
+      exito: '',
+      fallo: 'No se ha podido mover el ejercicio.',
+    );
+  }
+  return resultado.esExito;
 }
 
 Future<bool> _confirmar({

@@ -4,7 +4,7 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-03, al cerrar la fase 6 (última de las planificadas).
+Última actualización: 2026-10-04, con las sesiones numeradas y el reordenado por arrastre.
 
 ## Fases
 
@@ -18,13 +18,13 @@ ya se han pisado y qué queda abierto**.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
-Verificación al cerrar la fase 6: `supabase db reset` aplica **15 migraciones**
-limpias, `./scripts/probar_local.sh` da **153/153**, `flutter test` **288**,
+Verificación actual: `supabase db reset` aplica **18 migraciones** limpias,
+`./scripts/probar_local.sh` da **177/177**, `flutter test` **337**,
 `dart analyze --fatal-infos` sin incidencias, `flutter build web` compila.
 
-Para que el script dé 128 hace falta **también** `supabase functions serve` en otra
-terminal: sin él, las comprobaciones de Edge Functions no se saltan, fallan con 503
-y "name resolution failed".
+Para que el script llegue a las Edge Functions hace falta **también**
+`supabase functions serve --no-verify-jwt` en otra terminal: sin él, esas
+comprobaciones no se saltan, fallan con 503 y "name resolution failed".
 
 ## Cómo arrancar el entorno
 
@@ -37,6 +37,9 @@ supabase db reset                         # migraciones + seed
 
 ```bash
 supabase functions serve --no-verify-jwt  # imprescindible para alta/baja de clientes
+# solo si el contenedor del edge runtime se niega a arrancar (trampa 23):
+#   ./scripts/servir_funciones_host.sh
+#   BASE_FUNCIONES=http://127.0.0.1:54331 ./scripts/probar_local.sh
 ```
 
 ```bash
@@ -46,7 +49,7 @@ supabase functions serve --no-verify-jwt  # imprescindible para alta/baja de cli
 Cuentas de prueba y contraseña: al principio de `supabase/seed.sql`. Correo de
 pruebas: Mailpit en <http://127.0.0.1:54324>.
 
-`./scripts/probar_local.sh` verifica 89 cosas por la API REST. **Requiere partir de
+`./scripts/probar_local.sh` verifica 177 cosas por la API REST. **Requiere partir de
 `supabase db reset`**: el propio script da de baja al cliente del seed al comprobar
 el bloqueo de acceso, así que una segunda pasada avisa y sale.
 
@@ -140,6 +143,20 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     expresión y el cálculo de "hoy"/"mañana" son dos cosas distintas: lo segundo
     lo hace la función en `Europe/Madrid`.
 
+23. **Docker 29 y el contenedor del edge runtime.** Durante un rato,
+    `supabase functions serve` y `supabase start` fallaron con `failed to copy
+    edge runtime main service into container: destination
+    "supabase_edge_runtime_...:/" must be a directory`, y Studio con
+    `mkdir /run/desktop/mnt/host/c: file exists`. Reiniciar Docker Desktop
+    arregló lo de Studio; lo del edge runtime acabó arrancando solo tras
+    descargarse la imagen de nuevo, y desde entonces el script pasa entero por
+    Kong. Actualizar la CLI de Supabase (2.118.0 → 2.119.0) no cambió nada.
+    Si vuelve a pasar: `supabase start -x studio -x edge-runtime` levanta el
+    resto, y `./scripts/servir_funciones_host.sh` sirve las tres funciones con
+    el Deno del host (puerto 54331) para `BASE_FUNCIONES`. Lo único que ese
+    apaño no cubre es el salto desde Postgres por Kong, porque esa URL apunta al
+    contenedor que falta.
+
 ## Decisiones tomadas (no reabrir sin motivo)
 
 - **CU-24 mantiene el mensaje genérico** cuando el correo no está registrado: no se
@@ -152,8 +169,11 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 - **Bajas lógicas** en clientes y ejercicios; **borrado físico** en planificación
   (plannings, sesiones, bloques, ejercicios planificados, series planificadas),
   porque ahí eliminar es un caso de uso real y la cascada se encarga.
-- **El vídeo de ejemplo se copia al portapapeles**, no se abre: abrirlo necesitaría
-  `url_launcher`, dependencia nueva sin acordar.
+- **El vídeo de ejemplo se reproduce dentro de la app** (2026-10-04), incrustando
+  el reproductor de YouTube en un iframe montado como vista de plataforma. Sustituye
+  a la solución provisional de la fase 2, que solo copiaba el enlace al portapapeles.
+  El enlace copiable **sigue debajo**: hay vídeos cuyo dueño no permite incrustar, y
+  los enlaces que no son de YouTube no se pueden reproducir aquí.
 - La vista del planning es **la misma pantalla para entrenador y cliente**, con
   `puedeEditar: false` para el segundo. Un planning archivado tampoco es editable.
 - **El registro de CU-20 es serie a serie** y guarda en cada confirmación la lista
@@ -165,6 +185,11 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 - **Las fotos se convierten siempre a PNG** antes de subirlas (reducidas a 1600 px),
   nunca se sube el fichero original. Ver `architecture.md`, "Conversión de la imagen
   antes de subirla".
+- **Dos buckets, con criterio distinto**: `fotos-progreso` privado (dato personal,
+  URL firmada) e `imagenes-ejercicios` público (material de la biblioteca, se pinta
+  en listas). Lo que decide no es la comodidad, es si el contenido es de alguien.
+- **La imagen del ejercicio se sube al guardar el formulario**, no al elegirla, y
+  se compensa borrándola si el guardado falla.
 - **Push web con VAPID, sin Firebase ni ninguna dependencia nueva en Flutter**: el
   puente con el navegador es JavaScript en `web/index.html` llamado con
   `dart:js_interop`. Decisión consultada y confirmada.
@@ -172,6 +197,35 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   interruptor del push.
 - **Un push no enviado se registra como `omitido`**, con su motivo, en
   `avisos_enviados`. No es un hueco: es lo que pide la excepción de CU-22.
+- **Las sesiones se numeran, no se fechan** (2026-10-04): un planning tiene Día 1,
+  Día 2… con índice único `(planning_id, orden)`, y el entrenador decide cuántas
+  sesiones hay, no en qué día caen. El motivo es real: si el cliente no puede ir el
+  miércoles y va el jueves, es la misma sesión. Lo que sí se guarda es
+  `fecha_realizada`, el día en que la hizo, y lo rellena un trigger en el primer
+  registro: hoy no condiciona nada, solo es el eje de la gráfica de CU-21. **Esto
+  invierte la regla de la fase 4** ("la planificación se hace sobre un calendario"),
+  por decisión explícita; `AGENTS.md`, `domain-model.md` y `sql-schema.md` ya la
+  llevan cambiada. Arrastró a CU-22: ver el punto siguiente.
+- **CU-22 avisa de la semana, no de "mañana"** (2026-10-04): sin fecha planificada no
+  se puede decir "mañana tienes sesión", así que el recordatorio de entrenamiento pasó
+  a enviarse el día en que arranca el planning, resumiendo cuántas sesiones trae la
+  semana. El aviso del día de control no cambia: ese sí depende de un día real.
+- **El orden de bloques y ejercicios se cambia arrastrando** (2026-10-04), con
+  dos funciones de Postgres (`reordenar_bloques`,
+  `reordenar_ejercicios_planificados`) que renumeran el conjunto entero en una
+  transacción. No se puede con `update` sueltos: el índice único del orden
+  rechaza los estados intermedios, y PostgREST abre una transacción por
+  petición. Reciben la lista completa de ids, no "mueve este de 3 a 1".
+- **Reordenar es solo del entrenador, y hay que comprobarlo a mano** en la
+  función: el cliente tiene política de `update` sobre
+  `ejercicios_planificados` para registrar sus minutos de cardio, y una política
+  RLS no puede limitar **qué columnas** se tocan. Se vio en el script, que
+  devolvía 204 donde esperaba 403. Es la "nota de seguridad conocida" de
+  `sql-schema.md`, que sigue abierta para el `update` directo a la tabla.
+- **La foto del ejercicio se pinta en un único widget** (`MiniaturaEjercicio`),
+  compartido por la biblioteca, la planificación y el registro del cliente.
+  Antes cada pantalla tenía su copia del hueco gris, y por eso la planificación
+  se quedó sin imagen cuando se añadió a la entidad.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 
@@ -206,9 +260,9 @@ Decisiones que quedaron sin cerrar:
 Las seis fases del ERS están implementadas y verificadas **en local**. Lo que falta
 no es funcionalidad, es puesta en producción:
 
-1. **Proyecto de Supabase en la nube** (dev y prod): aplicar las 15 migraciones por
-   el pipeline, crear el bucket `fotos-progreso` (las políticas ya viajan en
-   migración) y crear los dos secretos de Vault con la URL real de la función y un
+1. **Proyecto de Supabase en la nube** (dev y prod): aplicar las 16 migraciones por
+   el pipeline, crear los buckets `fotos-progreso` e `imagenes-ejercicios` (las
+   políticas de los dos ya viajan en migración) y crear los dos secretos de Vault con la URL real de la función y un
    `secreto_cron` largo y aleatorio.
 2. **Secretos de las Edge Functions** en la nube: `supabase secrets set` con
    `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`, `SECRETO_CRON` y un par

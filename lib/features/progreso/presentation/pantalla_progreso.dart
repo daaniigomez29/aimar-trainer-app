@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/features/progreso/application/controlador_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/metricas_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/widgets/grafica_progreso.dart';
@@ -66,62 +68,70 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
       ejerciciosConRegistroProvider(widget.clienteId),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.titulo == null ? 'Mi progreso' : 'Progreso'),
-        bottom: widget.titulo == null
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(28),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(widget.titulo!),
-                ),
+    final barra = AppBar(
+      title: Text(widget.titulo == null ? 'Mi progreso' : 'Progreso'),
+      bottom: widget.titulo == null
+          ? null
+          : PreferredSize(
+              preferredSize: const Size.fromHeight(28),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(widget.titulo!),
               ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SegmentedButton<_Origen>(
-            segments: [
-              for (final origen in _Origen.values)
-                ButtonSegment(value: origen, label: Text(origen.etiqueta)),
-            ],
-            selected: {_origen},
-            onSelectionChanged: (seleccion) =>
-                setState(() => _origen = seleccion.first),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            key: const Key('boton_rango_fechas'),
-            onPressed: _elegirRango,
-            icon: const Icon(Icons.date_range, size: 18),
-            label: Text(
-              'Del ${_comoFecha(_rango.desde)} al ${_comoFecha(_rango.hasta)}',
             ),
+    );
+
+    final cuerpo = ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        SegmentedButton<_Origen>(
+          segments: [
+            for (final origen in _Origen.values)
+              ButtonSegment(value: origen, label: Text(origen.etiqueta)),
+          ],
+          selected: {_origen},
+          onSelectionChanged: (seleccion) =>
+              setState(() => _origen = seleccion.first),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const Key('boton_rango_fechas'),
+          onPressed: _elegirRango,
+          icon: const Icon(Icons.date_range, size: 18),
+          label: Text(
+            'Del ${_comoFecha(_rango.desde)} al ${_comoFecha(_rango.hasta)}',
           ),
-          const SizedBox(height: 12),
-          if (_origen == _Origen.ejercicio)
-            ...ejercicios.when(
-              loading: () => const [Center(child: CircularProgressIndicator())],
-              error: (error, _) => [
-                Text(
-                  mensajeDeErrorProgreso(error),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              data: (lista) => _filtroYGraficaDeEjercicio(lista),
-            )
-          else
-            ..._filtroYGraficaCorporal(),
-          const SizedBox(height: 24),
-          Text(
-            'Las fechas son las de la sesion, no las del momento en que se '
-            'anoto el resultado.',
-            style: textos.bodySmall,
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        if (_origen == _Origen.ejercicio)
+          ...ejercicios.when(
+            loading: () => const [Center(child: CircularProgressIndicator())],
+            error: (error, _) => [
+              Text(mensajeDeErrorProgreso(error), textAlign: TextAlign.center),
+            ],
+            data: (lista) => _filtroYGraficaDeEjercicio(lista),
+          )
+        else
+          ..._filtroYGraficaCorporal(),
+        const SizedBox(height: 24),
+        Text(
+          'Las fechas son las de la sesion, no las del momento en que se '
+          'anoto el resultado.',
+          style: textos.bodySmall,
+        ),
+      ],
+    );
+
+    // Con `titulo` es el entrenador mirando a un cliente: llega empujada desde
+    // la ficha y vuelve con la flecha, sin barra. Sin `titulo` es el cliente en
+    // su propia pestana, y ahi la barra tiene que estar.
+    if (widget.titulo != null) {
+      return Scaffold(appBar: barra, body: cuerpo);
+    }
+    return PantallaCliente(
+      rutaActual: Rutas.progresoCliente,
+      appBar: barra,
+      cuerpo: cuerpo,
     );
   }
 

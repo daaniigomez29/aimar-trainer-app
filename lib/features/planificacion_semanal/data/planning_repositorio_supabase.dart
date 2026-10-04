@@ -35,6 +35,12 @@ class PlanningRepositorioSupabase implements PlanningRepositorio {
   static const String _funcionGuardarEjercicio =
       'guardar_ejercicio_planificado';
 
+  /// Funciones que renumeran en una transaccion. No se puede hacer con `update`
+  /// sueltos: el indice unico del orden rechaza los estados intermedios.
+  static const String _funcionReordenarBloques = 'reordenar_bloques';
+  static const String _funcionReordenarEjercicios =
+      'reordenar_ejercicios_planificados';
+
   /// Jerarquia completa en una sola consulta. Los nombres de las relaciones
   /// incrustadas coinciden con los `JsonKey` de las entidades.
   static const String _seleccionCompleta = '''
@@ -90,11 +96,11 @@ sesiones_entrenamiento(
   }
 
   /// PostgREST no garantiza el orden de las relaciones incrustadas, asi que se
-  /// ordena aqui: sesiones por fecha, bloques y ejercicios por `orden`, series por
+  /// ordena aqui: todo por su `orden`, y las series por
   /// `numeroSerie`.
   PlanningSemanal _ordenarJerarquia(PlanningSemanal planning) {
     final sesiones = [...planning.sesiones]
-      ..sort((a, b) => a.fecha.compareTo(b.fecha));
+      ..sort((a, b) => a.orden.compareTo(b.orden));
 
     return planning.copyWith(
       sesiones: [
@@ -274,6 +280,36 @@ sesiones_entrenamiento(
   Future<Result<void>> eliminarEjercicioPlanificado(String id) =>
       _eliminar(_ejerciciosPlanificados, id);
 
+  @override
+  Future<Result<void>> reordenarBloques({
+    required String sesionId,
+    required List<String> idsEnOrden,
+  }) => _reordenar(_funcionReordenarBloques, {
+    'p_sesion_id': sesionId,
+    'p_ids': idsEnOrden,
+  });
+
+  @override
+  Future<Result<void>> reordenarEjerciciosPlanificados({
+    required String bloqueId,
+    required List<String> idsEnOrden,
+  }) => _reordenar(_funcionReordenarEjercicios, {
+    'p_bloque_id': bloqueId,
+    'p_ids': idsEnOrden,
+  });
+
+  Future<Result<void>> _reordenar(
+    String funcion,
+    Map<String, dynamic> parametros,
+  ) async {
+    try {
+      await cliente.rpc<void>(funcion, params: parametros);
+      return const Success(null);
+    } on Object catch (error, traza) {
+      return Failure(_traducir(error, traza));
+    }
+  }
+
   /// Relee un ejercicio planificado con su ejercicio de biblioteca y sus series.
   Future<Result<EjercicioPlanificado>> obtenerEjercicioPlanificado(
     String id,
@@ -394,8 +430,8 @@ sesiones_entrenamiento(
     if (mensaje.contains('plannings_cliente_semana_unico')) {
       return 'Ese cliente ya tiene un planning activo para esa semana.';
     }
-    if (mensaje.contains('sesiones_planning_fecha_unico')) {
-      return 'Ya hay una sesion en esa fecha.';
+    if (mensaje.contains('sesiones_planning_orden_unico')) {
+      return 'Ese planning ya tiene una sesion con ese numero.';
     }
     if (mensaje.contains('bloques_sesion_orden_unico')) {
       return 'Ya hay un bloque en esa posicion.';

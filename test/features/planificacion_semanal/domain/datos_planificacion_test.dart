@@ -167,61 +167,65 @@ void main() {
     });
   });
 
-  group('DatosSesion: la fecha debe caer en la semana del planning', () {
+  group('DatosSesion: la sesion se numera dentro del planning', () {
     final planning = planningDePrueba(fechaInicio: DateTime(2026, 10, 5));
 
-    test('acepta el primer y el ultimo dia', () {
-      for (final fecha in [DateTime(2026, 10, 5), DateTime(2026, 10, 11)]) {
-        expect(
-          DatosSesion.validarFechaEnPlanning(fecha: fecha, planning: planning),
-          isNull,
-          reason: '$fecha deberia estar dentro de la semana',
-        );
-      }
+    test('el nombre es obligatorio', () {
+      expect(
+        const DatosSesion(
+          planningId: 'p-1',
+          orden: 1,
+          nombre: '   ',
+        ).validar(planning: planning)?.campo,
+        'nombre',
+      );
     });
 
-    test('rechaza el dia anterior y el posterior', () {
-      for (final fecha in [DateTime(2026, 10, 4), DateTime(2026, 10, 12)]) {
-        expect(
-          DatosSesion.validarFechaEnPlanning(
-            fecha: fecha,
-            planning: planning,
-          )?.campo,
-          'fecha',
-          reason: '$fecha deberia quedar fuera',
-        );
-      }
+    test('el numero de dia empieza en 1', () {
+      expect(
+        DatosSesion.validarOrdenLibre(orden: 0, planning: planning)?.campo,
+        'orden',
+      );
     });
 
-    test('rechaza una fecha ya ocupada por otra sesion', () {
+    test('rechaza un numero que ya tiene otra sesion', () {
       final conSesion = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
-        sesiones: [sesionDePrueba(id: 's-1', fecha: DateTime(2026, 10, 6))],
+        sesiones: [sesionDePrueba(id: 's-1', orden: 2)],
       );
 
       expect(
-        DatosSesion.validarFechaLibre(
-          fecha: DateTime(2026, 10, 6),
-          planning: conSesion,
-        )?.campo,
-        'fecha',
+        DatosSesion.validarOrdenLibre(orden: 2, planning: conSesion)?.campo,
+        'orden',
       );
     });
 
-    test('al editar, su propia fecha no cuenta como ocupada', () {
+    test('al editar, su propio numero no cuenta como ocupado', () {
       final conSesion = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
-        sesiones: [sesionDePrueba(id: 's-1', fecha: DateTime(2026, 10, 6))],
+        sesiones: [sesionDePrueba(id: 's-1', orden: 2)],
       );
 
       expect(
-        DatosSesion.validarFechaLibre(
-          fecha: DateTime(2026, 10, 6),
+        DatosSesion.validarOrdenLibre(
+          orden: 2,
           planning: conSesion,
           idSesionQueSeEdita: 's-1',
         ),
         isNull,
       );
+    });
+
+    test('siguienteOrden propone el numero que toca', () {
+      final conDos = planningDePrueba(
+        sesiones: [
+          sesionDePrueba(id: 's-1', orden: 1),
+          sesionDePrueba(id: 's-2', orden: 2),
+        ],
+      );
+
+      expect(conDos.siguienteOrden, 3);
+      expect(planningDePrueba().siguienteOrden, 1);
     });
 
     test('el nombre es obligatorio', () {
@@ -270,14 +274,24 @@ void main() {
       expect(enMiercoles.contiene(DateTime(2026, 10, 13)), isTrue);
     });
 
-    test('sesionDe encuentra la sesion de un dia', () {
+    test('sesionNumero encuentra la sesion por su dia', () {
       final conSesion = planningDePrueba(
-        fechaInicio: DateTime(2026, 10, 5),
-        sesiones: [sesionDePrueba(id: 's-1', fecha: DateTime(2026, 10, 7))],
+        sesiones: [sesionDePrueba(id: 's-1', orden: 3)],
       );
 
-      expect(conSesion.sesionDe(DateTime(2026, 10, 7))?.id, 's-1');
-      expect(conSesion.sesionDe(DateTime(2026, 10, 8)), isNull);
+      expect(conSesion.sesionNumero(3)?.id, 's-1');
+      expect(conSesion.sesionNumero(1), isNull);
+    });
+
+    test('siguientePendiente es la primera sin terminar', () {
+      final conDos = planningDePrueba(
+        sesiones: [
+          sesionDePrueba(id: 's-1', orden: 1, resultadoRegistrado: true),
+          sesionDePrueba(id: 's-2', orden: 2),
+        ],
+      );
+
+      expect(conDos.siguientePendiente?.id, 's-2');
     });
 
     test('un planning archivado no es editable', () {

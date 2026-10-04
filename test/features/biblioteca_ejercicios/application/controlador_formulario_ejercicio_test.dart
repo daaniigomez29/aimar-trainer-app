@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
@@ -22,6 +25,12 @@ final _ejercicio = Ejercicio(
   creadoEn: DateTime.utc(2026),
 );
 
+final _imagen = ImagenParaSubir(
+  bytes: Uint8List.fromList(const [1, 2, 3]),
+  extension: 'png',
+  tipoMime: 'image/png',
+);
+
 const _datosValidos = DatosEjercicio(
   nombre: 'Press banca',
   descripcion: 'Tumbado en banco plano.',
@@ -34,6 +43,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(_datosValidos);
+    registerFallbackValue(_imagen);
   });
 
   setUp(() {
@@ -202,5 +212,101 @@ void main() {
       contenedor.read(controladorFormularioEjercicioProvider).completada,
       isFalse,
     );
+  });
+
+  group('imagen del ejercicio', () {
+    setUp(() {
+      when(() => repositorio.subirImagen(any()))
+          .thenAnswer((_) async => const Success('123.png'));
+      when(() => repositorio.eliminarImagen(any()))
+          .thenAnswer((_) async => const Success(null));
+    });
+
+    test('se sube antes de guardar y la fila se queda con su ruta', () async {
+      when(() => repositorio.crear(any()))
+          .thenAnswer((_) async => Success(_ejercicio));
+
+      await controlador().guardar(datos: _datosValidos, imagenNueva: _imagen);
+
+      verify(() => repositorio.subirImagen(_imagen)).called(1);
+      final enviados =
+          verify(() => repositorio.crear(captureAny())).captured.single
+              as DatosEjercicio;
+      expect(enviados.imagenRuta, '123.png');
+    });
+
+    test('si el guardado falla, la imagen subida se borra', () async {
+      // Si no, quedaria un fichero en el bucket al que no apunta ninguna fila.
+      when(() => repositorio.crear(any()))
+          .thenAnswer((_) async => const Failure(ErrorNombreDuplicado()));
+
+      final guardado = await controlador().guardar(
+        datos: _datosValidos,
+        imagenNueva: _imagen,
+      );
+
+      expect(guardado, isNull);
+      verify(() => repositorio.eliminarImagen('123.png')).called(1);
+    });
+
+    test('al reemplazarla se borra la anterior', () async {
+      when(
+        () => repositorio.editar(
+          id: any(named: 'id'),
+          datos: any(named: 'datos'),
+        ),
+      ).thenAnswer((_) async => Success(_ejercicio));
+
+      await controlador().guardar(
+        datos: _datosValidos.conImagen('vieja.png'),
+        id: 'id-1',
+        imagenNueva: _imagen,
+      );
+
+      verify(() => repositorio.eliminarImagen('vieja.png')).called(1);
+    });
+
+    test('quitarla deja la ruta a null y borra el fichero', () async {
+      when(
+        () => repositorio.editar(
+          id: any(named: 'id'),
+          datos: any(named: 'datos'),
+        ),
+      ).thenAnswer((_) async => Success(_ejercicio));
+
+      await controlador().guardar(
+        datos: _datosValidos.conImagen('vieja.png'),
+        id: 'id-1',
+        quitarImagen: true,
+      );
+
+      final enviados =
+          verify(
+                () => repositorio.editar(
+                  id: any(named: 'id'),
+                  datos: captureAny(named: 'datos'),
+                ),
+              ).captured.single
+              as DatosEjercicio;
+      expect(enviados.imagenRuta, isNull);
+      verify(() => repositorio.eliminarImagen('vieja.png')).called(1);
+    });
+
+    test('sin tocarla, la ruta que ya tenia se mantiene', () async {
+      when(
+        () => repositorio.editar(
+          id: any(named: 'id'),
+          datos: any(named: 'datos'),
+        ),
+      ).thenAnswer((_) async => Success(_ejercicio));
+
+      await controlador().guardar(
+        datos: _datosValidos.conImagen('vieja.png'),
+        id: 'id-1',
+      );
+
+      verifyNever(() => repositorio.subirImagen(any()));
+      verifyNever(() => repositorio.eliminarImagen(any()));
+    });
   });
 }

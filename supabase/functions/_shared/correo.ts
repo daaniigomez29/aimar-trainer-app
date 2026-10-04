@@ -194,33 +194,37 @@ export function correoDeInvitacion({
   return { asunto, html, texto };
 }
 
-/** Recordatorio de la sesion que toca manana (CU-22). */
-export function correoDeSesionDeManana({
+/** Aviso de que empieza una semana nueva de entrenamiento (CU-22).
+ *
+ * Sustituye al "manana toca X": las sesiones ya no tienen fecha planificada, se
+ * numeran dentro de la semana y el cliente las hace cuando puede.
+ */
+export function correoDeSemanaNueva({
   nombre,
-  nombreSesion,
-  fecha,
+  sesiones,
   enlace,
 }: {
   nombre: string;
-  nombreSesion: string;
-  fecha: string;
+  sesiones: number;
   enlace: string;
 }): { asunto: string; html: string; texto: string } {
-  const asunto = `Manana toca: ${nombreSesion}`;
+  const cuantas = sesiones === 1 ? "1 sesion" : `${sesiones} sesiones`;
+  const asunto = "Tu nueva semana de entrenamiento";
   const texto = [
     `Hola ${nombre}:`,
     "",
-    `Manana ${fecha} tienes sesion: ${nombreSesion}.`,
+    `Tu entrenador te ha preparado ${cuantas} para esta semana.`,
+    "Hazlas en el orden que marcan, los dias que mejor te vengan.",
     "",
-    "Puedes ver los ejercicios y registrar tu resultado aqui:",
     enlace,
   ].join("\n");
 
   const html = _plantilla({
     saludo: `Hola ${escaparHtml(nombre)}:`,
-    cuerpo: `<p>Manana <strong>${escaparHtml(fecha)}</strong> tienes sesion: ` +
-      `<strong>${escaparHtml(nombreSesion)}</strong>.</p>`,
-    textoBoton: "Ver mi planning",
+    cuerpo:
+      `<p>Tu entrenador te ha preparado <strong>${cuantas}</strong> para esta ` +
+      "semana. Hazlas en el orden que marcan, los dias que mejor te vengan.</p>",
+    textoBoton: "Ver mi semana",
     enlace,
   });
 

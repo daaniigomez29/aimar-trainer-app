@@ -74,21 +74,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Los datos reales que destaparon el fallo: semana del lunes 28/09/2026 con
-  /// sesiones en cuatro de sus dias, el ultimo de ellos el domingo 04/10.
+  /// Una semana con cuatro sesiones numeradas. Antes estaban atadas a dias del
+  /// calendario; ahora son Dia 1 a Dia 4 y el cliente las hace cuando puede.
   PlanningSemanal semanaConCuatroSesiones() => planningDePrueba(
     fechaInicio: DateTime(2026, 9, 28),
     sesiones: [
-      sesionDePrueba(id: 's-1', fecha: DateTime(2026, 9, 28), nombre: 'Empuje'),
-      sesionDePrueba(id: 's-2', fecha: DateTime(2026, 9, 29), nombre: 'ggg'),
-      sesionDePrueba(id: 's-3', fecha: DateTime(2026, 10, 2), nombre: 'kk'),
-      sesionDePrueba(id: 's-4', fecha: DateTime(2026, 10, 4), nombre: 'jjjj'),
+      sesionDePrueba(id: 's-1', orden: 1, nombre: 'Empuje'),
+      sesionDePrueba(id: 's-2', orden: 2, nombre: 'ggg'),
+      sesionDePrueba(id: 's-3', orden: 3, nombre: 'kk'),
+      sesionDePrueba(id: 's-4', orden: 4, nombre: 'jjjj'),
     ],
   );
 
-  testWidgets('la semana muestra todas sus sesiones, incluida la del domingo', (
-    tester,
-  ) async {
+  testWidgets('la semana muestra todas sus sesiones', (tester) async {
     await montar(tester, planning: semanaConCuatroSesiones());
 
     expect(find.text('Empuje'), findsOneWidget);
@@ -97,20 +95,34 @@ void main() {
     expect(find.text('jjjj'), findsOneWidget);
   });
 
-  testWidgets('un dia con sesion no ofrece anadir otra', (tester) async {
+  testWidgets('las sesiones van numeradas y se puede anadir la siguiente', (
+    tester,
+  ) async {
     await montar(tester, planning: semanaConCuatroSesiones());
 
-    // Los dias con sesion son 28, 29 de septiembre y 2 y 4 de octubre: solo los
-    // tres libres (30/09, 01/10 y 03/10) deben ofrecer el boton.
-    expect(find.widgetWithText(TextButton, 'Anadir sesion'), findsNWidgets(3));
-    expect(find.byKey(const Key('boton_anadir_sesion_4')), findsNothing);
-    expect(find.byKey(const Key('boton_anadir_sesion_3')), findsOneWidget);
+    expect(find.text('Dia 1'), findsOneWidget);
+    expect(find.text('Dia 4'), findsOneWidget);
+    // El boton propone el numero que toca, no un dia de la semana.
+    expect(find.text('Anadir dia 5'), findsOneWidget);
   });
 
-  testWidgets('los dias sin sesion se marcan como descanso', (tester) async {
-    await montar(tester, planning: semanaConCuatroSesiones());
+  testWidgets('una sesion hecha muestra cuando se hizo', (tester) async {
+    await montar(
+      tester,
+      planning: planningDePrueba(
+        sesiones: [
+          sesionDePrueba(
+            id: 's-1',
+            orden: 1,
+            nombre: 'Empuje',
+            resultadoRegistrado: true,
+            fechaRealizada: DateTime(2026, 10, 8),
+          ),
+        ],
+      ),
+    );
 
-    expect(find.text('Descanso'), findsNWidgets(3));
+    expect(find.textContaining('Hecha el 08/10'), findsOneWidget);
   });
 
   testWidgets('el cliente ve la semana sin acciones de escritura', (
@@ -123,7 +135,7 @@ void main() {
     );
 
     expect(find.text('Empuje'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Anadir sesion'), findsNothing);
+    expect(find.textContaining('Anadir dia'), findsNothing);
     // Pero si el boton de registrar su resultado (CU-20).
     expect(find.byKey(const Key('boton_eliminar_planning')), findsNothing);
   });

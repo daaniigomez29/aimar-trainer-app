@@ -319,7 +319,10 @@ as List<SesionEntrenamiento>,
 /// @nodoc
 mixin _$SesionEntrenamiento {
 
- String get id; String get planningId; DateTime get fecha; String get nombre; bool get resultadoRegistrado;@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> get bloques;
+ String get id; String get planningId; int get orden; String get nombre;/// Dia en que el cliente registro algo de esta sesion. `null` mientras no la
+/// haya empezado. La rellena un trigger en el primer registro; la app no la
+/// escribe nunca.
+ DateTime? get fechaRealizada; bool get resultadoRegistrado;@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> get bloques;
 /// Create a copy of SesionEntrenamiento
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -333,20 +336,20 @@ $SesionEntrenamientoCopyWith<SesionEntrenamiento> get copyWith => _$SesionEntren
 @override
 bool operator ==(Object other) {
   final _this = this as SesionEntrenamiento;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesionEntrenamiento&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.planningId, _this.planningId) || other.planningId == _this.planningId)&&(identical(other.fecha, _this.fecha) || other.fecha == _this.fecha)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.resultadoRegistrado, _this.resultadoRegistrado) || other.resultadoRegistrado == _this.resultadoRegistrado)&&const DeepCollectionEquality().equals(other.bloques, _this.bloques));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesionEntrenamiento&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.planningId, _this.planningId) || other.planningId == _this.planningId)&&(identical(other.orden, _this.orden) || other.orden == _this.orden)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.fechaRealizada, _this.fechaRealizada) || other.fechaRealizada == _this.fechaRealizada)&&(identical(other.resultadoRegistrado, _this.resultadoRegistrado) || other.resultadoRegistrado == _this.resultadoRegistrado)&&const DeepCollectionEquality().equals(other.bloques, _this.bloques));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SesionEntrenamiento;
-  return Object.hash(runtimeType,_this.id,_this.planningId,_this.fecha,_this.nombre,_this.resultadoRegistrado,const DeepCollectionEquality().hash(_this.bloques));
+  return Object.hash(runtimeType,_this.id,_this.planningId,_this.orden,_this.nombre,_this.fechaRealizada,_this.resultadoRegistrado,const DeepCollectionEquality().hash(_this.bloques));
 }
 
 @override
 String toString() {
   final _this = this as SesionEntrenamiento;
-  return 'SesionEntrenamiento(id: ${_this.id}, planningId: ${_this.planningId}, fecha: ${_this.fecha}, nombre: ${_this.nombre}, resultadoRegistrado: ${_this.resultadoRegistrado}, bloques: ${_this.bloques})';
+  return 'SesionEntrenamiento(id: ${_this.id}, planningId: ${_this.planningId}, orden: ${_this.orden}, nombre: ${_this.nombre}, fechaRealizada: ${_this.fechaRealizada}, resultadoRegistrado: ${_this.resultadoRegistrado}, bloques: ${_this.bloques})';
 }
 
 
@@ -357,7 +360,7 @@ abstract mixin class $SesionEntrenamientoCopyWith<$Res>  {
   factory $SesionEntrenamientoCopyWith(SesionEntrenamiento value, $Res Function(SesionEntrenamiento) _then) = _$SesionEntrenamientoCopyWithImpl;
 @useResult
 $Res call({
- String id, String planningId, DateTime fecha, String nombre, bool resultadoRegistrado,@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> bloques
+ String id, String planningId, int orden, String nombre, DateTime? fechaRealizada, bool resultadoRegistrado,@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> bloques
 });
 
 
@@ -374,13 +377,14 @@ class _$SesionEntrenamientoCopyWithImpl<$Res>
 
 /// Create a copy of SesionEntrenamiento
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? planningId = null,Object? fecha = null,Object? nombre = null,Object? resultadoRegistrado = null,Object? bloques = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? planningId = null,Object? orden = null,Object? nombre = null,Object? fechaRealizada = freezed,Object? resultadoRegistrado = null,Object? bloques = null,}) {
   return _then(SesionEntrenamiento(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,planningId: null == planningId ? _self.planningId : planningId // ignore: cast_nullable_to_non_nullable
-as String,fecha: null == fecha ? _self.fecha : fecha // ignore: cast_nullable_to_non_nullable
-as DateTime,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
-as String,resultadoRegistrado: null == resultadoRegistrado ? _self.resultadoRegistrado : resultadoRegistrado // ignore: cast_nullable_to_non_nullable
+as String,orden: null == orden ? _self.orden : orden // ignore: cast_nullable_to_non_nullable
+as int,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
+as String,fechaRealizada: freezed == fechaRealizada ? _self.fechaRealizada : fechaRealizada // ignore: cast_nullable_to_non_nullable
+as DateTime?,resultadoRegistrado: null == resultadoRegistrado ? _self.resultadoRegistrado : resultadoRegistrado // ignore: cast_nullable_to_non_nullable
 as bool,bloques: null == bloques ? _self.bloques : bloques // ignore: cast_nullable_to_non_nullable
 as List<BloqueEjercicio>,
   ));
@@ -467,10 +471,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String planningId,  DateTime fecha,  String nombre,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String planningId,  int orden,  String nombre,  DateTime? fechaRealizada,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SesionEntrenamiento() when $default != null:
-return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resultadoRegistrado,_that.bloques);case _:
+return $default(_that.id,_that.planningId,_that.orden,_that.nombre,_that.fechaRealizada,_that.resultadoRegistrado,_that.bloques);case _:
   return orElse();
 
 }
@@ -488,10 +492,10 @@ return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resulta
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String planningId,  DateTime fecha,  String nombre,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String planningId,  int orden,  String nombre,  DateTime? fechaRealizada,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)  $default,) {final _that = this;
 switch (_that) {
 case _SesionEntrenamiento():
-return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resultadoRegistrado,_that.bloques);case _:
+return $default(_that.id,_that.planningId,_that.orden,_that.nombre,_that.fechaRealizada,_that.resultadoRegistrado,_that.bloques);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -508,10 +512,10 @@ return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resulta
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String planningId,  DateTime fecha,  String nombre,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String planningId,  int orden,  String nombre,  DateTime? fechaRealizada,  bool resultadoRegistrado, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques)?  $default,) {final _that = this;
 switch (_that) {
 case _SesionEntrenamiento() when $default != null:
-return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resultadoRegistrado,_that.bloques);case _:
+return $default(_that.id,_that.planningId,_that.orden,_that.nombre,_that.fechaRealizada,_that.resultadoRegistrado,_that.bloques);case _:
   return null;
 
 }
@@ -523,13 +527,17 @@ return $default(_that.id,_that.planningId,_that.fecha,_that.nombre,_that.resulta
 @JsonSerializable()
 
 class _SesionEntrenamiento implements SesionEntrenamiento {
-  const _SesionEntrenamiento({required this.id, required this.planningId, required this.fecha, required this.nombre, this.resultadoRegistrado = false, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques = const []}): _bloques = bloques;
+  const _SesionEntrenamiento({required this.id, required this.planningId, required this.orden, required this.nombre, this.fechaRealizada, this.resultadoRegistrado = false, @JsonKey(name: 'bloques_ejercicio')  List<BloqueEjercicio> bloques = const []}): _bloques = bloques;
   factory _SesionEntrenamiento.fromJson(Map<String, dynamic> json) => _$SesionEntrenamientoFromJson(json);
 
 @override final  String id;
 @override final  String planningId;
-@override final  DateTime fecha;
+@override final  int orden;
 @override final  String nombre;
+/// Dia en que el cliente registro algo de esta sesion. `null` mientras no la
+/// haya empezado. La rellena un trigger en el primer registro; la app no la
+/// escribe nunca.
+@override final  DateTime? fechaRealizada;
 @override@JsonKey() final  bool resultadoRegistrado;
  final  List<BloqueEjercicio> _bloques;
 @override@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> get bloques {
@@ -552,18 +560,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SesionEntrenamiento&&(identical(other.id, id) || other.id == id)&&(identical(other.planningId, planningId) || other.planningId == planningId)&&(identical(other.fecha, fecha) || other.fecha == fecha)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.resultadoRegistrado, resultadoRegistrado) || other.resultadoRegistrado == resultadoRegistrado)&&const DeepCollectionEquality().equals(other.bloques, _bloques));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SesionEntrenamiento&&(identical(other.id, id) || other.id == id)&&(identical(other.planningId, planningId) || other.planningId == planningId)&&(identical(other.orden, orden) || other.orden == orden)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.fechaRealizada, fechaRealizada) || other.fechaRealizada == fechaRealizada)&&(identical(other.resultadoRegistrado, resultadoRegistrado) || other.resultadoRegistrado == resultadoRegistrado)&&const DeepCollectionEquality().equals(other.bloques, _bloques));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,planningId,fecha,nombre,resultadoRegistrado,const DeepCollectionEquality().hash(_bloques));
+    return Object.hash(runtimeType,id,planningId,orden,nombre,fechaRealizada,resultadoRegistrado,const DeepCollectionEquality().hash(_bloques));
 }
 
 @override
 String toString() {
-    return 'SesionEntrenamiento(id: $id, planningId: $planningId, fecha: $fecha, nombre: $nombre, resultadoRegistrado: $resultadoRegistrado, bloques: $bloques)';
+    return 'SesionEntrenamiento(id: $id, planningId: $planningId, orden: $orden, nombre: $nombre, fechaRealizada: $fechaRealizada, resultadoRegistrado: $resultadoRegistrado, bloques: $bloques)';
 }
 
 
@@ -574,7 +582,7 @@ abstract mixin class _$SesionEntrenamientoCopyWith<$Res> implements $SesionEntre
   factory _$SesionEntrenamientoCopyWith(_SesionEntrenamiento value, $Res Function(_SesionEntrenamiento) _then) = __$SesionEntrenamientoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String planningId, DateTime fecha, String nombre, bool resultadoRegistrado,@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> bloques
+ String id, String planningId, int orden, String nombre, DateTime? fechaRealizada, bool resultadoRegistrado,@JsonKey(name: 'bloques_ejercicio') List<BloqueEjercicio> bloques
 });
 
 
@@ -591,13 +599,14 @@ class __$SesionEntrenamientoCopyWithImpl<$Res>
 
 /// Create a copy of SesionEntrenamiento
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? planningId = null,Object? fecha = null,Object? nombre = null,Object? resultadoRegistrado = null,Object? bloques = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? planningId = null,Object? orden = null,Object? nombre = null,Object? fechaRealizada = freezed,Object? resultadoRegistrado = null,Object? bloques = null,}) {
   return _then(_SesionEntrenamiento(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,planningId: null == planningId ? _self.planningId : planningId // ignore: cast_nullable_to_non_nullable
-as String,fecha: null == fecha ? _self.fecha : fecha // ignore: cast_nullable_to_non_nullable
-as DateTime,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
-as String,resultadoRegistrado: null == resultadoRegistrado ? _self.resultadoRegistrado : resultadoRegistrado // ignore: cast_nullable_to_non_nullable
+as String,orden: null == orden ? _self.orden : orden // ignore: cast_nullable_to_non_nullable
+as int,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
+as String,fechaRealizada: freezed == fechaRealizada ? _self.fechaRealizada : fechaRealizada // ignore: cast_nullable_to_non_nullable
+as DateTime?,resultadoRegistrado: null == resultadoRegistrado ? _self.resultadoRegistrado : resultadoRegistrado // ignore: cast_nullable_to_non_nullable
 as bool,bloques: null == bloques ? _self._bloques : bloques // ignore: cast_nullable_to_non_nullable
 as List<BloqueEjercicio>,
   ));

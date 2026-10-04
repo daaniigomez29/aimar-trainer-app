@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
+import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
+import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes_flutter.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
@@ -29,6 +33,13 @@ class _EstadoPantallaFormularioEjercicio
   late final TextEditingController _descripcion;
   late final TextEditingController _video;
   late TipoEjercicio _tipo;
+
+  /// Imagen elegida y ya convertida, pendiente de subir al guardar.
+  ImagenParaSubir? _imagenNueva;
+
+  /// `true` si el entrenador ha quitado la que habia. Distinto de "no la ha
+  /// tocado", que es lo que significa dejarlo todo a `null`.
+  bool _imagenQuitada = false;
 
   @override
   void initState() {
@@ -59,12 +70,18 @@ class _EstadoPantallaFormularioEjercicio
     grupoMuscular: _grupoMuscular.text,
     equipamiento: _equipamiento.text,
     videoEjemploUrl: _video.text,
+    imagenRuta: widget.ejercicio?.imagenRuta,
   );
 
   Future<void> _guardar() async {
     final guardado = await ref
         .read(controladorFormularioEjercicioProvider.notifier)
-        .guardar(datos: _datos, id: widget.ejercicio?.id);
+        .guardar(
+          datos: _datos,
+          id: widget.ejercicio?.id,
+          imagenNueva: _imagenNueva,
+          quitarImagen: _imagenQuitada,
+        );
 
     if (!mounted || guardado == null) return;
     Navigator.of(context).pop(guardado);
@@ -77,6 +94,24 @@ class _EstadoPantallaFormularioEjercicio
         ),
       ),
     );
+  }
+
+  Future<void> _elegirImagen() async {
+    final elegida = await ref.read(servicioImagenesProvider).elegirFoto();
+    if (!mounted) return;
+
+    switch (elegida) {
+      case Failure(:final error):
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.mensaje)));
+      case Success(:final valor):
+        // `null` es que cerro el selector sin elegir nada.
+        if (valor == null) return;
+        setState(() {
+          _imagenNueva = valor;
+          _imagenQuitada = false;
+        });
+    }
   }
 
   @override
@@ -162,6 +197,17 @@ class _EstadoPantallaFormularioEjercicio
             errorText: estado.errorDelCampo('videoEjemploUrl'),
           ),
         ),
+        const SizedBox(height: 16),
+        _Imagen(
+          rutaGuardada: _imagenQuitada ? null : widget.ejercicio?.imagenRuta,
+          imagenNueva: _imagenNueva,
+          habilitado: !estado.enCurso,
+          onElegir: _elegirImagen,
+          onQuitar: () => setState(() {
+            _imagenNueva = null;
+            _imagenQuitada = true;
+          }),
+        ),
         const SizedBox(height: 24),
         FilledButton(
           key: const Key('boton_guardar_ejercicio'),
@@ -227,4 +273,100 @@ class _SelectorTipo extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Ilustracion del ejercicio: la que ya estaba, la recien elegida, o ninguna.
+///
+/// La recien elegida se pinta desde memoria (`Image.memory`) porque todavia no
+/// se ha subido: subir al elegir dejaria ficheros sueltos en el bucket cada vez
+/// que alguien abre el formulario y se arrepiente.
+class _Imagen extends ConsumerWidget {
+  const _Imagen({
+    required this.rutaGuardada,
+    required this.imagenNueva,
+    required this.habilitado,
+    required this.onElegir,
+    required this.onQuitar,
+  });
+
+  final String? rutaGuardada;
+  final ImagenParaSubir? imagenNueva;
+  final bool habilitado;
+  final VoidCallback onElegir;
+  final VoidCallback onQuitar;
+
+  static const double lado = 160;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textos = Theme.of(context).textTheme;
+    final nueva = imagenNueva;
+    final ruta = rutaGuardada;
+    final hayImagen = nueva != null || ruta != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Imagen del ejercicio', style: textos.titleSmall),
+        const SizedBox(height: 4),
+        Text(
+          'Opcional. Una ilustracion o foto que muestre la ejecucion; la ve el '
+          'cliente junto a la descripcion.',
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hayImagen)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: lado,
+                  height: lado,
+                  child: nueva != null
+                      ? Image.memory(nueva.bytes, fit: BoxFit.cover)
+                      : Image.network(
+                          ref
+                              .read(ejercicioRepositorioProvider)
+                              .urlPublicaDeImagen(ruta!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const Center(child: Icon(Icons.broken_image)),
+                        ),
+                ),
+              ),
+            if (hayImagen) const SizedBox(width: 12),
+            // `Expanded` para que los botones tengan un ancho con el que contar:
+            // dentro de una `Row`, una `Column` suelta no se lo da.
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  OutlinedButton.icon(
+                    key: const Key('boton_elegir_imagen'),
+                    onPressed: habilitado ? onElegir : null,
+                    icon: const Icon(Icons.image_outlined, size: 18),
+                    label: Text(hayImagen ? 'Cambiar imagen' : 'Elegir imagen'),
+                  ),
+                  if (hayImagen)
+                    TextButton.icon(
+                      key: const Key('boton_quitar_imagen'),
+                      onPressed: habilitado ? onQuitar : null,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('Quitar'),
+                    ),
+                  if (nueva != null)
+                    Text(
+                      'Sin subir aun · ${nueva.tamanoKb} KB',
+                      style: textos.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

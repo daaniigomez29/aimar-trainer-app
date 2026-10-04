@@ -108,7 +108,7 @@ void main() {
       completo: semana.copyWith(
         sesiones: [
           sesionDePrueba(
-            fecha: diaDeHoy,
+            orden: 1,
             nombre: 'Empuje',
             bloques: [
               bloqueDePrueba(ejercicios: [ejercicioPlanificadoDePrueba()]),
@@ -118,21 +118,18 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Hoy: Empuje'), findsOneWidget);
-    expect(find.textContaining('1 ejercicio'), findsOneWidget);
+    expect(find.textContaining('Te toca el dia 1: Empuje'), findsOneWidget);
     expect(find.text('Fuerza general'), findsOneWidget);
   });
 
-  testWidgets('un dia sin sesion dentro de la semana es descanso', (
-    tester,
-  ) async {
+  testWidgets('una semana sin sesiones lo dice', (tester) async {
     final semana = planningDePrueba(
       clienteId: 'id-usuario',
       fechaInicio: diaDeHoy,
     );
     await montar(tester, lista: [semana], completo: semana);
 
-    expect(find.textContaining('descanso'), findsOneWidget);
+    expect(find.textContaining('aun no tiene sesiones'), findsOneWidget);
   });
 
   testWidgets('las semanas archivadas van aparte, en el historico', (

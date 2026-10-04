@@ -24,7 +24,7 @@
 | Cliente | Flutter Web (PWA), Riverpod | Interfaz y validación de reglas de dominio para feedback inmediato |
 | Autenticación | Supabase Auth | Login, recuperación de contraseña, sesiones |
 | Datos | Supabase Postgres (región UE) | Persistencia, constraints, triggers, RLS |
-| Ficheros | Supabase Storage (bucket privado) | Fotos de progreso, URLs firmadas |
+| Ficheros | Supabase Storage | Fotos de progreso (bucket privado, URLs firmadas) e imágenes de ejercicios (bucket público) |
 | Lógica de servidor | Supabase Edge Functions | Operaciones con privilegios elevados |
 | Tareas programadas | pg_cron | Disparo de recordatorios |
 | Correo | Resend (dominio propio verificado) | Invitaciones, recuperación, recordatorios |
@@ -139,8 +139,12 @@ Mismas variables de entorno que `crear-cliente`.
 
 ## Almacenamiento de ficheros (Storage)
 
-- Un único bucket, `fotos-progreso`, **privado**. Es el único sitio donde la
-  app guarda ficheros.
+- Dos buckets:
+  - `fotos-progreso`, **privado**: las fotos de progreso del cliente.
+  - `imagenes-ejercicios`, **público**: las ilustraciones de la biblioteca. Es
+    material compartido, no dato personal, y se pinta en listas; firmar una URL
+    por ejercicio no tendría sentido. Escribir en él es solo del entrenador.
+- Lo que sigue describe `fotos-progreso`, que es el que tiene datos personales.
 - Se declara en `supabase/config.toml` (`[storage.buckets.fotos-progreso]`,
   `public = false`, 20 MiB, `image/png` e `image/jpeg`). En local lo crea
   `supabase start` / `supabase db reset`. Para dev y producción, la declaración
@@ -188,8 +192,10 @@ de lado mayor y lo vuelve a codificar en **PNG** antes de subirlo
 - Proveedor único de correo: Resend, con dominio propio verificado (puede ser un
   subdominio del dominio web existente de Aimar).
 - Un job de pg_cron invoca diariamente una Edge Function que identifica:
-  clientes con sesión programada al día siguiente, y clientes cuyo
-  `diaControlPreferido` es el día actual.
+  clientes cuyo planning **arranca hoy** (se les resume cuántas sesiones trae la
+  semana), y clientes cuyo `diaControlPreferido` es el día actual. El primer aviso
+  era "mañana tienes sesión" hasta el 2026-10-04; al dejar las sesiones de tener
+  fecha planificada, ya no hay un "mañana" que anunciar.
 - Canales combinados: notificación push web + correo. El push llega en
   Android/Chrome y en iOS 16.4+ solo con la PWA instalada; el correo es el
   respaldo universal.
@@ -207,7 +213,8 @@ de lado mayor y lo vuelve a codificar en **PNG** antes de subirlo
 
 - **pg_cron programa en UTC.** Las 17:00 UTC son las 19:00 en España en verano y
   las 18:00 en invierno: por la tarde en ambos casos. Qué día es "hoy" y "mañana"
-  lo decide la función en `Europe/Madrid`, no la expresión horaria.
+  lo decide la función en `Europe/Madrid`, no la expresión horaria. Lo mismo vale
+  para la `fecha_realizada` que fija el trigger de la sesión.
 - **La URL de la función y el secreto viven en Vault**, no en la migración:
   cambian por entorno y el secreto no debe estar en el repositorio. En local los
   crea `supabase/seed.sql`; en dev y producción se crean una vez a mano.

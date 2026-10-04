@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/painting.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -58,26 +60,29 @@ class ServicioImagenesFlutter implements ServicioImagenes {
   /// Decodifica, reduce si hace falta y vuelve a codificar en PNG.
   ///
   /// Publica para poder probarla sin selector de archivos.
+  ///
+  /// OJO CON `ImageDescriptor`: en web **no** se pueden leer sus `width` y
+  /// `height` (lanza `UnsupportedError`), asi que el tamano se saca de la imagen
+  /// ya decodificada. Y el reescalado se hace redibujando en un lienzo en vez de
+  /// con `targetWidth`, porque es lo unico que se comporta igual en los dos
+  /// lados.
   static Future<Result<ImagenParaSubir?>> convertirAPng(
     Uint8List origen,
   ) async {
-    ui.ImageDescriptor? descriptor;
     ui.Codec? codec;
     ui.Image? imagen;
+    ui.Image? reducida;
     try {
-      final buffer = await ui.ImmutableBuffer.fromUint8List(origen);
-      descriptor = await ui.ImageDescriptor.encoded(buffer);
-
-      final ladoMayor = math.max(descriptor.width, descriptor.height);
-      final escala = ladoMayor > ladoMaximo ? ladoMaximo / ladoMayor : 1.0;
-      codec = await descriptor.instantiateCodec(
-        targetWidth: (descriptor.width * escala).round(),
-        targetHeight: (descriptor.height * escala).round(),
-      );
-
+      codec = await ui.instantiateImageCodec(origen);
       final fotograma = await codec.getNextFrame();
       imagen = fotograma.image;
-      final datos = await imagen.toByteData(format: ui.ImageByteFormat.png);
+
+      final ladoMayor = math.max(imagen.width, imagen.height);
+      final aEscribir = ladoMayor > ladoMaximo
+          ? (reducida = await _reducir(imagen, ladoMaximo / ladoMayor))
+          : imagen;
+
+      final datos = await aEscribir.toByteData(format: ui.ImageByteFormat.png);
       if (datos == null) {
         return const Failure(
           ErrorValidacion('No se ha podido preparar la imagen para subirla.'),
@@ -102,9 +107,37 @@ class ServicioImagenesFlutter implements ServicioImagenes {
         ),
       );
     } finally {
+      reducida?.dispose();
       imagen?.dispose();
       codec?.dispose();
-      descriptor?.dispose();
+    }
+  }
+
+  /// Redibuja la imagen a escala en un lienzo propio.
+  ///
+  /// `filterQuality: medium` evita el dentado tipico de reducir mucho de golpe.
+  static Future<ui.Image> _reducir(ui.Image original, double escala) async {
+    final ancho = (original.width * escala).round();
+    final alto = (original.height * escala).round();
+
+    final grabadora = ui.PictureRecorder();
+    Canvas(grabadora).drawImageRect(
+      original,
+      Rect.fromLTWH(
+        0,
+        0,
+        original.width.toDouble(),
+        original.height.toDouble(),
+      ),
+      Rect.fromLTWH(0, 0, ancho.toDouble(), alto.toDouble()),
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+
+    final dibujo = grabadora.endRecording();
+    try {
+      return await dibujo.toImage(ancho, alto);
+    } finally {
+      dibujo.dispose();
     }
   }
 }

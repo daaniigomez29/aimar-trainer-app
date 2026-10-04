@@ -168,6 +168,25 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
     planningARecargar: planningId,
   );
 
+  /// Reordena los bloques de la sesion (CU-11), arrastrandolos.
+  ///
+  /// Recibe los bloques ya en el orden que deben quedar: la pantalla mueve la
+  /// tarjeta en su lista y manda el resultado, que es como se arrastra.
+  Future<Result<void>> reordenarBloques({
+    required SesionEntrenamiento sesion,
+    required List<String> idsEnOrden,
+    required String planningId,
+  }) => _ejecutar(() async {
+    final error = validarReordenacion(
+      idsEnOrden: idsEnOrden,
+      idsActuales: [for (final bloque in sesion.bloques) bloque.id],
+    );
+    if (error != null) return Failure(error);
+    return ref
+        .read(planningRepositorioProvider)
+        .reordenarBloques(sesionId: sesion.id, idsEnOrden: idsEnOrden);
+  }, planningARecargar: planningId);
+
   // --- Ejercicio planificado (CU-08, CU-12, CU-16) ---
 
   Future<Result<EjercicioPlanificado>> crearEjercicio({
@@ -203,6 +222,25 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
         ref.read(planningRepositorioProvider).eliminarEjercicioPlanificado(id),
     planningARecargar: planningId,
   );
+
+  /// Reordena los ejercicios dentro de un bloque (CU-12), arrastrandolos.
+  Future<Result<void>> reordenarEjercicios({
+    required BloqueEjercicio bloque,
+    required List<String> idsEnOrden,
+    required String planningId,
+  }) => _ejecutar(() async {
+    final error = validarReordenacion(
+      idsEnOrden: idsEnOrden,
+      idsActuales: [for (final ejercicio in bloque.ejercicios) ejercicio.id],
+    );
+    if (error != null) return Failure(error);
+    return ref
+        .read(planningRepositorioProvider)
+        .reordenarEjerciciosPlanificados(
+          bloqueId: bloque.id,
+          idsEnOrden: idsEnOrden,
+        );
+  }, planningARecargar: planningId);
 
   /// Envoltorio comun: marca el estado, ejecuta, recarga el planning si procede y
   /// devuelve el resultado.

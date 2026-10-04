@@ -5,13 +5,14 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_cargando.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_inicio_administrador.dart';
-import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_inicio_cliente.dart';
-import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_inicio_entrenador.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_login.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_biblioteca.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
+import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_ajustes_entrenador.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mi_planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_planificacion_entrenador.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mis_plannings.dart';
 import 'package:aimar_trainer_app/features/notificaciones/presentation/pantalla_preferencias_notificacion.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_mi_control.dart';
@@ -55,7 +56,9 @@ GoRouter enrutador(Ref ref) {
       ),
       GoRoute(
         path: Rutas.inicioEntrenador,
-        builder: (context, state) => const PantallaInicioEntrenador(),
+        // La pantalla de entrada del entrenador es la planificacion semanal
+        // (ui-design 6.6), no un panel de accesos.
+        builder: (context, state) => const PantallaPlanificacionEntrenador(),
         routes: [
           GoRoute(
             path: Rutas.biblioteca,
@@ -65,11 +68,17 @@ GoRouter enrutador(Ref ref) {
             path: Rutas.clientes,
             builder: (context, state) => const PantallaClientes(),
           ),
+          GoRoute(
+            path: Rutas.ajustes,
+            builder: (context, state) => const PantallaAjustesEntrenador(),
+          ),
         ],
       ),
       GoRoute(
         path: Rutas.inicioCliente,
-        builder: (context, state) => const PantallaInicioCliente(),
+        // La pantalla de entrada del cliente es su planning (ui-design 6.1), no
+        // un panel de accesos: lo primero que ve es lo que toca hoy.
+        builder: (context, state) => const PantallaMiPlanning(),
         routes: [
           GoRoute(
             path: Rutas.biblioteca,

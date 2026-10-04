@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/autenticacion_repositorio.dart';
@@ -80,7 +81,10 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: contenedor,
-        child: const MaterialApp(home: PantallaBiblioteca()),
+        child: MaterialApp(
+          theme: TemaApp.oscuro(),
+          home: const PantallaBiblioteca(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -96,8 +100,7 @@ void main() {
     );
 
     expect(find.byKey(const Key('boton_nuevo_ejercicio')), findsOneWidget);
-    expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    expect(find.byKey(const Key('editar_id-1')), findsOneWidget);
   });
 
   testWidgets('el cliente solo consulta: sin alta, edicion ni baja', (
@@ -107,14 +110,13 @@ void main() {
 
     expect(find.text('Press banca'), findsOneWidget);
     expect(find.byKey(const Key('boton_nuevo_ejercicio')), findsNothing);
-    expect(find.byIcon(Icons.edit_outlined), findsNothing);
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    expect(find.byKey(const Key('editar_id-1')), findsNothing);
   });
 
   testWidgets('el cliente no ve el filtro de dados de baja', (tester) async {
     await montar(tester, rol: RolUsuario.cliente, biblioteca: [_ejercicio()]);
 
-    expect(find.text('Ver dados de baja'), findsNothing);
+    expect(find.text('Dados de baja'), findsNothing);
   });
 
   testWidgets('el entrenador si ve el filtro de dados de baja', (tester) async {
@@ -124,7 +126,7 @@ void main() {
       biblioteca: [_ejercicio()],
     );
 
-    expect(find.text('Ver dados de baja'), findsOneWidget);
+    expect(find.text('Dados de baja'), findsOneWidget);
   });
 
   testWidgets('la busqueda filtra el listado', (tester) async {

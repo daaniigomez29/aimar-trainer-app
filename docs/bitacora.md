@@ -679,3 +679,309 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   **Produccion necesita un par propio**, generado con
   `deno eval "import w from 'npm:web-push@3.6.7'; console.log(JSON.stringify(w.generateVAPIDKeys()))"`.
 
+### 2026-10-04
+
+**Hecho:**
+- **La entidad Ejercicio gana una imagen ilustrativa** (atributo nuevo de la
+  entidad 5, pedido despues de cerrar las seis fases): columna `imagen_ruta` y
+  bucket **publico** `imagenes-ejercicios`.
+  - Publico a proposito, al contrario que `fotos-progreso`: no es dato personal,
+    la ven todos los clientes y se pinta en una lista. Con un bucket privado
+    habria que firmar una URL por ejercicio cada vez que se abre la biblioteca, y
+    ninguna se podria cachear. Lo que si esta restringido es escribir: subir,
+    reemplazar y borrar solo el entrenador, por politicas sobre `storage.objects`.
+  - La columna guarda la **ruta**, no la URL: el dominio cambia entre local y la
+    nube y la arma el repositorio con `getPublicUrl`.
+- La imagen se elige en el formulario y **se sube al guardar, no al elegirla**:
+  subir al elegir dejaria ficheros sueltos en el bucket cada vez que alguien abre
+  el formulario y se arrepiente. Mientras tanto se previsualiza desde memoria.
+  Si el guardado falla despues de subir, se borra el fichero; al reemplazar una
+  imagen, se borra la anterior.
+- Reutiliza el `ServicioImagenes` de la fase 5, asi que la imagen tambien se
+  convierte a PNG y se reduce a 1600 px antes de subirse: un HEIC de iPhone no
+  llega al bucket.
+- Se muestra en la ficha del ejercicio (a tamano completo, con `BoxFit.contain`
+  para no recortar justo la parte que importa) y como miniatura en el listado.
+- `probar_local.sh` sube a **162 comprobaciones**: que el entrenador sube y borra,
+  que el cliente y el administrador no pueden, que la imagen se lee **sin token**
+  (lo que confirma que el bucket es publico de verdad) y que la columna rechaza
+  una ruta en blanco.
+- 5 tests nuevos del controlador (293 en total), incluidos los de compensacion al
+  fallar y el borrado de la anterior al reemplazar.
+
+**Pendiente / notas:**
+- `imagenes-ejercicios` hay que **crearlo tambien en la nube** cuando se despliegue,
+  igual que `fotos-progreso`. Sus politicas si viajan en la migracion.
+- Al dar de baja un ejercicio **no se borra su imagen**: la baja es logica y el
+  ejercicio sigue visible en los plannings que ya lo usaban, asi que la ilustracion
+  debe seguir estando.
+
+**Hecho (mismo dia, vuelta al video de ejemplo):**
+- **El video se ve dentro de la app**, sin saltar a YouTube. Sustituye a la
+  solucion provisional de la fase 2, que solo copiaba el enlace al portapapeles
+  porque abrirlo habria necesitado `url_launcher`.
+- Montado como **vista de plataforma**: Flutter web pinta sobre un canvas, asi que
+  el iframe no se puede crear desde Dart. El elemento lo crea un factory en
+  `web/index.html` y `reproductor_video_web.dart` lo registra con
+  `ui_web.platformViewRegistry`. **Sin dependencias nuevas**, igual que el push.
+  El registro se guarda en un `Set` porque registrar dos veces el mismo tipo de
+  vista lanza.
+- `VideoEjemplo` (dominio, sin plataforma) saca el identificador de las cinco
+  formas en las que YouTube reparte el mismo video (`shorts/`, `watch?v=`,
+  `youtu.be/`, `embed/`, `live/`), con sus parametros de compartir pegados detras.
+- Se usa el dominio **sin cookies** (`youtube-nocookie.com`) y `rel=0` +
+  `playsinline=1`: no deja rastro en el navegador mientras el cliente no le de al
+  play, limita las sugerencias del final y evita que iOS se lleve el video a
+  pantalla completa por su cuenta. Relacion 9:16 por defecto, que es lo que graba
+  el entrenador.
+- **Verificado en el navegador**, no solo compilado: servido el build de `web/` y
+  abierta la ficha de un ejercicio, el iframe monta a 320x569 con la URL correcta y
+  el video carga. De paso se vio el caso del video cuyo dueno **no permite
+  incrustar**: YouTube muestra su propio aviso y por eso el enlace copiable se
+  queda debajo, no se quita.
+- 9 tests nuevos del parseo de URL (302 en total).
+
+**Pendiente / notas:**
+- Un enlace que no sea de YouTube (Vimeo, un mp4 suelto) **no se reproduce**: se
+  queda como enlace copiable, como hasta ahora. No es un caso de uso del ERS.
+
+**Hecho (diseno visual, docs/ui-design.md):**
+- **Tema**: `lib/core/theme/` con los tokens exactos del doc (`tokens.dart`) y el
+  `ThemeData` oscuro unico para los dos roles (`tema_app.dart`), con Space Grotesk
+  para titulos e IBM Plex Sans para el cuerpo. Dependencia nueva: `google_fonts`.
+  Sustituye al `core/presentacion/tema.dart` anterior, que se ha borrado.
+- **Componentes comunes** antes que las pantallas: `Tarjeta`, `ChipFiltro`,
+  `SliderConValor`, `FilaInterruptor`, `BotonCta`, `Pastilla`, `ProgresoCircular`
+  y `CampoBusqueda` (`core/presentacion/widgets/componentes.dart`), mas las barras
+  de navegacion de los dos roles y el andamio `PantallaCliente`
+  (`widgets/navegacion.dart`).
+- **1. Mi planning (cliente)**: nueva pantalla de entrada en `/cliente`, con tira
+  de dias, sesion de hoy, progreso circular y los dos datos rapidos. Sustituye al
+  panel de accesos. El historico de semanas sigue a un toque, desde el reloj de la
+  cabecera.
+- **2. Registro de ejercicio**: rehecho segun la captura. Cada serie es una tarjeta
+  con su plan en ambar y su propio check; confirmar sigue enviando la lista
+  completa de series confirmadas, que es lo que hace la llamada idempotente.
+- **3. Control semanal**: ahora son **dos pasos**, uno visible a la vez. Siguen
+  siendo dos guardados independientes: "Continuar" guarda las medidas, el boton del
+  paso 2 guarda el check-in. La flecha atras conserva lo escrito (verificado en el
+  navegador).
+- **4. Biblioteca**: buscador y chips por grupo muscular, que salen de los datos y
+  no de una lista fija (el grupo es texto libre en la entidad).
+- **5. Configuracion**: interruptor de push y tarjeta de correo "siempre activo".
+- **6 y 7. Planificacion del entrenador**: una sola pantalla para escritorio
+  (barra lateral + panel de biblioteca fijo) y movil (barra inferior + modal). Es
+  ahora la pantalla de entrada del entrenador.
+
+**Corregido:**
+- **El cliente se habia quedado sin cerrar sesion**: el boton vivia en la pantalla
+  de accesos que sustituye "Mi planning". Anadido a Configuracion.
+- La baja de un ejercicio desde el listado (CU-04) desaparecio al rehacer la fila;
+  restaurada. Las capturas son de la biblioteca **del cliente**, que solo consulta.
+- Etiquetas de la barra inferior cortadas en 375 px: se anade una etiqueta corta
+  para la barra ("Control", "Ajustes", "Planning").
+- Barra superior del entrenador en movil: no cabian selector, semana y boton en una
+  fila; ahora se apilan.
+- Los botones "+" del panel de biblioteca salian en ambar, que en este sistema
+  significa "planificado". Pasados a acento.
+- Una serie extra en el registro nacia vacia; ahora copia lo de la serie anterior.
+  Lo destapo el test, no la lectura del codigo.
+
+**Ajustes respecto a las capturas (manda el dominio):**
+- **"Guardar cambios" del entrenador** solo agrupa los valores de las series. Crear
+  la semana, anadir o quitar sesion, bloque o ejercicio se guardan al momento:
+  cada una es una operacion atomica en base de datos y no tiene sentido dejarla
+  esperando a un boton. El boton se deshabilita y dice "Todo guardado" cuando no
+  queda nada pendiente.
+- **"Nota de Aimar"**: en el modelo no hay notas por ejercicio; las notas viven en
+  el **bloque** (entidad 4), y es esa la que se muestra.
+- **"En curso"** no es un estado del dominio (`estado_registro` solo es pendiente o
+  registrado): el ejercicio marcado como en curso es el primero sin registrar, y es
+  solo presentacion.
+- **"45-55 min" y "13 ejercicios"** de las capturas son datos inventados del
+  prototipo: no hay duracion estimada en el modelo, asi que se muestra lo que si
+  existe (numero de ejercicios, y cuantos tienen video).
+- **Las fotos de progreso** no aparecen en el prototipo del control semanal, pero
+  si en el dominio (entidad 9): se mantienen en el paso 1.
+
+**Pendiente / notas:**
+- Las pantallas que no estaban en la lista (detalle y formulario de ejercicio,
+  clientes, progreso, historico de semanas, login) **heredan el tema** pero no se
+  han rediseñado una a una.
+- `lib/core/theme/` queda con nombre en ingles, al lado de `core/presentacion/`.
+  Lo pedia el prompt tal cual; si se prefiere coherencia con el resto, renombrarlo
+  a `core/tema/` es un cambio mecanico.
+- El Supabase local se ha quedado con datos de ejemplo (cliente "Marta Lopez", 9
+  ejercicios, una semana con la sesion "Empuje A"). `supabase db reset` los quita.
+
+**Corregido (mismo dia, lo reporto Daniel):**
+- **La navegacion desaparecia al entrar en Biblioteca o en Clientes.** Al rehacer
+  las pantallas puse el armazon con barra lateral solo en Planificacion, asi que
+  el entrenador se quedaba sin ninguna navegacion a la vista en los otros
+  destinos: en Clientes no habia barra de ningun tipo, y en Biblioteca solo
+  aparecia la inferior en movil (en escritorio, ninguna).
+  - Arreglado con un andamio compartido, `PantallaEntrenador`, que pone barra
+    lateral en escritorio y barra inferior en movil. Lo usan ahora Biblioteca,
+    Clientes y Ajustes, igual que `PantallaCliente` hace con las cinco del
+    cliente.
+  - **Mi progreso del cliente tenia el mismo fallo** y no se habia visto: montaba
+    su propio `Scaffold` sin barra inferior. La misma pantalla la usa el entrenador
+    desde la ficha de un cliente, y ahi **no** debe llevar barra (llega empujada y
+    se vuelve con la flecha), asi que se distingue por si recibe `titulo`.
+  - El administrador entra tambien a Clientes y se queda con la pantalla suelta:
+    su navegacion no es la del entrenador.
+- De paso, en escritorio la barra lateral llega hasta arriba: la cabecera va dentro
+  de la columna de la derecha, no como `appBar` del Scaffold.
+- **Editar un ejercicio dejaba la pantalla en negro.** El tema ponia
+  `minimumSize: Size.fromHeight(48)` a los `OutlinedButton`, y eso es ancho
+  **infinito**: el boton de elegir imagen que anadi al formulario vive dentro de
+  una `Row`, que no acota el ancho, y el layout reventaba ("BoxConstraints forces
+  an infinite width"). En Flutter eso no se ve como un error, se ve como una
+  pantalla negra.
+  - Arreglado en los dos sitios: el tema pasa a `Size(0, 48)` (alto minimo, sin
+    forzar ancho) y la columna de botones del formulario va dentro de un
+    `Expanded`. Los botones que deben ocupar el ancho completo ya lo piden ellos
+    (`BotonCta` lo hace con un `SizedBox`).
+  - El `FilledButton` del tema **si** mantiene el ancho completo, porque es lo que
+    pide el diseno para los CTA. Comprobado que dentro de las acciones de un
+    `AlertDialog` no rompe: el `OverflowBar` si acota el ancho.
+  - **Test nuevo** del formulario de ejercicio (alta, edicion, con imagen y sin
+    ella). No tenia ninguno: por eso un fallo que tumba la pantalla entera pasaba
+    con los 302 tests en verde.
+
+**Hecho (sesiones numeradas, no fechadas):**
+
+- La sesion de entrenamiento **deja de colgar de una fecha del calendario** y pasa
+  a numerarse dentro de su planning: Dia 1, Dia 2, Dia 3, con un boton "+" al final
+  de la tira para anadir la siguiente. El motivo es del gimnasio, no tecnico: el
+  entrenador planifica "cuatro sesiones esta semana", y si el cliente no puede ir el
+  miercoles y acaba yendo el jueves es la misma sesion, no una desplazada.
+- Esto **invierte una regla de la fase 4** ("la planificacion se hace sobre un
+  calendario", `AGENTS.md`). Cambio pedido explicitamente; los documentos van con el:
+  `AGENTS.md`, `docs/domain-model.md` (entidad 3), `docs/sql-schema.md`,
+  `docs/requirements.md` (RF-06, CU-06, CU-22) y `docs/estado-actual.md`.
+- Migracion `20261004100000_sesiones_por_orden.sql`: `orden integer not null check
+  (orden > 0)` con indice unico `(planning_id, orden)`, fuera la columna `fecha`, el
+  trigger `comprobar_fecha_sesion` y su funcion. Las sesiones que ya existian se
+  numeran por la fecha que tenian, que es el orden en que el entrenador las penso.
+- **La fecha no desaparece del todo**: nueva columna `fecha_realizada`, el dia en que
+  el cliente **hizo** la sesion, que es un dato distinto del que habia. Nullable, la
+  rellena `recalcular_resultado_sesion` en cuanto hay un ejercicio registrado, y la
+  app no la escribe nunca. Con `coalesce`, para que sea la del primer registro y no
+  la del ultimo, y en `Europe/Madrid`. Si el cliente deshace todo lo registrado,
+  vuelve a `null`: la sesion no se hizo.
+- Hoy `fecha_realizada` **no condiciona ninguna regla**, como se pidio: solo queda
+  guardada. Lo unico que la usa son las vistas de CU-21, que necesitan un eje
+  temporal y antes tiraban de la fecha planificada; ahora filtran las sesiones que
+  aun no tienen fecha.
+- En Flutter: `SesionEntrenamiento` cambia `fecha` por `orden` + `fechaRealizada`;
+  `DatosSesion` valida nombre y numero libre en vez de fecha dentro de la semana; el
+  dialogo propone el numero que toca y ya no tiene desplegable de dia. Las tres
+  pantallas que pintaban dias de la semana (planning del cliente, planificacion del
+  entrenador y detalle del planning) pintan "DIA N", y la del cliente anade
+  "HECHA EL dd/MM" cuando la hay.
+
+**Corregido:**
+
+- **CU-22 avisaba de "manana tienes sesion"**, y eso ya no se puede saber: sin fecha
+  planificada no hay sesiones de manana. El recordatorio de entrenamiento pasa a
+  enviarse **el dia en que arranca el planning**, resumiendo cuantas sesiones trae la
+  semana (`correoDeSemanaNueva`). El aviso del dia de control no cambia: ese si
+  depende de un dia real, el `dia_control_preferido` del cliente.
+
+**Corregido (seguimiento del mismo cambio):**
+
+- El script de verificacion seguia creando sesiones **con `fecha`** en el bloque de
+  CU-06 por REST (solo se habian migrado los `insert` por psql): PostgREST
+  respondia `PGRST204, no existe la columna 'fecha'` y se caia en cascada todo lo
+  que colgaba de esa sesion. Ahora comprueba lo que toca: que `orden = 0` se
+  rechaza, que el dia 1 se crea, que repetir numero da 409 y que la sesion **nace
+  sin fecha de realizacion**.
+- La comprobacion "y la sesion pierde su fecha" estaba **mal escrita, no el
+  trigger**: borraba la serie de fuerza pero dejaba el cardio con sus minutos, asi
+  que seguia habiendo algo registrado y la sesion conservaba la fecha con razon
+  (el cliente si estuvo ese dia). Partida en dos: conserva la fecha mientras quede
+  cardio, y la pierde cuando no queda nada.
+- `scripts/probar_local.sh` acepta ahora `BASE_FUNCIONES` para llamar a las Edge
+  Functions fuera de Kong. Por defecto no cambia nada.
+
+**Pendiente / notas:**
+
+- **Docker 29.1.2 no dejaba arrancar el contenedor del edge runtime** (`failed to
+  copy edge runtime main service into container`) ni el de Studio
+  (`mkdir /run/desktop/mnt/host/c: file exists`). Actualizar la CLI de Supabase
+  de 2.118.0 a 2.119.0 **no lo arreglo**. Para no quedarme sin verificar nada se
+  hizo un apano: `supabase start -x studio -x edge-runtime` mas
+  `scripts/servir_funciones_host.sh`, que sirve las tres funciones con el Deno
+  del host, y `BASE_FUNCIONES` en `probar_local.sh` para apuntarlas ahi.
+  **Despues el contenedor acabo arrancando solo** (se redescargo la imagen) y el
+  script volvio a pasar entero por Kong, asi que el apano queda guardado por si
+  reaparece, documentado como trampa 23. Con el o sin el, la verificacion de las
+  sesiones numeradas esta hecha.
+- Sigue sin confirmarse en navegador el test de conversion de imagenes:
+  `flutter test --platform chrome` no llega a cargar la suite ("Connection closed
+  before test suite loaded"). En VM pasa.
+
+**Hecho (foto del ejercicio en la planificacion y reordenado por arrastre):**
+
+- **La foto del ejercicio ya se ve en la planificacion.** No era que no cargara:
+  aquella pantalla ni siquiera pedia su URL, porque tenia su propia copia del
+  hueco gris de cuando el ejercicio no tenia imagen. Igual que el panel desde el
+  que se anaden ejercicios y la tarjeta de sesion.
+  - Ahora hay **un solo widget**, `MiniaturaEjercicio`, que usan la biblioteca,
+    la planificacion del entrenador, el panel de anadir, la tarjeta de sesion y
+    el registro del cliente. Tener cuatro copias de lo mismo es exactamente lo
+    que hizo que anadir la imagen a la entidad no llegara a tres de ellas.
+  - Donde no hay foto se queda el hueco con el icono de su tipo (mancuerna o
+    carrera), y si la imagen no carga se cae al mismo hueco en vez de dejar un
+    roto.
+  - En "Mi planning" del cliente **no** se ha tocado el circulo de la izquierda:
+    ahi ese icono no es un hueco de foto, dice si la sesion esta hecha, en curso
+    o pendiente. Si se quiere la foto tambien ahi, habria que decidir donde va
+    ese estado.
+
+- **Bloques y ejercicios se reordenan arrastrandolos** (CU-11, CU-12), con el
+  asa a la izquierda. En las dos pantallas que los pintan: el editor del
+  entrenador y el detalle del planning.
+  - Migracion `20261004110000_reordenar_bloques_y_ejercicios.sql`, consultada
+    antes: dos funciones que **renumeran el conjunto entero** en una
+    transaccion. Con `update` sueltos no se puede: `(sesion_id, orden)` y
+    `(bloque_id, orden)` son indices unicos y se comprueban fila a fila, asi que
+    toda renumeracion pasa por un estado con dos filas en la misma posicion. Las
+    funciones restan un millon a todos los ordenes (desplazamiento uniforme, la
+    unicidad se mantiene) y luego escriben los definitivos.
+  - Reciben la lista completa de ids en el orden que debe quedar, y rechazan una
+    lista incompleta o con repetidos. La app valida lo mismo antes de llamar,
+    para no gastar un viaje cuando la pantalla ha perdido el hilo.
+  - Se uso `onReorderItem` y no `onReorder`, que esta deprecado: el nuevo ya
+    corrige el indice de destino. Con el viejo habria que restar uno al
+    arrastrar hacia abajo, que es el fallo clasico de dejar el elemento donde
+    estaba.
+
+**Corregido:**
+
+- **El cliente podia reordenar los ejercicios de su propio planning.** Lo saco
+  la comprobacion nueva del script: 204 donde esperaba 403. La causa es la "nota
+  de seguridad conocida" del esquema: el cliente tiene politica de `update`
+  sobre `ejercicios_planificados` para registrar sus minutos de cardio (CU-20),
+  y una politica RLS **no puede limitar que columnas se tocan**. Con los bloques
+  no pasaba, porque ahi no tiene ninguna politica de escritura.
+  - Arreglado comprobando `es_entrenador()` dentro de las dos funciones, ademas
+    de apoyarse en RLS. La nota sigue abierta para quien haga un `PATCH` directo
+    a la tabla, que es lo que ya habia antes de esto.
+  - Las funciones miran ademas `row_count` del primer `update`: con RLS, un
+    `update` prohibido no da error, simplemente no toca filas, y sin eso la
+    funcion se iria sin excepcion y sin haber reordenado nada.
+- `_mensajeDeDuplicado` seguia buscando el indice `sesiones_planning_fecha_unico`,
+  que ya no existe desde el cambio de esta manana. Ahora mira el de `orden`.
+
+**Pendiente / notas:**
+
+- `./scripts/probar_local.sh` da **177/177** (11 comprobaciones nuevas:
+  intercambio de bloques, listas invalidas, el rechazo al cliente y la vuelta de
+  los ejercicios). `flutter test` **337**, con tests nuevos del arrastre (que el
+  asa solo la ve el entrenador, y que soltar manda los indices correctos), de
+  `reordenarLista` y de que la miniatura pide la URL de la foto.
+- Queda decidir si la foto debe verse tambien en la lista de sesiones de "Mi
+  planning" del cliente, y donde iria entonces el estado de la sesion.
+

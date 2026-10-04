@@ -24,6 +24,11 @@ abstract class Ejercicio with _$Ejercicio {
     String? grupoMuscular,
     String? equipamiento,
     String? videoEjemploUrl,
+
+    /// Ruta de la ilustracion dentro del bucket publico `imagenes-ejercicios`.
+    /// No se guarda la URL completa porque el dominio cambia entre local y la
+    /// nube; la arma el repositorio.
+    String? imagenRuta,
   }) = _Ejercicio;
 
   factory Ejercicio.fromJson(Map<String, dynamic> json) =>
@@ -41,6 +46,7 @@ class DatosEjercicio {
     this.grupoMuscular,
     this.equipamiento,
     this.videoEjemploUrl,
+    this.imagenRuta,
   });
 
   static const int longitudMaximaNombre = 120;
@@ -52,6 +58,10 @@ class DatosEjercicio {
   final String? grupoMuscular;
   final String? equipamiento;
   final String? videoEjemploUrl;
+
+  /// Ruta ya subida al bucket. La imagen se sube antes de guardar la fila, asi
+  /// que cuando estos datos llegan al repositorio ya es una ruta, no un fichero.
+  final String? imagenRuta;
 
   String get nombreNormalizado => nombre.trim();
 
@@ -137,7 +147,20 @@ class DatosEjercicio {
     'grupo_muscular': grupoMuscularNormalizado,
     'equipamiento': equipamientoNormalizado,
     'video_ejemplo_url': videoEjemploUrlNormalizada,
+    'imagen_ruta': _oNulo(imagenRuta),
   };
+
+  /// Mismos datos con otra imagen. Lo usa el controlador cuando acaba de subir
+  /// una: el formulario no conoce la ruta hasta que la subida termina.
+  DatosEjercicio conImagen(String? ruta) => DatosEjercicio(
+    nombre: nombre,
+    descripcion: descripcion,
+    tipo: tipo,
+    grupoMuscular: grupoMuscular,
+    equipamiento: equipamiento,
+    videoEjemploUrl: videoEjemploUrl,
+    imagenRuta: ruta,
+  );
 
   /// Datos precargados al abrir el formulario de edicion (CU-03, paso 2).
   factory DatosEjercicio.desdeEjercicio(Ejercicio ejercicio) => DatosEjercicio(
@@ -147,5 +170,6 @@ class DatosEjercicio {
     grupoMuscular: ejercicio.grupoMuscular,
     equipamiento: ejercicio.equipamiento,
     videoEjemploUrl: ejercicio.videoEjemploUrl,
+    imagenRuta: ejercicio.imagenRuta,
   );
 }

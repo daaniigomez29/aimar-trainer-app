@@ -175,7 +175,7 @@ class _SemanaActiva extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _loDeHoy(completo, hoy),
+                        _comoVaLaSemana(completo),
                         style: textos.bodyMedium?.copyWith(
                           color: esquema.primary,
                           fontWeight: FontWeight.w600,
@@ -192,17 +192,22 @@ class _SemanaActiva extends ConsumerWidget {
     );
   }
 
-  /// Texto de la linea de hoy. Mientras el planning completo no ha llegado se
-  /// deja un texto neutro, en vez de afirmar que hoy toca descanso.
-  String _loDeHoy(PlanningSemanal? completo, DateTime hoy) {
+  /// Como va la semana. Ya no se puede hablar de "lo de hoy": las sesiones no
+  /// caen en un dia, el cliente las hace cuando puede.
+  String _comoVaLaSemana(PlanningSemanal? completo) {
     if (completo == null) return 'Esta es tu semana en curso.';
 
-    final sesion = completo.sesionDe(hoy);
-    if (sesion == null) return 'Hoy toca descanso.';
+    final total = completo.sesiones.length;
+    if (total == 0) return 'Esta semana aun no tiene sesiones.';
 
-    final ejercicios = sesion.bloques.expand((b) => b.ejercicios).length;
-    final palabra = ejercicios == 1 ? 'ejercicio' : 'ejercicios';
-    return 'Hoy: ${sesion.nombre} · $ejercicios $palabra';
+    final hechas = completo.sesiones.where((s) => s.resultadoRegistrado).length;
+    if (hechas == total) return 'Semana completa: $hechas de $total.';
+
+    final siguiente = completo.siguientePendiente;
+    return siguiente == null
+        ? '$hechas de $total sesiones hechas.'
+        : 'Te toca el dia ${siguiente.orden}: ${siguiente.nombre} '
+              '($hechas de $total hechas).';
   }
 }
 

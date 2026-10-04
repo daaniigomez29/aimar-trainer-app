@@ -128,6 +128,15 @@ file_size_limit = "50MiB"
 # Bucket de las fotos de progreso (fase 5). Privado: las fotos se sirven con URL
 # firmada, nunca por URL publica. Sin `objects_path`: no hay objetos de ejemplo
 # que precargar, y si apunta a una carpeta que no existe el arranque falla.
+# Imagenes de la biblioteca de ejercicios. PUBLICO a proposito: no es dato
+# personal, lo ven todos los clientes y se pinta en una lista, asi que firmar una
+# URL por ejercicio no tendria sentido. Escribir solo puede el entrenador, y eso
+# lo gobiernan las politicas de storage.objects.
+[storage.buckets.imagenes-ejercicios]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg"]
+
 [storage.buckets.fotos-progreso]
 public = false
 file_size_limit = "20MiB"

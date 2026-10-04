@@ -89,8 +89,13 @@ documentos, los resume para el trabajo del día a día.
   Crear o dar de baja un cliente exige pasar por `crear-cliente` /
   `dar-de-baja-cliente`, que validan el rol (`entrenador` o `administrador`)
   antes de usar esa clave.
-- **Sesión de entrenamiento usa `fecha` (date) real**, no un día de la semana
-  suelto: la planificación se hace sobre un calendario.
+- **Sesión de entrenamiento NO tiene fecha planificada**: se numera dentro de su
+  planning (Día 1, Día 2…), con índice único `(planning_id, orden)`. El
+  entrenador planifica *cuántas* sesiones hay, no en qué día caen, para que al
+  cliente no le penalice entrenar el jueves lo previsto para el miércoles.
+  Lo que sí se guarda es `fecha_realizada`: el día en que el cliente la hizo, que
+  rellena un trigger en el primer registro y que la app nunca escribe. Hasta la
+  fase 6 la sesión sí tenía fecha planificada; se cambió el 2026-10-04.
 - **Sin modo offline y sin multi-entrenador** en esta versión: no diseñar
   pensando en soportarlos ya.
 

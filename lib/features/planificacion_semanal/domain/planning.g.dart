@@ -44,8 +44,11 @@ _SesionEntrenamiento _$SesionEntrenamientoFromJson(Map<String, dynamic> json) =>
     _SesionEntrenamiento(
       id: json['id'] as String,
       planningId: json['planning_id'] as String,
-      fecha: DateTime.parse(json['fecha'] as String),
+      orden: (json['orden'] as num).toInt(),
       nombre: json['nombre'] as String,
+      fechaRealizada: json['fecha_realizada'] == null
+          ? null
+          : DateTime.parse(json['fecha_realizada'] as String),
       resultadoRegistrado: json['resultado_registrado'] as bool? ?? false,
       bloques:
           (json['bloques_ejercicio'] as List<dynamic>?)
@@ -59,8 +62,9 @@ Map<String, dynamic> _$SesionEntrenamientoToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'planning_id': instance.planningId,
-  'fecha': instance.fecha.toIso8601String(),
+  'orden': instance.orden,
   'nombre': instance.nombre,
+  'fecha_realizada': instance.fechaRealizada?.toIso8601String(),
   'resultado_registrado': instance.resultadoRegistrado,
   'bloques_ejercicio': instance.bloques.map((e) => e.toJson()).toList(),
 };

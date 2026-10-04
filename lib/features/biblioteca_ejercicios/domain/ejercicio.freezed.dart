@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Ejercicio {
 
- String get id; String get nombre; String get descripcion; TipoEjercicio get tipo; EstadoEjercicio get estado; DateTime get creadoEn; String? get grupoMuscular; String? get equipamiento; String? get videoEjemploUrl;
+ String get id; String get nombre; String get descripcion; TipoEjercicio get tipo; EstadoEjercicio get estado; DateTime get creadoEn; String? get grupoMuscular; String? get equipamiento; String? get videoEjemploUrl;/// Ruta de la ilustracion dentro del bucket publico `imagenes-ejercicios`.
+/// No se guarda la URL completa porque el dominio cambia entre local y la
+/// nube; la arma el repositorio.
+ String? get imagenRuta;
 /// Create a copy of Ejercicio
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $EjercicioCopyWith<Ejercicio> get copyWith => _$EjercicioCopyWithImpl<Ejercicio>
 @override
 bool operator ==(Object other) {
   final _this = this as Ejercicio;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Ejercicio&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.descripcion, _this.descripcion) || other.descripcion == _this.descripcion)&&(identical(other.tipo, _this.tipo) || other.tipo == _this.tipo)&&(identical(other.estado, _this.estado) || other.estado == _this.estado)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn)&&(identical(other.grupoMuscular, _this.grupoMuscular) || other.grupoMuscular == _this.grupoMuscular)&&(identical(other.equipamiento, _this.equipamiento) || other.equipamiento == _this.equipamiento)&&(identical(other.videoEjemploUrl, _this.videoEjemploUrl) || other.videoEjemploUrl == _this.videoEjemploUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Ejercicio&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.descripcion, _this.descripcion) || other.descripcion == _this.descripcion)&&(identical(other.tipo, _this.tipo) || other.tipo == _this.tipo)&&(identical(other.estado, _this.estado) || other.estado == _this.estado)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn)&&(identical(other.grupoMuscular, _this.grupoMuscular) || other.grupoMuscular == _this.grupoMuscular)&&(identical(other.equipamiento, _this.equipamiento) || other.equipamiento == _this.equipamiento)&&(identical(other.videoEjemploUrl, _this.videoEjemploUrl) || other.videoEjemploUrl == _this.videoEjemploUrl)&&(identical(other.imagenRuta, _this.imagenRuta) || other.imagenRuta == _this.imagenRuta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Ejercicio;
-  return Object.hash(runtimeType,_this.id,_this.nombre,_this.descripcion,_this.tipo,_this.estado,_this.creadoEn,_this.grupoMuscular,_this.equipamiento,_this.videoEjemploUrl);
+  return Object.hash(runtimeType,_this.id,_this.nombre,_this.descripcion,_this.tipo,_this.estado,_this.creadoEn,_this.grupoMuscular,_this.equipamiento,_this.videoEjemploUrl,_this.imagenRuta);
 }
 
 @override
 String toString() {
   final _this = this as Ejercicio;
-  return 'Ejercicio(id: ${_this.id}, nombre: ${_this.nombre}, descripcion: ${_this.descripcion}, tipo: ${_this.tipo}, estado: ${_this.estado}, creadoEn: ${_this.creadoEn}, grupoMuscular: ${_this.grupoMuscular}, equipamiento: ${_this.equipamiento}, videoEjemploUrl: ${_this.videoEjemploUrl})';
+  return 'Ejercicio(id: ${_this.id}, nombre: ${_this.nombre}, descripcion: ${_this.descripcion}, tipo: ${_this.tipo}, estado: ${_this.estado}, creadoEn: ${_this.creadoEn}, grupoMuscular: ${_this.grupoMuscular}, equipamiento: ${_this.equipamiento}, videoEjemploUrl: ${_this.videoEjemploUrl}, imagenRuta: ${_this.imagenRuta})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $EjercicioCopyWith<$Res>  {
   factory $EjercicioCopyWith(Ejercicio value, $Res Function(Ejercicio) _then) = _$EjercicioCopyWithImpl;
 @useResult
 $Res call({
- String id, String nombre, String descripcion, TipoEjercicio tipo, EstadoEjercicio estado, DateTime creadoEn, String? grupoMuscular, String? equipamiento, String? videoEjemploUrl
+ String id, String nombre, String descripcion, TipoEjercicio tipo, EstadoEjercicio estado, DateTime creadoEn, String? grupoMuscular, String? equipamiento, String? videoEjemploUrl, String? imagenRuta
 });
 
 
@@ -71,7 +74,7 @@ class _$EjercicioCopyWithImpl<$Res>
 
 /// Create a copy of Ejercicio
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nombre = null,Object? descripcion = null,Object? tipo = null,Object? estado = null,Object? creadoEn = null,Object? grupoMuscular = freezed,Object? equipamiento = freezed,Object? videoEjemploUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nombre = null,Object? descripcion = null,Object? tipo = null,Object? estado = null,Object? creadoEn = null,Object? grupoMuscular = freezed,Object? equipamiento = freezed,Object? videoEjemploUrl = freezed,Object? imagenRuta = freezed,}) {
   return _then(Ejercicio(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
@@ -82,6 +85,7 @@ as EstadoEjercicio,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ign
 as DateTime,grupoMuscular: freezed == grupoMuscular ? _self.grupoMuscular : grupoMuscular // ignore: cast_nullable_to_non_nullable
 as String?,equipamiento: freezed == equipamiento ? _self.equipamiento : equipamiento // ignore: cast_nullable_to_non_nullable
 as String?,videoEjemploUrl: freezed == videoEjemploUrl ? _self.videoEjemploUrl : videoEjemploUrl // ignore: cast_nullable_to_non_nullable
+as String?,imagenRuta: freezed == imagenRuta ? _self.imagenRuta : imagenRuta // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -167,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl,  String? imagenRuta)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Ejercicio() when $default != null:
-return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl);case _:
+return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl,_that.imagenRuta);case _:
   return orElse();
 
 }
@@ -188,10 +192,10 @@ return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl,  String? imagenRuta)  $default,) {final _that = this;
 switch (_that) {
 case _Ejercicio():
-return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl);case _:
+return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl,_that.imagenRuta);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +212,10 @@ return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String nombre,  String descripcion,  TipoEjercicio tipo,  EstadoEjercicio estado,  DateTime creadoEn,  String? grupoMuscular,  String? equipamiento,  String? videoEjemploUrl,  String? imagenRuta)?  $default,) {final _that = this;
 switch (_that) {
 case _Ejercicio() when $default != null:
-return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl);case _:
+return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,_that.creadoEn,_that.grupoMuscular,_that.equipamiento,_that.videoEjemploUrl,_that.imagenRuta);case _:
   return null;
 
 }
@@ -223,7 +227,7 @@ return $default(_that.id,_that.nombre,_that.descripcion,_that.tipo,_that.estado,
 @JsonSerializable()
 
 class _Ejercicio implements Ejercicio {
-  const _Ejercicio({required this.id, required this.nombre, required this.descripcion, required this.tipo, required this.estado, required this.creadoEn, this.grupoMuscular, this.equipamiento, this.videoEjemploUrl});
+  const _Ejercicio({required this.id, required this.nombre, required this.descripcion, required this.tipo, required this.estado, required this.creadoEn, this.grupoMuscular, this.equipamiento, this.videoEjemploUrl, this.imagenRuta});
   factory _Ejercicio.fromJson(Map<String, dynamic> json) => _$EjercicioFromJson(json);
 
 @override final  String id;
@@ -235,6 +239,10 @@ class _Ejercicio implements Ejercicio {
 @override final  String? grupoMuscular;
 @override final  String? equipamiento;
 @override final  String? videoEjemploUrl;
+/// Ruta de la ilustracion dentro del bucket publico `imagenes-ejercicios`.
+/// No se guarda la URL completa porque el dominio cambia entre local y la
+/// nube; la arma el repositorio.
+@override final  String? imagenRuta;
 
 /// Create a copy of Ejercicio
 /// with the given fields replaced by the non-null parameter values.
@@ -249,18 +257,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Ejercicio&&(identical(other.id, id) || other.id == id)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.descripcion, descripcion) || other.descripcion == descripcion)&&(identical(other.tipo, tipo) || other.tipo == tipo)&&(identical(other.estado, estado) || other.estado == estado)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn)&&(identical(other.grupoMuscular, grupoMuscular) || other.grupoMuscular == grupoMuscular)&&(identical(other.equipamiento, equipamiento) || other.equipamiento == equipamiento)&&(identical(other.videoEjemploUrl, videoEjemploUrl) || other.videoEjemploUrl == videoEjemploUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Ejercicio&&(identical(other.id, id) || other.id == id)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.descripcion, descripcion) || other.descripcion == descripcion)&&(identical(other.tipo, tipo) || other.tipo == tipo)&&(identical(other.estado, estado) || other.estado == estado)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn)&&(identical(other.grupoMuscular, grupoMuscular) || other.grupoMuscular == grupoMuscular)&&(identical(other.equipamiento, equipamiento) || other.equipamiento == equipamiento)&&(identical(other.videoEjemploUrl, videoEjemploUrl) || other.videoEjemploUrl == videoEjemploUrl)&&(identical(other.imagenRuta, imagenRuta) || other.imagenRuta == imagenRuta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,nombre,descripcion,tipo,estado,creadoEn,grupoMuscular,equipamiento,videoEjemploUrl);
+    return Object.hash(runtimeType,id,nombre,descripcion,tipo,estado,creadoEn,grupoMuscular,equipamiento,videoEjemploUrl,imagenRuta);
 }
 
 @override
 String toString() {
-    return 'Ejercicio(id: $id, nombre: $nombre, descripcion: $descripcion, tipo: $tipo, estado: $estado, creadoEn: $creadoEn, grupoMuscular: $grupoMuscular, equipamiento: $equipamiento, videoEjemploUrl: $videoEjemploUrl)';
+    return 'Ejercicio(id: $id, nombre: $nombre, descripcion: $descripcion, tipo: $tipo, estado: $estado, creadoEn: $creadoEn, grupoMuscular: $grupoMuscular, equipamiento: $equipamiento, videoEjemploUrl: $videoEjemploUrl, imagenRuta: $imagenRuta)';
 }
 
 
@@ -271,7 +279,7 @@ abstract mixin class _$EjercicioCopyWith<$Res> implements $EjercicioCopyWith<$Re
   factory _$EjercicioCopyWith(_Ejercicio value, $Res Function(_Ejercicio) _then) = __$EjercicioCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String nombre, String descripcion, TipoEjercicio tipo, EstadoEjercicio estado, DateTime creadoEn, String? grupoMuscular, String? equipamiento, String? videoEjemploUrl
+ String id, String nombre, String descripcion, TipoEjercicio tipo, EstadoEjercicio estado, DateTime creadoEn, String? grupoMuscular, String? equipamiento, String? videoEjemploUrl, String? imagenRuta
 });
 
 
@@ -288,7 +296,7 @@ class __$EjercicioCopyWithImpl<$Res>
 
 /// Create a copy of Ejercicio
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nombre = null,Object? descripcion = null,Object? tipo = null,Object? estado = null,Object? creadoEn = null,Object? grupoMuscular = freezed,Object? equipamiento = freezed,Object? videoEjemploUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nombre = null,Object? descripcion = null,Object? tipo = null,Object? estado = null,Object? creadoEn = null,Object? grupoMuscular = freezed,Object? equipamiento = freezed,Object? videoEjemploUrl = freezed,Object? imagenRuta = freezed,}) {
   return _then(_Ejercicio(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
@@ -299,6 +307,7 @@ as EstadoEjercicio,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ign
 as DateTime,grupoMuscular: freezed == grupoMuscular ? _self.grupoMuscular : grupoMuscular // ignore: cast_nullable_to_non_nullable
 as String?,equipamiento: freezed == equipamiento ? _self.equipamiento : equipamiento // ignore: cast_nullable_to_non_nullable
 as String?,videoEjemploUrl: freezed == videoEjemploUrl ? _self.videoEjemploUrl : videoEjemploUrl // ignore: cast_nullable_to_non_nullable
+as String?,imagenRuta: freezed == imagenRuta ? _self.imagenRuta : imagenRuta // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

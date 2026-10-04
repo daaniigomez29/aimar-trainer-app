@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:aimar_trainer_app/core/diagnostico/registro.dart';
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
 import 'package:aimar_trainer_app/core/supabase/proveedores_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
@@ -27,7 +28,44 @@ class EjercicioRepositorioSupabase implements EjercicioRepositorio {
 
   static const String _tabla = 'ejercicios';
 
+  /// Bucket publico de las ilustraciones. Mismo nombre en local y en la nube.
+  static const String bucketImagenes = 'imagenes-ejercicios';
+
   final SupabaseClient cliente;
+
+  @override
+  Future<Result<String>> subirImagen(ImagenParaSubir imagen) async {
+    // Nombre por marca de tiempo: al reemplazar la imagen de un ejercicio se
+    // sube una ruta nueva y se borra la vieja, asi que ninguna cache del
+    // navegador se queda con la version anterior.
+    final ruta = '${DateTime.now().microsecondsSinceEpoch}.${imagen.extension}';
+    try {
+      await cliente.storage
+          .from(bucketImagenes)
+          .uploadBinary(
+            ruta,
+            imagen.bytes,
+            fileOptions: FileOptions(contentType: imagen.tipoMime),
+          );
+      return Success(ruta);
+    } on Object catch (error, traza) {
+      return Failure(_traducir(error, traza));
+    }
+  }
+
+  @override
+  Future<Result<void>> eliminarImagen(String ruta) async {
+    try {
+      await cliente.storage.from(bucketImagenes).remove([ruta]);
+      return const Success(null);
+    } on Object catch (error, traza) {
+      return Failure(_traducir(error, traza));
+    }
+  }
+
+  @override
+  String urlPublicaDeImagen(String ruta) =>
+      cliente.storage.from(bucketImagenes).getPublicUrl(ruta);
 
   @override
   Future<Result<List<Ejercicio>>> listar() async {
@@ -135,6 +173,23 @@ class EjercicioRepositorioSupabase implements EjercicioRepositorio {
 
   ErrorApp _traducir(Object error, StackTrace traza) {
     if (error is ErrorApp) return error;
+    if (error is StorageException) {
+      return switch (error.statusCode) {
+        // El bucket rechaza el tipo o el tamano del fichero.
+        '400' || '413' => ErrorValidacion(
+          'Esa imagen no se ha podido subir: ${error.message}',
+          campo: 'imagen',
+        ),
+        // Subir, reemplazar y borrar son solo del entrenador.
+        '403' => const ErrorNoAutorizado(),
+        '404' => const ErrorServicioNoDisponible('imagenes de ejercicios'),
+        _ => Registro.inesperado(
+          error,
+          traza,
+          contexto: 'las imagenes de ejercicios',
+        ),
+      };
+    }
     if (error is PostgrestException) {
       return switch (error.code) {
         // Violacion de `ejercicios_nombre_activo_unico`.

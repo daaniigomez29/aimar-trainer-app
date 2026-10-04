@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/progreso/data/progreso_repositorio_supabase.dart';
@@ -23,8 +24,6 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(_DatosFalsos());
-    // `any(named: 'rango')` necesita un valor de respaldo registrado para su
-    // tipo; sin el, mocktail falla al preparar el doble.
     registerFallbackValue(
       RangoFechas(desde: DateTime(2026), hasta: DateTime(2026)),
     );
@@ -47,10 +46,17 @@ void main() {
     WidgetTester tester,
     EjercicioPlanificado ejercicio,
   ) async {
+    // La pantalla muestra todas las series a la vez: con los 600 px por defecto
+    // no caben y los finders no las encontrarian.
+    tester.view.physicalSize = const Size(900, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [progresoRepositorioProvider.overrideWithValue(repositorio)],
         child: MaterialApp(
+          theme: TemaApp.oscuro(),
           home: PantallaRegistroEjercicio(
             ejercicio: ejercicio,
             planningId: 'p-1',
@@ -75,22 +81,30 @@ void main() {
       verify(() => repositorio.registrarResultado(captureAny())).captured.last
           as DatosResultadoEjercicio;
 
-  testWidgets('arranca en la primera serie con los valores planificados', (
-    tester,
-  ) async {
+  testWidgets('cada serie llega con lo planificado puesto', (tester) async {
     await montar(tester, deFuerza());
 
-    expect(find.text('Confirmar serie 1'), findsOneWidget);
-    expect(find.widgetWithText(TextField, '60'), findsOneWidget);
-    expect(find.widgetWithText(TextField, '10'), findsOneWidget);
+    // Serie 1: 60 kg x 10. Serie 2: 65 kg x 8.
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('peso_serie_1')))
+          .controller
+          ?.text,
+      '60',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('reps_serie_2')))
+          .controller
+          ?.text,
+      '8',
+    );
   });
 
-  testWidgets('confirmar una serie la registra y pasa a la siguiente', (
-    tester,
-  ) async {
+  testWidgets('confirmar una serie la registra', (tester) async {
     await montar(tester, deFuerza());
 
-    await tester.tap(find.byKey(const Key('boton_confirmar_serie')));
+    await tester.tap(find.byKey(const Key('confirmar_serie_1')));
     await tester.pumpAndSettle();
 
     final enviado = ultimoEnviado();
@@ -98,8 +112,6 @@ void main() {
     expect(enviado.series.single.numeroSerie, 1);
     expect(enviado.series.single.repeticiones, 10);
     expect(enviado.minutos, isNull);
-    // Y la pantalla ya esta en la segunda serie.
-    expect(find.text('Confirmar serie 2'), findsOneWidget);
   });
 
   testWidgets('la segunda confirmacion reenvia tambien la primera serie', (
@@ -107,26 +119,25 @@ void main() {
   ) async {
     await montar(tester, deFuerza());
 
-    await tester.tap(find.byKey(const Key('boton_confirmar_serie')));
+    await tester.tap(find.byKey(const Key('confirmar_serie_1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('boton_confirmar_serie')));
+    await tester.tap(find.byKey(const Key('confirmar_serie_2')));
     await tester.pumpAndSettle();
 
-    final enviado = ultimoEnviado();
-    expect(enviado.series.map((s) => s.numeroSerie).toList(), [1, 2]);
+    expect(ultimoEnviado().series.map((s) => s.numeroSerie).toList(), [1, 2]);
   });
 
-  testWidgets('se puede registrar una serie de mas de las planificadas', (
-    tester,
-  ) async {
+  testWidgets('se puede anadir y registrar una serie de mas', (tester) async {
     await montar(tester, deFuerza());
 
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.byKey(const Key('boton_confirmar_serie')));
-      await tester.pumpAndSettle();
-    }
+    await tester.tap(find.byKey(const Key('boton_serie_extra')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('confirmar_serie_3')), findsOneWidget);
 
-    expect(ultimoEnviado().series.length, 3);
+    await tester.tap(find.byKey(const Key('confirmar_serie_3')));
+    await tester.pumpAndSettle();
+
+    expect(ultimoEnviado().series.single.numeroSerie, 3);
   });
 
   testWidgets('lo ya registrado se carga para poder corregirlo', (
@@ -148,15 +159,20 @@ void main() {
       ),
     );
 
-    // Arranca en la serie 2, la primera sin registrar.
-    expect(find.text('Confirmar serie 2'), findsOneWidget);
+    // La serie 1 llega con lo registrado, no con lo planificado.
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('reps_serie_1')))
+          .controller
+          ?.text,
+      '7',
+    );
 
-    await tester.tap(find.byKey(const Key('boton_confirmar_serie')));
+    await tester.tap(find.byKey(const Key('confirmar_serie_2')));
     await tester.pumpAndSettle();
 
-    // Y al guardar, la serie 1 viaja con lo que ya tenia, no se pierde.
+    // Y al guardar, la serie 1 viaja con lo que ya tenia: no se pierde.
     final enviado = ultimoEnviado();
-    expect(enviado.series.first.numeroSerie, 1);
     expect(enviado.series.first.repeticiones, 7);
     expect(enviado.series.first.peso, 55);
   });
@@ -172,7 +188,7 @@ void main() {
     );
     await montar(tester, cardio);
 
-    expect(find.byKey(const Key('boton_confirmar_serie')), findsNothing);
+    expect(find.byKey(const Key('confirmar_serie_1')), findsNothing);
     await tester.tap(find.byKey(const Key('boton_guardar_cardio')));
     await tester.pumpAndSettle();
 
