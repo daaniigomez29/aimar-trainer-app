@@ -27,6 +27,17 @@ abstract final class Rutas {
   static const String planning = 'planning';
   static const String planningCliente = '$inicioCliente/$planning';
 
+  /// Progreso del cliente (CU-21) y control semanal de medidas y check-in. El
+  /// entrenador los consulta desde la ficha de cada cliente, no por ruta propia.
+  static const String progreso = 'progreso';
+  static const String progresoCliente = '$inicioCliente/$progreso';
+  static const String control = 'control';
+  static const String controlCliente = '$inicioCliente/$control';
+
+  /// Preferencias de aviso del cliente (CU-22).
+  static const String avisos = 'avisos';
+  static const String avisosCliente = '$inicioCliente/$avisos';
+
   /// Gestion de clientes (CU-17 a CU-19). La ven el entrenador y el
   /// administrador; el cliente no tiene esta seccion.
   static const String clientes = 'clientes';

@@ -16,6 +16,22 @@ enum DiaSemana {
   sabado,
   domingo;
 
+  /// Equivalente en `DateTime.weekday`: el enum va de lunes a domingo, igual que
+  /// `DateTime.monday` (1) a `DateTime.sunday` (7).
+  int get numeroDeDateTime => index + 1;
+
+  /// Ultima fecha en la que cayo este dia, contando hoy.
+  ///
+  /// Es la fecha sobre la que se ofrece el control semanal (medidas y check-in):
+  /// el dia preferido es una preferencia recurrente, y lo que se registra necesita
+  /// una fecha concreta.
+  DateTime ultimaFecha({DateTime? hoy}) {
+    final referencia = hoy ?? DateTime.now();
+    final dia = DateTime(referencia.year, referencia.month, referencia.day);
+    final diferencia = (dia.weekday - numeroDeDateTime + 7) % 7;
+    return dia.subtract(Duration(days: diferencia));
+  }
+
   /// Etiqueta para la interfaz, esta si acentuada.
   String get etiqueta => switch (this) {
     DiaSemana.lunes => 'Lunes',

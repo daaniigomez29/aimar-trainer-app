@@ -14,11 +14,15 @@ entrenador, sin registro libre de clientes.
 | Fase | Contenido | Estado |
 | --- | --- | --- |
 | 1 | Esqueleto, esquema base (`perfiles`, `clientes`, `ejercicios`), autenticación | Hecha |
-| 2 | Biblioteca de ejercicios | Pendiente |
-| 3 | Gestión de clientes (Edge Functions reales) | Pendiente |
-| 4 | Planificación semanal | Pendiente |
-| 5 | Progreso y bienestar | Pendiente |
-| 6 | Notificaciones y despliegue | Pendiente |
+| 2 | Biblioteca de ejercicios | Hecha |
+| 3 | Gestión de clientes (Edge Functions reales) | Hecha |
+| 4 | Planificación semanal | Hecha |
+| 5 | Progreso y bienestar | Hecha |
+| 6 | Notificaciones (CU-22) | Hecha |
+| — | Despliegue en la nube | Pendiente |
+
+Todo verificado contra Supabase local. El detalle de en qué punto está cada cosa,
+con sus trampas y decisiones, está en `docs/estado-actual.md`.
 
 ## Puesta en marcha
 
@@ -256,6 +260,35 @@ supabase functions serve --no-verify-jwt
 
 Con `--no-verify-jwt` la comprobación del token recae en la propia función, que
 es justo lo que interesa verificar. Ver `supabase/functions/README.md`.
+
+### Probar los recordatorios en local (CU-22)
+
+El job de `pg_cron` está programado a las 17:00 UTC, así que para probarlo sin
+esperar se invoca a mano. Hace falta `supabase functions serve` en marcha.
+
+Por el mismo camino que usa el job (Vault → pg_net → Kong → función):
+
+```bash
+docker exec -i supabase_db_aimar_trainer_app psql -U postgres -d postgres -c "select enviar_recordatorios_programados();"
+```
+
+O directamente contra la función, que devuelve el detalle de cada aviso:
+
+```bash
+curl -s -X POST http://127.0.0.1:54321/functions/v1/enviar-recordatorios -H "Content-Type: application/json" -H "x-secreto-cron: secreto-local-de-pruebas" -d "{}"
+```
+
+Los correos aparecen en Mailpit (<http://127.0.0.1:54324>) y cada aviso queda en
+la tabla `avisos_enviados`, incluidos los push **omitidos** por tenerlos el cliente
+desactivados.
+
+El push de verdad necesita un navegador que se suscriba: se activa desde
+*Avisos* en la pantalla del cliente. Las claves VAPID de local están en
+`supabase/functions/.env`; para otro entorno se genera un par nuevo con:
+
+```bash
+deno eval "import w from 'npm:web-push@3.6.7'; console.log(JSON.stringify(w.generateVAPIDKeys()))"
+```
 
 ## Estructura
 

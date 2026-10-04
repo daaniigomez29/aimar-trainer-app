@@ -41,6 +41,86 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!--
+    Puente con la API de push del navegador (CU-22).
+
+    Vive aqui, en JavaScript, y no en Dart, porque `PushManager` solo existe en el
+    navegador: la app lo llama con `dart:js_interop` desde `servicio_push_web.dart`,
+    detras de la interfaz `ServicioPush`. Todo devuelve texto plano o JSON en
+    cadena para que el puente sea lo mas simple posible.
+  -->
+  <script>
+    window.aimarPush = {
+      /** El navegador admite push? Safari en iOS solo con la PWA instalada. */
+      soportado: function () {
+        return "serviceWorker" in navigator &&
+          "PushManager" in window &&
+          "Notification" in window;
+      },
+
+      /** "default" (sin preguntar), "granted", "denied" o "no-soportado". */
+      permiso: function () {
+        if (!window.Notification) return "no-soportado";
+        return Notification.permission;
+      },
+
+      /**
+       * Registra el service worker del push. Ambito propio para no pisar el de
+       * Flutter, que ocupa la raiz.
+       */
+      registro: async function () {
+        return await navigator.serviceWorker.register("push_sw.js", {
+          scope: "push/",
+        });
+      },
+
+      /** Pide permiso y se suscribe. Devuelve la suscripcion en JSON, o null. */
+      suscribir: async function (clavePublica) {
+        if (!this.soportado()) return null;
+        const permiso = await Notification.requestPermission();
+        if (permiso !== "granted") return null;
+
+        const registro = await this.registro();
+        const suscripcion = await registro.pushManager.subscribe({
+          // Obligatorio en Chrome: no admite push silencioso.
+          userVisibleOnly: true,
+          applicationServerKey: this._base64UrlABytes(clavePublica),
+        });
+        return JSON.stringify(suscripcion.toJSON());
+      },
+
+      /** La suscripcion ya existente de este dispositivo, o null. */
+      suscripcionActual: async function () {
+        if (!this.soportado()) return null;
+        const registro = await navigator.serviceWorker.getRegistration("push/");
+        if (!registro) return null;
+        const suscripcion = await registro.pushManager.getSubscription();
+        return suscripcion ? JSON.stringify(suscripcion.toJSON()) : null;
+      },
+
+      /** Cancela la suscripcion del navegador. Devuelve su endpoint, o null. */
+      desuscribir: async function () {
+        const registro = await navigator.serviceWorker.getRegistration("push/");
+        if (!registro) return null;
+        const suscripcion = await registro.pushManager.getSubscription();
+        if (!suscripcion) return null;
+        const endpoint = suscripcion.endpoint;
+        await suscripcion.unsubscribe();
+        return endpoint;
+      },
+
+      /** La clave VAPID viaja en base64url y `subscribe` la quiere en bytes. */
+      _base64UrlABytes: function (valor) {
+        const relleno = "=".repeat((4 - (valor.length % 4)) % 4);
+        const base64 = (valor + relleno).replace(/-/g, "+").replace(/_/g, "/");
+        const crudo = window.atob(base64);
+        const bytes = new Uint8Array(crudo.length);
+        for (let i = 0; i < crudo.length; i++) bytes[i] = crudo.charCodeAt(i);
+        return bytes;
+      },
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

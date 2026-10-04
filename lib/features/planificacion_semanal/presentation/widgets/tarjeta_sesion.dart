@@ -19,6 +19,7 @@ class TarjetaSesion extends StatelessWidget {
     required this.onAnadirEjercicio,
     required this.onEditarEjercicio,
     required this.onEliminarEjercicio,
+    this.onRegistrar,
     super.key,
   });
 
@@ -33,6 +34,10 @@ class TarjetaSesion extends StatelessWidget {
   final ValueChanged<BloqueEjercicio> onAnadirEjercicio;
   final void Function(BloqueEjercicio, EjercicioPlanificado) onEditarEjercicio;
   final ValueChanged<EjercicioPlanificado> onEliminarEjercicio;
+
+  /// Solo lo recibe el cliente, para registrar su resultado (CU-20). El
+  /// entrenador planifica; registrar es cosa de quien entrena.
+  final VoidCallback? onRegistrar;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +101,20 @@ class TarjetaSesion extends StatelessWidget {
                       onEditarEjercicio(bloque, ejercicio),
                   onEliminarEjercicio: onEliminarEjercicio,
                 ),
+            if (onRegistrar != null && sesion.bloques.isNotEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  key: Key('registrar_sesion_${sesion.id}'),
+                  onPressed: onRegistrar,
+                  icon: const Icon(Icons.edit_note, size: 18),
+                  label: Text(
+                    sesion.resultadoRegistrado
+                        ? 'Revisar lo registrado'
+                        : 'Registrar resultado',
+                  ),
+                ),
+              ),
             if (puedeEditar)
               Align(
                 alignment: Alignment.centerLeft,

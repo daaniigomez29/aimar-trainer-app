@@ -159,12 +159,33 @@ Mismas variables de entorno que `crear-cliente`.
 - El bucket no puede ser público: con la ruta bastaría para ver la foto de
   cualquier cliente, incluido el administrador, que por diseño no debe tener
   acceso a las fotos de progreso.
-- Convención de ruta prevista: `<clienteId>/<registroMedidasId>/<archivo>`, de
-  modo que la política pueda resolver el propietario por el primer segmento.
+- Convención de ruta: `<clienteId>/<registroMedidasId>/<archivo>`. Las políticas
+  del bucket resuelven el propietario por el primer segmento
+  (`(storage.foldername(name))[1] = auth.uid()`), sin tener que consultar
+  `fotos_progreso`.
+
+### Conversión de la imagen antes de subirla
+
+El bucket solo admite `image/png` e `image/jpeg`, y un iPhone entrega **HEIC**.
+La app **no sube nunca el fichero original**: lo decodifica, lo reduce a 1600 px
+de lado mayor y lo vuelve a codificar en **PNG** antes de subirlo
+(`ServicioImagenesFlutter`, detrás de la interfaz `ServicioImagenes` de
+`core/plataforma`, con `dart:ui`; el selector es `image_picker`).
+
+- Se recodifica **siempre**, no solo cuando el fichero parece HEIC: así el
+  resultado es PNG venga lo que venga, sin fiarse de la extensión ni del tipo MIME
+  que declare el navegador.
+- El límite está en la **decodificación**, que la hace el navegador. Safari e iOS
+  leen HEIC, que es justo donde aparece (y además iOS suele convertir a JPEG por su
+  cuenta al subir por un `input` de archivo). Chrome de escritorio no lo lee: ahí la
+  conversión no es posible y la app devuelve un error que lo explica, en lugar de
+  intentar subir algo que el bucket rechazaría.
+- El reescalado no es cosmético: un PNG sin reducir de una cámara moderna se acerca
+  al límite de 20 MiB del bucket.
 
 ## Notificaciones y correo
 
-- Proveedor único: Resend, con dominio propio verificado (puede ser un
+- Proveedor único de correo: Resend, con dominio propio verificado (puede ser un
   subdominio del dominio web existente de Aimar).
 - Un job de pg_cron invoca diariamente una Edge Function que identifica:
   clientes con sesión programada al día siguiente, y clientes cuyo
@@ -173,6 +194,48 @@ Mismas variables de entorno que `crear-cliente`.
   Android/Chrome y en iOS 16.4+ solo con la PWA instalada; el correo es el
   respaldo universal.
 - Cálculo de fechas en zona horaria Europe/Madrid.
+
+### Cómo está montado (CU-22)
+
+| Pieza | Dónde |
+| --- | --- |
+| Programación | `cron.schedule('recordatorios-diarios', '0 17 * * *', …)`, migración `20261003110100` |
+| Invocación | `enviar_recordatorios_programados()` → `net.http_post` (pg_net) |
+| Lógica de aviso | Edge Function `enviar-recordatorios` |
+| Preferencias y dispositivos | `preferencias_notificacion`, `suscripciones_push` |
+| Resultado de cada aviso | `avisos_enviados` (`enviado` / `omitido` / `fallido`) |
+
+- **pg_cron programa en UTC.** Las 17:00 UTC son las 19:00 en España en verano y
+  las 18:00 en invierno: por la tarde en ambos casos. Qué día es "hoy" y "mañana"
+  lo decide la función en `Europe/Madrid`, no la expresión horaria.
+- **La URL de la función y el secreto viven en Vault**, no en la migración:
+  cambian por entorno y el secreto no debe estar en el repositorio. En local los
+  crea `supabase/seed.sql`; en dev y producción se crean una vez a mano.
+- **La función no acepta JWT de usuario**: quien la llama es un job, no una
+  persona. Se identifica con la cabecera `x-secreto-cron` contra su propio
+  `SECRETO_CRON`. Sin ese secreto configurado, no atiende a nadie.
+- **Idempotencia**: índice único por cliente, tipo, canal y fecha de referencia.
+  Si el job se dispara dos veces, el segundo no vuelve a avisar.
+- **Un cliente dado de baja no recibe avisos**: las dos consultas filtran por
+  `estado = 'activo'`.
+
+### Push web: Web Push con VAPID
+
+- Sin proveedor de terceros (no hay Firebase). Se usa el estándar del navegador:
+  el cliente se suscribe y entrega `endpoint` y dos claves; la Edge Function firma
+  con VAPID y cifra el payload con `web-push`.
+- **Las claves VAPID se generan una vez por entorno.** La pública viaja en el
+  bundle de la app (`--dart-define=VAPID_PUBLIC_KEY`), que es su sitio: el
+  navegador la necesita. La privada vive solo en el entorno de la función.
+- En Flutter, el puente con `PushManager` está en `web/index.html` y se llama
+  desde `servicio_push_web.dart` con `dart:js_interop`, detrás de la interfaz
+  `ServicioPush` (RNF-03). **No hay ninguna dependencia nueva en `pubspec.yaml`.**
+- El service worker del push es propio (`web/push_sw.js`) y se registra en el
+  ámbito `push/`: el de Flutter ocupa la raíz y lo regenera cada build, así que no
+  se le puede añadir código.
+- **El correo no se puede desactivar.** La pantalla de preferencias solo ofrece el
+  interruptor del push: desactivar el respaldo dejaría al cliente sin enterarse de
+  nada.
 
 ## Entornos y despliegue
 
@@ -201,13 +264,16 @@ Mismas variables de entorno que `crear-cliente`.
 | Supabase Edge Functions | `RESEND_API_KEY` | Clave de API de Resend |
 | Supabase Edge Functions | `RESEND_FROM_EMAIL` | Remitente verificado |
 | Supabase Edge Functions | `APP_BASE_URL` | URL pública de la PWA |
+| Supabase Edge Functions | `SECRETO_CRON` | Cabecera con la que el job se identifica; igual que el secreto `secreto_cron` de Vault |
+| Supabase Edge Functions | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Firma del push web. La privada **nunca** sale de aquí |
+| Flutter (`--dart-define`) | `VAPID_PUBLIC_KEY` | Clave pública del push; es pública por diseño |
 | GitHub Actions | `SUPABASE_ACCESS_TOKEN` | Migraciones vía CLI |
 | GitHub Actions | `SUPABASE_PROJECT_ID_DEV` / `_PROD` | Referencia de proyecto por entorno |
 | GitHub Actions | `SUPABASE_URL_DEV` / `_PROD`, `SUPABASE_PUBLISHABLE_KEY_DEV` / `_PROD` | Para el build por entorno |
 | GitHub Actions | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Despliegue a Vercel |
 
 **Nunca** en código Flutter ni en `--dart-define`: `SUPABASE_SERVICE_ROLE_KEY`,
-`RESEND_API_KEY`.
+`RESEND_API_KEY`, `VAPID_PRIVATE_KEY`, `SECRETO_CRON`.
 
 ## Riesgos de infraestructura gratuita y mitigaciones
 

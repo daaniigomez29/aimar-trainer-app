@@ -653,10 +653,42 @@ Ninguna tabla de esta sección (medidas, fotos, check-in, series realizadas)
 tiene política para `es_administrador()`: la ausencia de política ya
 bloquea el acceso del administrador por defecto.
 
+## Añadidos de la fase 5 (no estaban en el diseño original)
+
+Lo que las migraciones de la fase 5 incorporan sobre lo descrito arriba.
+
+### `registrar_resultado_ejercicio` (RPC de CU-20)
+
+Guarda el resultado de un ejercicio en **una sola transacción**: las series si es
+Fuerza, los minutos si es Cardio, nunca las dos cosas. Es `security invoker`, así
+que RLS sigue aplicando dentro y no amplía permisos a nadie. Mismo motivo que
+`guardar_ejercicio_planificado`: PostgREST abre una transacción por petición.
+
+A diferencia de aquélla, aquí **no se borra y se vuelve a insertar**, sino
+`insert ... on conflict (ejercicio_planificado_id, numero_serie) do update`: a
+`series_realizadas` no se le concede `delete` a propósito. Consecuencia conocida:
+si el cliente registra 3 series y luego corrige a 2, la tercera sigue ahí.
+
+### Vistas `vista_progreso_ejercicios` y `vista_ejercicios_con_registro` (CU-21)
+
+Aplanan la cadena `series_realizadas → ejercicios_planificados → bloques →
+sesiones → plannings` y exponen la fecha de la **sesión** (no la de
+`fecha_hora_registro`). Incluyen también el cardio, con sus minutos. Se declaran
+`with (security_invoker = on)`: sin esa opción la vista correría con los permisos
+de su dueño y sería un agujero que puentearía RLS.
+
+### Políticas del bucket `fotos-progreso`
+
+Son RLS normal sobre `storage.objects`, con la ruta
+`<cliente_id>/<registro_medidas_id>/<archivo>`: el dueño se resuelve por el primer
+segmento, con `(storage.foldername(name))[1] = auth.uid()::text`. El cliente
+gestiona lo suyo; el entrenador solo lee; el administrador, sin política, no
+accede.
+
 ## Notas técnicas pendientes para el futuro
 
 | Nota | Contexto |
 | --- | --- |
 | Denormalizar `cliente_id` en tablas hijas (sesiones, bloques, ejercicios planificados) si el rendimiento de RLS con varios `join` se volviera un problema real | Por ahora modelo normalizado; con el volumen previsto, impacto despreciable |
 | Seguridad a nivel de columna (`GRANT` por columna) para separar "planificado" (entrenador) de "realizado" (cliente) en `ejercicios_planificados` | Revisar si el equipo crece o se necesita mayor garantía |
-| Trigger `after update` adicional en `ejercicios_planificados` para completar el recálculo de `resultado_registrado` en cardio | Detalle de implementación pendiente |
+| ~~Trigger `after update` adicional en `ejercicios_planificados` para completar el recálculo de `resultado_registrado` en cardio~~ | **Resuelto** al cerrar la fase 4 (`propagar_estado_registro`). Ojo: sin `OF estado_registro`, porque `UPDATE OF columna` se dispara según las columnas mencionadas en la sentencia, no según las que cambian |

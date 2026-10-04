@@ -1,5 +1,6 @@
 {
   "SUPABASE_URL": "http://",
   "SUPABASE_PUBLISHABLE_KEY": "sb_",
-  "APP_ENV": "production"
+  "APP_ENV": "production",
+  "VAPID_PUBLIC_KEY": "B..."
 }

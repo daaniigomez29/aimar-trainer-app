@@ -115,6 +115,11 @@ port = 54324
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# CU-22: la invoca el job de pg_cron, que no lleva JWT de usuario. Se identifica
+# con la cabecera `x-secreto-cron`, que la propia funcion comprueba.
+[functions.enviar-recordatorios]
+verify_jwt = false
+
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").

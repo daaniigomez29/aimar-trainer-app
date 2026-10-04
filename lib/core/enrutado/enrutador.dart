@@ -13,6 +13,9 @@ import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_l
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_biblioteca.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mis_plannings.dart';
+import 'package:aimar_trainer_app/features/notificaciones/presentation/pantalla_preferencias_notificacion.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_mi_control.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_mi_progreso.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_recuperar_contrasena.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_restablecer_contrasena.dart';
 
@@ -75,6 +78,19 @@ GoRouter enrutador(Ref ref) {
           GoRoute(
             path: Rutas.planning,
             builder: (context, state) => const PantallaMisPlannings(),
+          ),
+          GoRoute(
+            path: Rutas.progreso,
+            builder: (context, state) => const PantallaMiProgreso(),
+          ),
+          GoRoute(
+            path: Rutas.control,
+            builder: (context, state) => const PantallaMiControl(),
+          ),
+          GoRoute(
+            path: Rutas.avisos,
+            builder: (context, state) =>
+                const PantallaPreferenciasNotificacion(),
           ),
         ],
       ),

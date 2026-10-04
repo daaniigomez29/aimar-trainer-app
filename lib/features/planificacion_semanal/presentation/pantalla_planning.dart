@@ -8,6 +8,7 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/di
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/tarjeta_sesion.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_sesion.dart';
 
 /// La semana completa: sesiones, bloques y ejercicios (CU-06 a CU-16).
 ///
@@ -94,6 +95,9 @@ class PantallaPlanning extends ConsumerWidget {
           planning: datos,
           // Un planning archivado es de solo lectura, tambien para el entrenador.
           puedeEditar: esEntrenador && datos.esEditable,
+          // Solo el cliente registra, y solo sobre un planning activo: es lo que
+          // exige la politica de `series_realizadas`.
+          puedeRegistrar: !esEntrenador && datos.estado.esActivo,
         ),
       ),
     );
@@ -101,10 +105,15 @@ class PantallaPlanning extends ConsumerWidget {
 }
 
 class _Semana extends ConsumerWidget {
-  const _Semana({required this.planning, required this.puedeEditar});
+  const _Semana({
+    required this.planning,
+    required this.puedeEditar,
+    required this.puedeRegistrar,
+  });
 
   final PlanningSemanal planning;
   final bool puedeEditar;
+  final bool puedeRegistrar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,6 +132,7 @@ class _Semana extends ConsumerWidget {
             sesion: planning.sesionDe(dia),
             planning: planning,
             puedeEditar: puedeEditar,
+            puedeRegistrar: puedeRegistrar,
           ),
         if (planning.sesiones.isEmpty) ...[
           const SizedBox(height: 16),
@@ -226,12 +236,14 @@ class _FilaDia extends ConsumerWidget {
     required this.sesion,
     required this.planning,
     required this.puedeEditar,
+    required this.puedeRegistrar,
   });
 
   final DateTime dia;
   final SesionEntrenamiento? sesion;
   final PlanningSemanal planning;
   final bool puedeEditar;
+  final bool puedeRegistrar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -277,6 +289,17 @@ class _FilaDia extends ConsumerWidget {
               sesion: actual,
               planning: planning,
               puedeEditar: puedeEditar,
+              onRegistrar: !puedeRegistrar
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PantallaRegistroSesion(
+                          planningId: planning.id,
+                          sesionId: actual.id,
+                          clienteId: planning.clienteId,
+                        ),
+                      ),
+                    ),
               onAnadirBloque: () => pedirDatosBloque(
                 context: context,
                 ref: ref,

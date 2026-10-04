@@ -46,7 +46,8 @@ sesiones_entrenamiento(
     ejercicios_planificados(
       *,
       ejercicios(*),
-      series_planificadas(*)
+      series_planificadas(*),
+      series_realizadas(*)
     )
   )
 )''';
@@ -110,6 +111,10 @@ sesiones_entrenamiento(
                     ]..sort((a, b) => a.orden.compareTo(b.orden)))
                       ejercicio.copyWith(
                         series: [...ejercicio.series]
+                          ..sort(
+                            (a, b) => a.numeroSerie.compareTo(b.numeroSerie),
+                          ),
+                        seriesRealizadas: [...ejercicio.seriesRealizadas]
                           ..sort(
                             (a, b) => a.numeroSerie.compareTo(b.numeroSerie),
                           ),

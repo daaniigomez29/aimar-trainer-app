@@ -24,6 +24,10 @@ class PantallaInicioEntrenador extends StatelessWidget {
         ruta: Rutas.clientesEntrenador,
       ),
     ],
-    pendientes: ['Progreso de clientes (fase 5)'],
+    // El progreso y el control de cada cliente se consultan desde su ficha, que
+    // es donde el entrenador ya esta mirando a esa persona.
+    // Los recordatorios diarios los manda el job de pg_cron: no hay nada que
+    // hacer desde aqui.
+    pendientes: [],
   );
 }

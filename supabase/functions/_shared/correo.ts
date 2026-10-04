@@ -194,6 +194,100 @@ export function correoDeInvitacion({
   return { asunto, html, texto };
 }
 
+/** Recordatorio de la sesion que toca manana (CU-22). */
+export function correoDeSesionDeManana({
+  nombre,
+  nombreSesion,
+  fecha,
+  enlace,
+}: {
+  nombre: string;
+  nombreSesion: string;
+  fecha: string;
+  enlace: string;
+}): { asunto: string; html: string; texto: string } {
+  const asunto = `Manana toca: ${nombreSesion}`;
+  const texto = [
+    `Hola ${nombre}:`,
+    "",
+    `Manana ${fecha} tienes sesion: ${nombreSesion}.`,
+    "",
+    "Puedes ver los ejercicios y registrar tu resultado aqui:",
+    enlace,
+  ].join("\n");
+
+  const html = _plantilla({
+    saludo: `Hola ${escaparHtml(nombre)}:`,
+    cuerpo: `<p>Manana <strong>${escaparHtml(fecha)}</strong> tienes sesion: ` +
+      `<strong>${escaparHtml(nombreSesion)}</strong>.</p>`,
+    textoBoton: "Ver mi planning",
+    enlace,
+  });
+
+  return { asunto, html, texto };
+}
+
+/** Recordatorio del dia de control: medidas y check-in (CU-22). */
+export function correoDeControlSemanal({
+  nombre,
+  enlace,
+}: {
+  nombre: string;
+  enlace: string;
+}): { asunto: string; html: string; texto: string } {
+  const asunto = "Hoy toca control semanal";
+  const texto = [
+    `Hola ${nombre}:`,
+    "",
+    "Hoy es tu dia de control: anota tus medidas y rellena el check-in de",
+    "recuperacion para que tu entrenador vea como ha ido la semana.",
+    "",
+    enlace,
+  ].join("\n");
+
+  const html = _plantilla({
+    saludo: `Hola ${escaparHtml(nombre)}:`,
+    cuerpo:
+      "<p>Hoy es tu <strong>dia de control</strong>: anota tus medidas y " +
+      "rellena el check-in de recuperacion para que tu entrenador vea como ha " +
+      "ido la semana.</p>",
+    textoBoton: "Abrir mi control",
+    enlace,
+  });
+
+  return { asunto, html, texto };
+}
+
+/** Cuerpo HTML comun de los recordatorios, para no repetir los estilos. */
+function _plantilla({
+  saludo,
+  cuerpo,
+  textoBoton,
+  enlace,
+}: {
+  saludo: string;
+  cuerpo: string;
+  textoBoton: string;
+  enlace: string;
+}): string {
+  return `<!doctype html>
+<html lang="es">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1b1b1b;">
+    <p>${saludo}</p>
+    ${cuerpo}
+    <p>
+      <a
+        href="${escaparHtml(enlace)}"
+        style="display: inline-block; padding: 12px 20px; background: #1b5e20; color: #ffffff; border-radius: 6px; text-decoration: none;"
+      >${escaparHtml(textoBoton)}</a>
+    </p>
+    <p style="font-size: 13px; color: #555555;">
+      Recibes este aviso porque tienes un planning activo en Aimar Trainer.
+    </p>
+  </body>
+</html>`;
+}
+
 /** El nombre lo escribe el entrenador: se escapa antes de meterlo en el HTML. */
 function escaparHtml(valor: string): string {
   return valor

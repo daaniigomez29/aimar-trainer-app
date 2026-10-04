@@ -19,7 +19,13 @@ abstract class PlanningSemanal with _$PlanningSemanal {
     required EstadoPlanning estado,
     required DateTime creadoEn,
     String? nombreObjetivo,
-    @Default([]) List<SesionEntrenamiento> sesiones,
+
+    /// OJO con el `JsonKey`: la consulta incrusta el recurso con el nombre de la
+    /// tabla (`sesiones_entrenamiento`), no con el del campo. Sin el, la lista
+    /// llegaba siempre vacia y la semana se veia entera como dias de descanso.
+    @Default([])
+    @JsonKey(name: 'sesiones_entrenamiento')
+    List<SesionEntrenamiento> sesiones,
   }) = _PlanningSemanal;
 
   factory PlanningSemanal.fromJson(Map<String, dynamic> json) =>
@@ -122,10 +128,39 @@ abstract class EjercicioPlanificado with _$EjercicioPlanificado {
     @Default([])
     @JsonKey(name: 'series_planificadas')
     List<SeriePlanificada> series,
+
+    /// Lo que el cliente registro de verdad (CU-20). Independiente de `series`:
+    /// puede tener mas, menos o ninguna.
+    @Default([])
+    @JsonKey(name: 'series_realizadas')
+    List<SerieRealizada> seriesRealizadas,
   }) = _EjercicioPlanificado;
 
   factory EjercicioPlanificado.fromJson(Map<String, dynamic> json) =>
       _$EjercicioPlanificadoFromJson(json);
+}
+
+/// Serie realizada (entidad 8): lo que el cliente hizo, frente a lo que el
+/// entrenador planifico.
+///
+/// Vive aqui, con el resto de la jerarquia del planning, aunque quien la escribe
+/// sea la feature `progreso`: la consulta del planning la trae incrustada, y asi
+/// la dependencia va en un solo sentido (`progreso` conoce `planificacion`, no al
+/// reves).
+@freezed
+abstract class SerieRealizada with _$SerieRealizada {
+  const factory SerieRealizada({
+    required String id,
+    required String ejercicioPlanificadoId,
+    required int numeroSerie,
+    required int repeticionesRealizadas,
+    required DateTime fechaHoraRegistro,
+    double? pesoReal,
+    int? rirReal,
+  }) = _SerieRealizada;
+
+  factory SerieRealizada.fromJson(Map<String, dynamic> json) =>
+      _$SerieRealizadaFromJson(json);
 }
 
 /// Serie planificada (entidad 7). Solo para ejercicios de Fuerza.

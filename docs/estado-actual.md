@@ -4,8 +4,7 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-02, con el acceso del cliente a su planning ya hecho,
-justo antes de empezar la fase 5.
+Última actualización: 2026-10-03, al cerrar la fase 6 (última de las planificadas).
 
 ## Fases
 
@@ -15,12 +14,17 @@ justo antes de empezar la fase 5.
 | 2 | Biblioteca de ejercicios (CU-02 a CU-04) | Hecha y verificada |
 | 3 | Gestión de clientes + Edge Functions reales (CU-17 a CU-19) | Hecha y verificada |
 | 4 | Planificación semanal (CU-05 a CU-16) | Hecha y verificada |
-| 5 | Progreso del cliente (CU-20, CU-21, medidas, check-in) | **Siguiente** |
-| 6 | Notificaciones (CU-22) y despliegue | Pendiente |
+| 5 | Progreso del cliente (CU-20, CU-21, medidas, check-in) | Hecha y verificada |
+| 6 | Notificaciones (CU-22) | Hecha y verificada en local |
+| — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
-Verificación al cerrar la fase 4: `supabase db reset` aplica 8 migraciones limpias,
-`./scripts/probar_local.sh` da **89/89**, `flutter test` **223**,
-`dart analyze --fatal-infos` sin incidencias, `deno fmt`/`lint`/`check` en verde.
+Verificación al cerrar la fase 6: `supabase db reset` aplica **15 migraciones**
+limpias, `./scripts/probar_local.sh` da **153/153**, `flutter test` **288**,
+`dart analyze --fatal-infos` sin incidencias, `flutter build web` compila.
+
+Para que el script dé 128 hace falta **también** `supabase functions serve` en otra
+terminal: sin él, las comprobaciones de Edge Functions no se saltan, fallan con 503
+y "name resolution failed".
 
 ## Cómo arrancar el entorno
 
@@ -97,6 +101,45 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     inválidas. El `switch` tiene que mirar el `code` antes del status, o un cliente
     dado de baja vería "correo o contraseña incorrectos".
 
+13. **`objects_path` en un bucket de `config.toml`** precarga en el bucket los
+    ficheros de esa carpeta local. Si la carpeta no existe, el arranque falla al
+    sembrar (`NotFound: FileSystem.stat`). Como git no versiona carpetas vacías, una
+    copia recién clonada se lo come. No se usa: no hay objetos de ejemplo.
+14. **Una vista sobre tablas con RLS necesita `with (security_invoker = on)`.** Sin
+    esa opción corre con los permisos de su dueño y puentea las políticas de las
+    tablas de debajo. Las dos vistas de progreso la llevan.
+15. **`series_realizadas` no tiene `delete`**, así que registrar no puede ser
+    "borrar y volver a insertar" como en la planificación: la RPC de CU-20 usa
+    `on conflict do update`. Y como el `on conflict` evalúa además la política de
+    `insert`, que exige planning activo, corregir lo registrado de una semana ya
+    archivada no es posible.
+16. **PostgREST no traduce `no_data_found` (P0002) a 404**: devuelve 500. La app no
+    mira el código HTTP sino el `code` del cuerpo, así que el mensaje al usuario es
+    el correcto, pero en los logs aparece un 500 que no es un fallo real.
+
+17. **PostgREST devuelve los recursos incrustados con el nombre de la TABLA**, no
+    con el del campo de la entidad: `sesiones_entrenamiento`, no `sesiones`. Si al
+    campo le falta su `@JsonKey`, `@Default([])` deja la lista vacía **sin dar
+    ningún error**, y la pantalla se ve coherente pero vacía. Pasó con
+    `PlanningSemanal.sesiones` (toda la semana salía como descanso). Al añadir una
+    relación incrustada, comprobar la clave en el `.g.dart` generado.
+18. **Ni el script de la API ni los tests de widget ven ese fallo**: el primero no
+    pasa por las entidades y los segundos las construyen a mano. Hace falta un test
+    que parsee la respuesta real (`planning_json_test.dart`).
+19. **En un test de widget el viewport son 600 px** y un `ListView` solo construye
+    lo visible: una semana entera no cabe. Sin agrandar
+    `tester.view.physicalSize`, el test afirma que faltan sesiones que sí están.
+
+20. **`dart analyze` no mira la rama web de un import condicional.** Un
+    `dart:js_interop` mal usado (por ejemplo, un tear-off de un miembro externo,
+    que Dart prohíbe) pasa el análisis y revienta en `flutter build web`. Con
+    código de plataforma, el build web es parte de la verificación, no un extra.
+21. **`deno lint` prohíbe el especificador `npm:` en línea**: las dependencias de
+    las Edge Functions van por el import map de `supabase/functions/deno.json`.
+22. **pg_cron programa en UTC**, no en la zona del servidor. La hora de la
+    expresión y el cálculo de "hoy"/"mañana" son dos cosas distintas: lo segundo
+    lo hace la función en `Europe/Madrid`.
+
 ## Decisiones tomadas (no reabrir sin motivo)
 
 - **CU-24 mantiene el mensaje genérico** cuando el correo no está registrado: no se
@@ -113,6 +156,24 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   `url_launcher`, dependencia nueva sin acordar.
 - La vista del planning es **la misma pantalla para entrenador y cliente**, con
   `puedeEditar: false` para el segundo. Un planning archivado tampoco es editable.
+- **El registro de CU-20 es serie a serie** y guarda en cada confirmación la lista
+  completa de series confirmadas, no solo la última: así la llamada es idempotente y
+  corregir una serie anterior la actualiza en su sitio. Dejar un ejercicio a medias
+  es válido.
+- **La gráfica de CU-21 se pinta con `CustomPainter`**, sin librería de gráficas.
+  La única dependencia nueva de la fase 5 es `image_picker`.
+- **Las fotos se convierten siempre a PNG** antes de subirlas (reducidas a 1600 px),
+  nunca se sube el fichero original. Ver `architecture.md`, "Conversión de la imagen
+  antes de subirla".
+- **Push web con VAPID, sin Firebase ni ninguna dependencia nueva en Flutter**: el
+  puente con el navegador es JavaScript en `web/index.html` llamado con
+  `dart:js_interop`. Decisión consultada y confirmada.
+- **El correo no se puede desactivar.** La pantalla de preferencias solo ofrece el
+  interruptor del push.
+- **Un push no enviado se registra como `omitido`**, con su motivo, en
+  `avisos_enviados`. No es un hueco: es lo que pide la excepción de CU-22.
+- **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
+  operaciones. Es lo que dice el modelo de dominio, no una limitación.
 
 ## Pendientes abiertos
 
@@ -120,9 +181,10 @@ Decisiones que quedaron sin cerrar:
 
 - **Bucket de Storage** de las fotos de progreso: `fotos-progreso` ya está
   declarado en `config.toml` y **creado y verificado en local** (privado, 20 MiB,
-  png/jpeg). Falta crearlo en la nube cuando haya proyecto, y escribir sus
-  políticas sobre `storage.objects`. El detalle está en `architecture.md`, sección
-  "Almacenamiento de ficheros".
+  png/jpeg), con sus **políticas ya escritas** (migración
+  `20261003090200_politicas_storage_fotos_progreso.sql`) y verificadas. Falta solo
+  crearlo en la nube cuando haya proyecto. El detalle está en `architecture.md`,
+  sección "Almacenamiento de ficheros".
 - **Resend sin dominio verificado**: `RESEND_API_KEY` y `RESEND_FROM_EMAIL` siguen sin
   valor real. En local las invitaciones se entregan en Mailpit vía `CORREO_DEV_URL`.
   Cuando haya dominio, basta rellenar las variables: no hay que tocar código.
@@ -139,27 +201,22 @@ Decisiones que quedaron sin cerrar:
   una petición normal, pero `auth.role()` devuelve `NULL` si la sesión no trae los
   claims. Queda por unificar doc y código.
 
-## Para la fase 5
+## Lo que queda: desplegar
 
-1. **Los triggers de recálculo ya están hechos y verificados** (`estado_registro` y
-   `resultado_registrado`), incluido el caso de Cardio que el `sql-schema.md` dejaba
-   pendiente. CU-20 ya tiene la base de datos preparada.
-2. `series_realizadas` **ya existe** con sus políticas del cliente: falta solo la
-   interfaz y la lógica de escritura. Sin `delete` a propósito (lo registrado es
-   histórico, se corrige con `update`).
-3. Faltan las migraciones de `registros_medidas`, `fotos_progreso` y
-   `checkins_recuperacion`, que están definidas en `sql-schema.md`.
-4. **El administrador no debe tener acceso** a medidas, fotos ni check-in: se consigue
-   por ausencia de política RLS, no creando ninguna. Hay un widget test que fija que
-   tampoco ve las fichas de clientes.
-5. Para CU-20, el patrón de la RPC atómica de la fase 4 sirve igual: registrar varias
-   series realizadas de una sesión debería ir en una sola transacción.
-6. **El acceso del cliente a su planning ya está hecho** (`/cliente/planning`,
-   `PantallaMisPlannings`), de solo lectura y reutilizando `PantallaPlanning`. Es
-   desde ahí desde donde colgará el registro de resultado de sesión: el cliente abre
-   la semana, entra en la sesión del día y registra. `misPlannings` toma el id de la
-   sesión, no por parámetro, y conviene seguir ese patrón en las pantallas de
-   medidas y check-in.
-7. La pantalla de **registro de serie** se hará siguiendo la captura que pasó Daniel
-   (histórico de las series de sesiones anteriores arriba, e inputs de peso y
-   repeticiones con botones +/− abajo), no un formulario normal.
+Las seis fases del ERS están implementadas y verificadas **en local**. Lo que falta
+no es funcionalidad, es puesta en producción:
+
+1. **Proyecto de Supabase en la nube** (dev y prod): aplicar las 15 migraciones por
+   el pipeline, crear el bucket `fotos-progreso` (las políticas ya viajan en
+   migración) y crear los dos secretos de Vault con la URL real de la función y un
+   `secreto_cron` largo y aleatorio.
+2. **Secretos de las Edge Functions** en la nube: `supabase secrets set` con
+   `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`, `SECRETO_CRON` y un par
+   VAPID **propio de producción** (el de local no vale).
+3. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
+   recordatorios solo llegan a Mailpit en local.
+4. **Vercel y GitHub Actions**: build con los `--dart-define` del entorno
+   (incluido `VAPID_PUBLIC_KEY`) y despliegue.
+5. **Probar el push de verdad** con un navegador real: es lo único de CU-22 que no
+   se puede cerrar en local (ver la nota de la bitácora sobre la rama de
+   suscripción caducada).

@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PlanningSemanal {
 
- String get id; String get clienteId; DateTime get fechaInicio; EstadoPlanning get estado; DateTime get creadoEn; String? get nombreObjetivo; List<SesionEntrenamiento> get sesiones;
+ String get id; String get clienteId; DateTime get fechaInicio; EstadoPlanning get estado; DateTime get creadoEn; String? get nombreObjetivo;/// OJO con el `JsonKey`: la consulta incrusta el recurso con el nombre de la
+/// tabla (`sesiones_entrenamiento`), no con el del campo. Sin el, la lista
+/// llegaba siempre vacia y la semana se veia entera como dias de descanso.
+@JsonKey(name: 'sesiones_entrenamiento') List<SesionEntrenamiento> get sesiones;
 /// Create a copy of PlanningSemanal
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -54,7 +57,7 @@ abstract mixin class $PlanningSemanalCopyWith<$Res>  {
   factory $PlanningSemanalCopyWith(PlanningSemanal value, $Res Function(PlanningSemanal) _then) = _$PlanningSemanalCopyWithImpl;
 @useResult
 $Res call({
- String id, String clienteId, DateTime fechaInicio, EstadoPlanning estado, DateTime creadoEn, String? nombreObjetivo, List<SesionEntrenamiento> sesiones
+ String id, String clienteId, DateTime fechaInicio, EstadoPlanning estado, DateTime creadoEn, String? nombreObjetivo,@JsonKey(name: 'sesiones_entrenamiento') List<SesionEntrenamiento> sesiones
 });
 
 
@@ -165,7 +168,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo,  List<SesionEntrenamiento> sesiones)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo, @JsonKey(name: 'sesiones_entrenamiento')  List<SesionEntrenamiento> sesiones)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PlanningSemanal() when $default != null:
 return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.creadoEn,_that.nombreObjetivo,_that.sesiones);case _:
@@ -186,7 +189,7 @@ return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.cr
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo,  List<SesionEntrenamiento> sesiones)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo, @JsonKey(name: 'sesiones_entrenamiento')  List<SesionEntrenamiento> sesiones)  $default,) {final _that = this;
 switch (_that) {
 case _PlanningSemanal():
 return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.creadoEn,_that.nombreObjetivo,_that.sesiones);case _:
@@ -206,7 +209,7 @@ return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.cr
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo,  List<SesionEntrenamiento> sesiones)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String clienteId,  DateTime fechaInicio,  EstadoPlanning estado,  DateTime creadoEn,  String? nombreObjetivo, @JsonKey(name: 'sesiones_entrenamiento')  List<SesionEntrenamiento> sesiones)?  $default,) {final _that = this;
 switch (_that) {
 case _PlanningSemanal() when $default != null:
 return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.creadoEn,_that.nombreObjetivo,_that.sesiones);case _:
@@ -221,7 +224,7 @@ return $default(_that.id,_that.clienteId,_that.fechaInicio,_that.estado,_that.cr
 @JsonSerializable()
 
 class _PlanningSemanal implements PlanningSemanal {
-  const _PlanningSemanal({required this.id, required this.clienteId, required this.fechaInicio, required this.estado, required this.creadoEn, this.nombreObjetivo,  List<SesionEntrenamiento> sesiones = const []}): _sesiones = sesiones;
+  const _PlanningSemanal({required this.id, required this.clienteId, required this.fechaInicio, required this.estado, required this.creadoEn, this.nombreObjetivo, @JsonKey(name: 'sesiones_entrenamiento')  List<SesionEntrenamiento> sesiones = const []}): _sesiones = sesiones;
   factory _PlanningSemanal.fromJson(Map<String, dynamic> json) => _$PlanningSemanalFromJson(json);
 
 @override final  String id;
@@ -230,8 +233,14 @@ class _PlanningSemanal implements PlanningSemanal {
 @override final  EstadoPlanning estado;
 @override final  DateTime creadoEn;
 @override final  String? nombreObjetivo;
+/// OJO con el `JsonKey`: la consulta incrusta el recurso con el nombre de la
+/// tabla (`sesiones_entrenamiento`), no con el del campo. Sin el, la lista
+/// llegaba siempre vacia y la semana se veia entera como dias de descanso.
  final  List<SesionEntrenamiento> _sesiones;
-@override@JsonKey() List<SesionEntrenamiento> get sesiones {
+/// OJO con el `JsonKey`: la consulta incrusta el recurso con el nombre de la
+/// tabla (`sesiones_entrenamiento`), no con el del campo. Sin el, la lista
+/// llegaba siempre vacia y la semana se veia entera como dias de descanso.
+@override@JsonKey(name: 'sesiones_entrenamiento') List<SesionEntrenamiento> get sesiones {
   if (_sesiones is EqualUnmodifiableListView) return _sesiones;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_sesiones);
@@ -273,7 +282,7 @@ abstract mixin class _$PlanningSemanalCopyWith<$Res> implements $PlanningSemanal
   factory _$PlanningSemanalCopyWith(_PlanningSemanal value, $Res Function(_PlanningSemanal) _then) = __$PlanningSemanalCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String clienteId, DateTime fechaInicio, EstadoPlanning estado, DateTime creadoEn, String? nombreObjetivo, List<SesionEntrenamiento> sesiones
+ String id, String clienteId, DateTime fechaInicio, EstadoPlanning estado, DateTime creadoEn, String? nombreObjetivo,@JsonKey(name: 'sesiones_entrenamiento') List<SesionEntrenamiento> sesiones
 });
 
 
@@ -894,7 +903,9 @@ mixin _$EjercicioPlanificado {
 
  String get id; String get bloqueId; String get ejercicioId; int get orden; EstadoRegistro get estadoRegistro; int? get descansoPlanificadoSeg; double? get minutosPlanificados; double? get minutosRealizados;/// El ejercicio de la biblioteca, incrustado por la consulta. Es quien dice si
 /// esto va con series o con minutos.
-@JsonKey(name: 'ejercicios') Ejercicio? get ejercicio;@JsonKey(name: 'series_planificadas') List<SeriePlanificada> get series;
+@JsonKey(name: 'ejercicios') Ejercicio? get ejercicio;@JsonKey(name: 'series_planificadas') List<SeriePlanificada> get series;/// Lo que el cliente registro de verdad (CU-20). Independiente de `series`:
+/// puede tener mas, menos o ninguna.
+@JsonKey(name: 'series_realizadas') List<SerieRealizada> get seriesRealizadas;
 /// Create a copy of EjercicioPlanificado
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -908,20 +919,20 @@ $EjercicioPlanificadoCopyWith<EjercicioPlanificado> get copyWith => _$EjercicioP
 @override
 bool operator ==(Object other) {
   final _this = this as EjercicioPlanificado;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EjercicioPlanificado&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.bloqueId, _this.bloqueId) || other.bloqueId == _this.bloqueId)&&(identical(other.ejercicioId, _this.ejercicioId) || other.ejercicioId == _this.ejercicioId)&&(identical(other.orden, _this.orden) || other.orden == _this.orden)&&(identical(other.estadoRegistro, _this.estadoRegistro) || other.estadoRegistro == _this.estadoRegistro)&&(identical(other.descansoPlanificadoSeg, _this.descansoPlanificadoSeg) || other.descansoPlanificadoSeg == _this.descansoPlanificadoSeg)&&(identical(other.minutosPlanificados, _this.minutosPlanificados) || other.minutosPlanificados == _this.minutosPlanificados)&&(identical(other.minutosRealizados, _this.minutosRealizados) || other.minutosRealizados == _this.minutosRealizados)&&(identical(other.ejercicio, _this.ejercicio) || other.ejercicio == _this.ejercicio)&&const DeepCollectionEquality().equals(other.series, _this.series));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is EjercicioPlanificado&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.bloqueId, _this.bloqueId) || other.bloqueId == _this.bloqueId)&&(identical(other.ejercicioId, _this.ejercicioId) || other.ejercicioId == _this.ejercicioId)&&(identical(other.orden, _this.orden) || other.orden == _this.orden)&&(identical(other.estadoRegistro, _this.estadoRegistro) || other.estadoRegistro == _this.estadoRegistro)&&(identical(other.descansoPlanificadoSeg, _this.descansoPlanificadoSeg) || other.descansoPlanificadoSeg == _this.descansoPlanificadoSeg)&&(identical(other.minutosPlanificados, _this.minutosPlanificados) || other.minutosPlanificados == _this.minutosPlanificados)&&(identical(other.minutosRealizados, _this.minutosRealizados) || other.minutosRealizados == _this.minutosRealizados)&&(identical(other.ejercicio, _this.ejercicio) || other.ejercicio == _this.ejercicio)&&const DeepCollectionEquality().equals(other.series, _this.series)&&const DeepCollectionEquality().equals(other.seriesRealizadas, _this.seriesRealizadas));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as EjercicioPlanificado;
-  return Object.hash(runtimeType,_this.id,_this.bloqueId,_this.ejercicioId,_this.orden,_this.estadoRegistro,_this.descansoPlanificadoSeg,_this.minutosPlanificados,_this.minutosRealizados,_this.ejercicio,const DeepCollectionEquality().hash(_this.series));
+  return Object.hash(runtimeType,_this.id,_this.bloqueId,_this.ejercicioId,_this.orden,_this.estadoRegistro,_this.descansoPlanificadoSeg,_this.minutosPlanificados,_this.minutosRealizados,_this.ejercicio,const DeepCollectionEquality().hash(_this.series),const DeepCollectionEquality().hash(_this.seriesRealizadas));
 }
 
 @override
 String toString() {
   final _this = this as EjercicioPlanificado;
-  return 'EjercicioPlanificado(id: ${_this.id}, bloqueId: ${_this.bloqueId}, ejercicioId: ${_this.ejercicioId}, orden: ${_this.orden}, estadoRegistro: ${_this.estadoRegistro}, descansoPlanificadoSeg: ${_this.descansoPlanificadoSeg}, minutosPlanificados: ${_this.minutosPlanificados}, minutosRealizados: ${_this.minutosRealizados}, ejercicio: ${_this.ejercicio}, series: ${_this.series})';
+  return 'EjercicioPlanificado(id: ${_this.id}, bloqueId: ${_this.bloqueId}, ejercicioId: ${_this.ejercicioId}, orden: ${_this.orden}, estadoRegistro: ${_this.estadoRegistro}, descansoPlanificadoSeg: ${_this.descansoPlanificadoSeg}, minutosPlanificados: ${_this.minutosPlanificados}, minutosRealizados: ${_this.minutosRealizados}, ejercicio: ${_this.ejercicio}, series: ${_this.series}, seriesRealizadas: ${_this.seriesRealizadas})';
 }
 
 
@@ -932,7 +943,7 @@ abstract mixin class $EjercicioPlanificadoCopyWith<$Res>  {
   factory $EjercicioPlanificadoCopyWith(EjercicioPlanificado value, $Res Function(EjercicioPlanificado) _then) = _$EjercicioPlanificadoCopyWithImpl;
 @useResult
 $Res call({
- String id, String bloqueId, String ejercicioId, int orden, EstadoRegistro estadoRegistro, int? descansoPlanificadoSeg, double? minutosPlanificados, double? minutosRealizados,@JsonKey(name: 'ejercicios') Ejercicio? ejercicio,@JsonKey(name: 'series_planificadas') List<SeriePlanificada> series
+ String id, String bloqueId, String ejercicioId, int orden, EstadoRegistro estadoRegistro, int? descansoPlanificadoSeg, double? minutosPlanificados, double? minutosRealizados,@JsonKey(name: 'ejercicios') Ejercicio? ejercicio,@JsonKey(name: 'series_planificadas') List<SeriePlanificada> series,@JsonKey(name: 'series_realizadas') List<SerieRealizada> seriesRealizadas
 });
 
 
@@ -949,7 +960,7 @@ class _$EjercicioPlanificadoCopyWithImpl<$Res>
 
 /// Create a copy of EjercicioPlanificado
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? bloqueId = null,Object? ejercicioId = null,Object? orden = null,Object? estadoRegistro = null,Object? descansoPlanificadoSeg = freezed,Object? minutosPlanificados = freezed,Object? minutosRealizados = freezed,Object? ejercicio = freezed,Object? series = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? bloqueId = null,Object? ejercicioId = null,Object? orden = null,Object? estadoRegistro = null,Object? descansoPlanificadoSeg = freezed,Object? minutosPlanificados = freezed,Object? minutosRealizados = freezed,Object? ejercicio = freezed,Object? series = null,Object? seriesRealizadas = null,}) {
   return _then(EjercicioPlanificado(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,bloqueId: null == bloqueId ? _self.bloqueId : bloqueId // ignore: cast_nullable_to_non_nullable
@@ -961,7 +972,8 @@ as int?,minutosPlanificados: freezed == minutosPlanificados ? _self.minutosPlani
 as double?,minutosRealizados: freezed == minutosRealizados ? _self.minutosRealizados : minutosRealizados // ignore: cast_nullable_to_non_nullable
 as double?,ejercicio: freezed == ejercicio ? _self.ejercicio : ejercicio // ignore: cast_nullable_to_non_nullable
 as Ejercicio?,series: null == series ? _self.series : series // ignore: cast_nullable_to_non_nullable
-as List<SeriePlanificada>,
+as List<SeriePlanificada>,seriesRealizadas: null == seriesRealizadas ? _self.seriesRealizadas : seriesRealizadas // ignore: cast_nullable_to_non_nullable
+as List<SerieRealizada>,
   ));
 }
 /// Create a copy of EjercicioPlanificado
@@ -1058,10 +1070,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series, @JsonKey(name: 'series_realizadas')  List<SerieRealizada> seriesRealizadas)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _EjercicioPlanificado() when $default != null:
-return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series);case _:
+return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series,_that.seriesRealizadas);case _:
   return orElse();
 
 }
@@ -1079,10 +1091,10 @@ return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.esta
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series, @JsonKey(name: 'series_realizadas')  List<SerieRealizada> seriesRealizadas)  $default,) {final _that = this;
 switch (_that) {
 case _EjercicioPlanificado():
-return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series);case _:
+return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series,_that.seriesRealizadas);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1099,10 +1111,10 @@ return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.esta
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String bloqueId,  String ejercicioId,  int orden,  EstadoRegistro estadoRegistro,  int? descansoPlanificadoSeg,  double? minutosPlanificados,  double? minutosRealizados, @JsonKey(name: 'ejercicios')  Ejercicio? ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series, @JsonKey(name: 'series_realizadas')  List<SerieRealizada> seriesRealizadas)?  $default,) {final _that = this;
 switch (_that) {
 case _EjercicioPlanificado() when $default != null:
-return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series);case _:
+return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.estadoRegistro,_that.descansoPlanificadoSeg,_that.minutosPlanificados,_that.minutosRealizados,_that.ejercicio,_that.series,_that.seriesRealizadas);case _:
   return null;
 
 }
@@ -1114,7 +1126,7 @@ return $default(_that.id,_that.bloqueId,_that.ejercicioId,_that.orden,_that.esta
 @JsonSerializable()
 
 class _EjercicioPlanificado implements EjercicioPlanificado {
-  const _EjercicioPlanificado({required this.id, required this.bloqueId, required this.ejercicioId, required this.orden, required this.estadoRegistro, this.descansoPlanificadoSeg, this.minutosPlanificados, this.minutosRealizados, @JsonKey(name: 'ejercicios') this.ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series = const []}): _series = series;
+  const _EjercicioPlanificado({required this.id, required this.bloqueId, required this.ejercicioId, required this.orden, required this.estadoRegistro, this.descansoPlanificadoSeg, this.minutosPlanificados, this.minutosRealizados, @JsonKey(name: 'ejercicios') this.ejercicio, @JsonKey(name: 'series_planificadas')  List<SeriePlanificada> series = const [], @JsonKey(name: 'series_realizadas')  List<SerieRealizada> seriesRealizadas = const []}): _series = series,_seriesRealizadas = seriesRealizadas;
   factory _EjercicioPlanificado.fromJson(Map<String, dynamic> json) => _$EjercicioPlanificadoFromJson(json);
 
 @override final  String id;
@@ -1135,6 +1147,17 @@ class _EjercicioPlanificado implements EjercicioPlanificado {
   return EqualUnmodifiableListView(_series);
 }
 
+/// Lo que el cliente registro de verdad (CU-20). Independiente de `series`:
+/// puede tener mas, menos o ninguna.
+ final  List<SerieRealizada> _seriesRealizadas;
+/// Lo que el cliente registro de verdad (CU-20). Independiente de `series`:
+/// puede tener mas, menos o ninguna.
+@override@JsonKey(name: 'series_realizadas') List<SerieRealizada> get seriesRealizadas {
+  if (_seriesRealizadas is EqualUnmodifiableListView) return _seriesRealizadas;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_seriesRealizadas);
+}
+
 
 /// Create a copy of EjercicioPlanificado
 /// with the given fields replaced by the non-null parameter values.
@@ -1149,18 +1172,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EjercicioPlanificado&&(identical(other.id, id) || other.id == id)&&(identical(other.bloqueId, bloqueId) || other.bloqueId == bloqueId)&&(identical(other.ejercicioId, ejercicioId) || other.ejercicioId == ejercicioId)&&(identical(other.orden, orden) || other.orden == orden)&&(identical(other.estadoRegistro, estadoRegistro) || other.estadoRegistro == estadoRegistro)&&(identical(other.descansoPlanificadoSeg, descansoPlanificadoSeg) || other.descansoPlanificadoSeg == descansoPlanificadoSeg)&&(identical(other.minutosPlanificados, minutosPlanificados) || other.minutosPlanificados == minutosPlanificados)&&(identical(other.minutosRealizados, minutosRealizados) || other.minutosRealizados == minutosRealizados)&&(identical(other.ejercicio, ejercicio) || other.ejercicio == ejercicio)&&const DeepCollectionEquality().equals(other.series, _series));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _EjercicioPlanificado&&(identical(other.id, id) || other.id == id)&&(identical(other.bloqueId, bloqueId) || other.bloqueId == bloqueId)&&(identical(other.ejercicioId, ejercicioId) || other.ejercicioId == ejercicioId)&&(identical(other.orden, orden) || other.orden == orden)&&(identical(other.estadoRegistro, estadoRegistro) || other.estadoRegistro == estadoRegistro)&&(identical(other.descansoPlanificadoSeg, descansoPlanificadoSeg) || other.descansoPlanificadoSeg == descansoPlanificadoSeg)&&(identical(other.minutosPlanificados, minutosPlanificados) || other.minutosPlanificados == minutosPlanificados)&&(identical(other.minutosRealizados, minutosRealizados) || other.minutosRealizados == minutosRealizados)&&(identical(other.ejercicio, ejercicio) || other.ejercicio == ejercicio)&&const DeepCollectionEquality().equals(other.series, _series)&&const DeepCollectionEquality().equals(other.seriesRealizadas, _seriesRealizadas));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,bloqueId,ejercicioId,orden,estadoRegistro,descansoPlanificadoSeg,minutosPlanificados,minutosRealizados,ejercicio,const DeepCollectionEquality().hash(_series));
+    return Object.hash(runtimeType,id,bloqueId,ejercicioId,orden,estadoRegistro,descansoPlanificadoSeg,minutosPlanificados,minutosRealizados,ejercicio,const DeepCollectionEquality().hash(_series),const DeepCollectionEquality().hash(_seriesRealizadas));
 }
 
 @override
 String toString() {
-    return 'EjercicioPlanificado(id: $id, bloqueId: $bloqueId, ejercicioId: $ejercicioId, orden: $orden, estadoRegistro: $estadoRegistro, descansoPlanificadoSeg: $descansoPlanificadoSeg, minutosPlanificados: $minutosPlanificados, minutosRealizados: $minutosRealizados, ejercicio: $ejercicio, series: $series)';
+    return 'EjercicioPlanificado(id: $id, bloqueId: $bloqueId, ejercicioId: $ejercicioId, orden: $orden, estadoRegistro: $estadoRegistro, descansoPlanificadoSeg: $descansoPlanificadoSeg, minutosPlanificados: $minutosPlanificados, minutosRealizados: $minutosRealizados, ejercicio: $ejercicio, series: $series, seriesRealizadas: $seriesRealizadas)';
 }
 
 
@@ -1171,7 +1194,7 @@ abstract mixin class _$EjercicioPlanificadoCopyWith<$Res> implements $EjercicioP
   factory _$EjercicioPlanificadoCopyWith(_EjercicioPlanificado value, $Res Function(_EjercicioPlanificado) _then) = __$EjercicioPlanificadoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String bloqueId, String ejercicioId, int orden, EstadoRegistro estadoRegistro, int? descansoPlanificadoSeg, double? minutosPlanificados, double? minutosRealizados,@JsonKey(name: 'ejercicios') Ejercicio? ejercicio,@JsonKey(name: 'series_planificadas') List<SeriePlanificada> series
+ String id, String bloqueId, String ejercicioId, int orden, EstadoRegistro estadoRegistro, int? descansoPlanificadoSeg, double? minutosPlanificados, double? minutosRealizados,@JsonKey(name: 'ejercicios') Ejercicio? ejercicio,@JsonKey(name: 'series_planificadas') List<SeriePlanificada> series,@JsonKey(name: 'series_realizadas') List<SerieRealizada> seriesRealizadas
 });
 
 
@@ -1188,7 +1211,7 @@ class __$EjercicioPlanificadoCopyWithImpl<$Res>
 
 /// Create a copy of EjercicioPlanificado
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? bloqueId = null,Object? ejercicioId = null,Object? orden = null,Object? estadoRegistro = null,Object? descansoPlanificadoSeg = freezed,Object? minutosPlanificados = freezed,Object? minutosRealizados = freezed,Object? ejercicio = freezed,Object? series = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? bloqueId = null,Object? ejercicioId = null,Object? orden = null,Object? estadoRegistro = null,Object? descansoPlanificadoSeg = freezed,Object? minutosPlanificados = freezed,Object? minutosRealizados = freezed,Object? ejercicio = freezed,Object? series = null,Object? seriesRealizadas = null,}) {
   return _then(_EjercicioPlanificado(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,bloqueId: null == bloqueId ? _self.bloqueId : bloqueId // ignore: cast_nullable_to_non_nullable
@@ -1200,7 +1223,8 @@ as int?,minutosPlanificados: freezed == minutosPlanificados ? _self.minutosPlani
 as double?,minutosRealizados: freezed == minutosRealizados ? _self.minutosRealizados : minutosRealizados // ignore: cast_nullable_to_non_nullable
 as double?,ejercicio: freezed == ejercicio ? _self.ejercicio : ejercicio // ignore: cast_nullable_to_non_nullable
 as Ejercicio?,series: null == series ? _self._series : series // ignore: cast_nullable_to_non_nullable
-as List<SeriePlanificada>,
+as List<SeriePlanificada>,seriesRealizadas: null == seriesRealizadas ? _self._seriesRealizadas : seriesRealizadas // ignore: cast_nullable_to_non_nullable
+as List<SerieRealizada>,
   ));
 }
 
@@ -1217,6 +1241,294 @@ $EjercicioCopyWith<$Res>? get ejercicio {
     return _then(_self.copyWith(ejercicio: value));
   });
 }
+}
+
+
+/// @nodoc
+mixin _$SerieRealizada {
+
+ String get id; String get ejercicioPlanificadoId; int get numeroSerie; int get repeticionesRealizadas; DateTime get fechaHoraRegistro; double? get pesoReal; int? get rirReal;
+/// Create a copy of SerieRealizada
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SerieRealizadaCopyWith<SerieRealizada> get copyWith => _$SerieRealizadaCopyWithImpl<SerieRealizada>(this as SerieRealizada, _$identity);
+
+  /// Serializes this SerieRealizada to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as SerieRealizada;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SerieRealizada&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.ejercicioPlanificadoId, _this.ejercicioPlanificadoId) || other.ejercicioPlanificadoId == _this.ejercicioPlanificadoId)&&(identical(other.numeroSerie, _this.numeroSerie) || other.numeroSerie == _this.numeroSerie)&&(identical(other.repeticionesRealizadas, _this.repeticionesRealizadas) || other.repeticionesRealizadas == _this.repeticionesRealizadas)&&(identical(other.fechaHoraRegistro, _this.fechaHoraRegistro) || other.fechaHoraRegistro == _this.fechaHoraRegistro)&&(identical(other.pesoReal, _this.pesoReal) || other.pesoReal == _this.pesoReal)&&(identical(other.rirReal, _this.rirReal) || other.rirReal == _this.rirReal));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as SerieRealizada;
+  return Object.hash(runtimeType,_this.id,_this.ejercicioPlanificadoId,_this.numeroSerie,_this.repeticionesRealizadas,_this.fechaHoraRegistro,_this.pesoReal,_this.rirReal);
+}
+
+@override
+String toString() {
+  final _this = this as SerieRealizada;
+  return 'SerieRealizada(id: ${_this.id}, ejercicioPlanificadoId: ${_this.ejercicioPlanificadoId}, numeroSerie: ${_this.numeroSerie}, repeticionesRealizadas: ${_this.repeticionesRealizadas}, fechaHoraRegistro: ${_this.fechaHoraRegistro}, pesoReal: ${_this.pesoReal}, rirReal: ${_this.rirReal})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SerieRealizadaCopyWith<$Res>  {
+  factory $SerieRealizadaCopyWith(SerieRealizada value, $Res Function(SerieRealizada) _then) = _$SerieRealizadaCopyWithImpl;
+@useResult
+$Res call({
+ String id, String ejercicioPlanificadoId, int numeroSerie, int repeticionesRealizadas, DateTime fechaHoraRegistro, double? pesoReal, int? rirReal
+});
+
+
+
+
+}
+/// @nodoc
+class _$SerieRealizadaCopyWithImpl<$Res>
+    implements $SerieRealizadaCopyWith<$Res> {
+  _$SerieRealizadaCopyWithImpl(this._self, this._then);
+
+  final SerieRealizada _self;
+  final $Res Function(SerieRealizada) _then;
+
+/// Create a copy of SerieRealizada
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? ejercicioPlanificadoId = null,Object? numeroSerie = null,Object? repeticionesRealizadas = null,Object? fechaHoraRegistro = null,Object? pesoReal = freezed,Object? rirReal = freezed,}) {
+  return _then(SerieRealizada(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,ejercicioPlanificadoId: null == ejercicioPlanificadoId ? _self.ejercicioPlanificadoId : ejercicioPlanificadoId // ignore: cast_nullable_to_non_nullable
+as String,numeroSerie: null == numeroSerie ? _self.numeroSerie : numeroSerie // ignore: cast_nullable_to_non_nullable
+as int,repeticionesRealizadas: null == repeticionesRealizadas ? _self.repeticionesRealizadas : repeticionesRealizadas // ignore: cast_nullable_to_non_nullable
+as int,fechaHoraRegistro: null == fechaHoraRegistro ? _self.fechaHoraRegistro : fechaHoraRegistro // ignore: cast_nullable_to_non_nullable
+as DateTime,pesoReal: freezed == pesoReal ? _self.pesoReal : pesoReal // ignore: cast_nullable_to_non_nullable
+as double?,rirReal: freezed == rirReal ? _self.rirReal : rirReal // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [SerieRealizada].
+extension SerieRealizadaPatterns on SerieRealizada {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _SerieRealizada value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _SerieRealizada() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _SerieRealizada value)  $default,){
+final _that = this;
+switch (_that) {
+case _SerieRealizada():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _SerieRealizada value)?  $default,){
+final _that = this;
+switch (_that) {
+case _SerieRealizada() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String ejercicioPlanificadoId,  int numeroSerie,  int repeticionesRealizadas,  DateTime fechaHoraRegistro,  double? pesoReal,  int? rirReal)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _SerieRealizada() when $default != null:
+return $default(_that.id,_that.ejercicioPlanificadoId,_that.numeroSerie,_that.repeticionesRealizadas,_that.fechaHoraRegistro,_that.pesoReal,_that.rirReal);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String ejercicioPlanificadoId,  int numeroSerie,  int repeticionesRealizadas,  DateTime fechaHoraRegistro,  double? pesoReal,  int? rirReal)  $default,) {final _that = this;
+switch (_that) {
+case _SerieRealizada():
+return $default(_that.id,_that.ejercicioPlanificadoId,_that.numeroSerie,_that.repeticionesRealizadas,_that.fechaHoraRegistro,_that.pesoReal,_that.rirReal);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String ejercicioPlanificadoId,  int numeroSerie,  int repeticionesRealizadas,  DateTime fechaHoraRegistro,  double? pesoReal,  int? rirReal)?  $default,) {final _that = this;
+switch (_that) {
+case _SerieRealizada() when $default != null:
+return $default(_that.id,_that.ejercicioPlanificadoId,_that.numeroSerie,_that.repeticionesRealizadas,_that.fechaHoraRegistro,_that.pesoReal,_that.rirReal);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _SerieRealizada implements SerieRealizada {
+  const _SerieRealizada({required this.id, required this.ejercicioPlanificadoId, required this.numeroSerie, required this.repeticionesRealizadas, required this.fechaHoraRegistro, this.pesoReal, this.rirReal});
+  factory _SerieRealizada.fromJson(Map<String, dynamic> json) => _$SerieRealizadaFromJson(json);
+
+@override final  String id;
+@override final  String ejercicioPlanificadoId;
+@override final  int numeroSerie;
+@override final  int repeticionesRealizadas;
+@override final  DateTime fechaHoraRegistro;
+@override final  double? pesoReal;
+@override final  int? rirReal;
+
+/// Create a copy of SerieRealizada
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SerieRealizadaCopyWith<_SerieRealizada> get copyWith => __$SerieRealizadaCopyWithImpl<_SerieRealizada>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SerieRealizadaToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SerieRealizada&&(identical(other.id, id) || other.id == id)&&(identical(other.ejercicioPlanificadoId, ejercicioPlanificadoId) || other.ejercicioPlanificadoId == ejercicioPlanificadoId)&&(identical(other.numeroSerie, numeroSerie) || other.numeroSerie == numeroSerie)&&(identical(other.repeticionesRealizadas, repeticionesRealizadas) || other.repeticionesRealizadas == repeticionesRealizadas)&&(identical(other.fechaHoraRegistro, fechaHoraRegistro) || other.fechaHoraRegistro == fechaHoraRegistro)&&(identical(other.pesoReal, pesoReal) || other.pesoReal == pesoReal)&&(identical(other.rirReal, rirReal) || other.rirReal == rirReal));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,ejercicioPlanificadoId,numeroSerie,repeticionesRealizadas,fechaHoraRegistro,pesoReal,rirReal);
+}
+
+@override
+String toString() {
+    return 'SerieRealizada(id: $id, ejercicioPlanificadoId: $ejercicioPlanificadoId, numeroSerie: $numeroSerie, repeticionesRealizadas: $repeticionesRealizadas, fechaHoraRegistro: $fechaHoraRegistro, pesoReal: $pesoReal, rirReal: $rirReal)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SerieRealizadaCopyWith<$Res> implements $SerieRealizadaCopyWith<$Res> {
+  factory _$SerieRealizadaCopyWith(_SerieRealizada value, $Res Function(_SerieRealizada) _then) = __$SerieRealizadaCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String ejercicioPlanificadoId, int numeroSerie, int repeticionesRealizadas, DateTime fechaHoraRegistro, double? pesoReal, int? rirReal
+});
+
+
+
+
+}
+/// @nodoc
+class __$SerieRealizadaCopyWithImpl<$Res>
+    implements _$SerieRealizadaCopyWith<$Res> {
+  __$SerieRealizadaCopyWithImpl(this._self, this._then);
+
+  final _SerieRealizada _self;
+  final $Res Function(_SerieRealizada) _then;
+
+/// Create a copy of SerieRealizada
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? ejercicioPlanificadoId = null,Object? numeroSerie = null,Object? repeticionesRealizadas = null,Object? fechaHoraRegistro = null,Object? pesoReal = freezed,Object? rirReal = freezed,}) {
+  return _then(_SerieRealizada(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,ejercicioPlanificadoId: null == ejercicioPlanificadoId ? _self.ejercicioPlanificadoId : ejercicioPlanificadoId // ignore: cast_nullable_to_non_nullable
+as String,numeroSerie: null == numeroSerie ? _self.numeroSerie : numeroSerie // ignore: cast_nullable_to_non_nullable
+as int,repeticionesRealizadas: null == repeticionesRealizadas ? _self.repeticionesRealizadas : repeticionesRealizadas // ignore: cast_nullable_to_non_nullable
+as int,fechaHoraRegistro: null == fechaHoraRegistro ? _self.fechaHoraRegistro : fechaHoraRegistro // ignore: cast_nullable_to_non_nullable
+as DateTime,pesoReal: freezed == pesoReal ? _self.pesoReal : pesoReal // ignore: cast_nullable_to_non_nullable
+as double?,rirReal: freezed == rirReal ? _self.rirReal : rirReal // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
 }
 
 

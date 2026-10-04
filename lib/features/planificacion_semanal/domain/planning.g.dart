@@ -15,7 +15,7 @@ _PlanningSemanal _$PlanningSemanalFromJson(Map<String, dynamic> json) =>
       creadoEn: DateTime.parse(json['creado_en'] as String),
       nombreObjetivo: json['nombre_objetivo'] as String?,
       sesiones:
-          (json['sesiones'] as List<dynamic>?)
+          (json['sesiones_entrenamiento'] as List<dynamic>?)
               ?.map(
                 (e) => SesionEntrenamiento.fromJson(e as Map<String, dynamic>),
               )
@@ -23,16 +23,17 @@ _PlanningSemanal _$PlanningSemanalFromJson(Map<String, dynamic> json) =>
           const [],
     );
 
-Map<String, dynamic> _$PlanningSemanalToJson(_PlanningSemanal instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'cliente_id': instance.clienteId,
-      'fecha_inicio': instance.fechaInicio.toIso8601String(),
-      'estado': _$EstadoPlanningEnumMap[instance.estado]!,
-      'creado_en': instance.creadoEn.toIso8601String(),
-      'nombre_objetivo': instance.nombreObjetivo,
-      'sesiones': instance.sesiones.map((e) => e.toJson()).toList(),
-    };
+Map<String, dynamic> _$PlanningSemanalToJson(
+  _PlanningSemanal instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'cliente_id': instance.clienteId,
+  'fecha_inicio': instance.fechaInicio.toIso8601String(),
+  'estado': _$EstadoPlanningEnumMap[instance.estado]!,
+  'creado_en': instance.creadoEn.toIso8601String(),
+  'nombre_objetivo': instance.nombreObjetivo,
+  'sesiones_entrenamiento': instance.sesiones.map((e) => e.toJson()).toList(),
+};
 
 const _$EstadoPlanningEnumMap = {
   EstadoPlanning.activo: 'activo',
@@ -119,6 +120,11 @@ _EjercicioPlanificado _$EjercicioPlanificadoFromJson(
           ?.map((e) => SeriePlanificada.fromJson(e as Map<String, dynamic>))
           .toList() ??
       const [],
+  seriesRealizadas:
+      (json['series_realizadas'] as List<dynamic>?)
+          ?.map((e) => SerieRealizada.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
 );
 
 Map<String, dynamic> _$EjercicioPlanificadoToJson(
@@ -134,12 +140,37 @@ Map<String, dynamic> _$EjercicioPlanificadoToJson(
   'minutos_realizados': instance.minutosRealizados,
   'ejercicios': instance.ejercicio?.toJson(),
   'series_planificadas': instance.series.map((e) => e.toJson()).toList(),
+  'series_realizadas': instance.seriesRealizadas
+      .map((e) => e.toJson())
+      .toList(),
 };
 
 const _$EstadoRegistroEnumMap = {
   EstadoRegistro.pendiente: 'pendiente',
   EstadoRegistro.registrado: 'registrado',
 };
+
+_SerieRealizada _$SerieRealizadaFromJson(Map<String, dynamic> json) =>
+    _SerieRealizada(
+      id: json['id'] as String,
+      ejercicioPlanificadoId: json['ejercicio_planificado_id'] as String,
+      numeroSerie: (json['numero_serie'] as num).toInt(),
+      repeticionesRealizadas: (json['repeticiones_realizadas'] as num).toInt(),
+      fechaHoraRegistro: DateTime.parse(json['fecha_hora_registro'] as String),
+      pesoReal: (json['peso_real'] as num?)?.toDouble(),
+      rirReal: (json['rir_real'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$SerieRealizadaToJson(_SerieRealizada instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'ejercicio_planificado_id': instance.ejercicioPlanificadoId,
+      'numero_serie': instance.numeroSerie,
+      'repeticiones_realizadas': instance.repeticionesRealizadas,
+      'fecha_hora_registro': instance.fechaHoraRegistro.toIso8601String(),
+      'peso_real': instance.pesoReal,
+      'rir_real': instance.rirReal,
+    };
 
 _SeriePlanificada _$SeriePlanificadaFromJson(Map<String, dynamic> json) =>
     _SeriePlanificada(

@@ -526,3 +526,156 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   sin esa linea `supabase seed buckets --local` deja el bucket actualizado.
 - Para la nube, `supabase config push` empuja lo declarado en `config.toml` al
   proyecto enlazado; queda por confirmar cuando exista el proyecto.
+
+### 2026-10-03 (fase 5)
+
+**Hecho:**
+- **Migraciones nuevas (5)**: `registros_medidas` + `fotos_progreso`,
+  `checkins_recuperacion`, politicas del bucket sobre `storage.objects`,
+  `registrar_resultado_ejercicio` (RPC de CU-20) y las vistas de progreso. Las 13
+  aplican limpias con `supabase db reset`.
+  - `series_realizadas` y los cuatro triggers de recalculo **ya estaban** desde el
+    cierre de la fase 4, incluido el `after update` que el doc dejaba pendiente para
+    cardio: en esta fase solo se les ha dado uso real.
+  - Ninguna politica para `es_administrador()` en ninguna de las tablas nuevas, ni
+    en el bucket. Verificado por la API que no ve absolutamente nada.
+- **CU-20**: el cliente abre la sesion desde su planning y registra ejercicio a
+  ejercicio. La pantalla de Fuerza sigue la captura que paso Daniel: historico
+  arriba (lo planificado, lo confirmado hoy y las dos ultimas sesiones del mismo
+  ejercicio) y abajo peso, repeticiones y RIR con botones de mas y menos. El boton
+  grande confirma la serie y pasa a la siguiente. Cardio tiene su propio cuerpo con
+  los minutos. Un ejercicio puede quedarse a medias: se guarda lo confirmado.
+- **CU-21**: pantalla de progreso con filtro por ejercicio y metrica (peso maximo,
+  volumen, repeticiones, RIR medio; minutos en cardio) o por medida corporal, mas
+  rango de fechas. La grafica esta pintada con `CustomPainter`: no se ha anadido
+  ninguna libreria de graficas. Misma pantalla para el cliente (lo suyo, desde su
+  inicio) y para el entrenador (desde la ficha del cliente).
+- **Medidas y check-in**: una pantalla de control semanal que abre por defecto en el
+  `diaControlPreferido` del cliente, con los **dos formularios independientes**,
+  cada uno con su boton y su resultado. Rellenar solo uno es valido, como dice el
+  modelo de dominio. Fotos de progreso con subida al bucket privado y miniaturas
+  por URL firmada.
+- **Conversion de imagen**: la app nunca sube el fichero original. Lo decodifica,
+  lo reduce a 1600 px de lado mayor y lo recodifica en PNG antes de subir
+  (`ServicioImagenes` en `core/plataforma`, con `image_picker` para elegir y
+  `dart:ui` para convertir). Asi un HEIC de iPhone no llega nunca al bucket, que
+  solo admite PNG y JPEG. Documentado en `architecture.md`.
+- **Dependencia nueva**, consultada antes: `image_picker`. Es la unica; la grafica y
+  la conversion no han necesitado ninguna.
+- `scripts/probar_local.sh` pasa de 89 a **128 comprobaciones**: medidas, check-in,
+  la RPC de registro, el planning archivado, las vistas y el bucket, cada una con su
+  caso de cliente, entrenador y administrador.
+- 43 tests nuevos (272 en total), `dart analyze --fatal-infos` limpio.
+
+**Corregido:**
+- En Cardio no se precargaban los minutos planificados en el formulario de registro,
+  mientras que en Fuerza si se precargaban las series: el cliente tenia que teclear
+  un valor que la app ya conocia, y si le daba a guardar sin escribir nada se
+  llevaba un error de validacion. Lo encontro el test de widget, no la lectura del
+  codigo.
+- `objects_path = "./images"` en el bucket de `config.toml` (venia del ejemplo
+  comentado): apunta a una carpeta cuyo contenido se precarga en el bucket y, si no
+  existe, el arranque falla con `NotFound: FileSystem.stat`. La carpeta estaba vacia
+  y git no versiona carpetas vacias, asi que en una copia recien clonada habria
+  fallado. Quitado.
+
+**Pendiente / notas:**
+- **Consecuencia del diseno, a confirmar**: `series_realizadas` no tiene `delete`,
+  asi que el cliente puede corregir una serie pero no quitarla. Si registra 3 y
+  luego solo hizo 2, la tercera se queda. La RPC usa `on conflict do update` por eso.
+- **El 500 de la RPC** cuando el ejercicio no es visible: lanza `no_data_found`
+  (P0002) y PostgREST no traduce ese SQLSTATE a un estado HTTP. La app no se guia
+  por el codigo HTTP sino por el `code` del cuerpo, asi que muestra el mensaje
+  correcto. Si se quisiera un 404 limpio habria que usar los codigos `PTxxx` de
+  PostgREST, y entonces conviene cambiar tambien
+  `guardar_ejercicio_planificado` para no dejar dos convenciones.
+- Corregir el resultado de un **planning archivado** no es posible: el `on conflict`
+  evalua tambien la politica de `insert`, que exige planning activo. Registrar en
+  una semana archivada ya estaba prohibido por diseno; corregir lo registrado antes
+  de archivarla, no. No es un caso de uso del ERS.
+- El bucket solo admite PNG y JPEG; la app sube siempre PNG. Si algun dia se quiere
+  JPEG (pesa bastante menos en fotos), `dart:ui` no lo codifica: haria falta otra
+  via.
+
+**Corregido (despues de cerrar la fase 5, al probar en la app):**
+- **El planning se veia como una semana entera de descanso.** `PlanningSemanal.sesiones`
+  no tenia `@JsonKey(name: 'sesiones_entrenamiento')`, y PostgREST devuelve los
+  recursos incrustados con el **nombre de la tabla**, no con el del campo. Con
+  `@Default([])` la lista llegaba vacia **en silencio**: ningun dia mostraba su
+  sesion, todos ofrecian "Anadir sesion", y al intentar crearla el indice unico de
+  la base la rechazaba con "Ya hay una sesion en esa fecha". Los tres niveles de
+  abajo (`bloques_ejercicio`, `ejercicios_planificados`, `series_planificadas`) si
+  lo tenian; se le olvido al de arriba. Es un fallo de la fase 4.
+  - **Por que no lo vio nada**: el script de pruebas va por la API REST y no pasa
+    por las entidades; los tests de widget construyen las entidades a mano, asi que
+    tampoco parsean JSON. El agujero estaba entre los dos.
+  - Test nuevo `planning_json_test.dart` con la **respuesta real** capturada de
+    Supabase local: comprueba los cuatro niveles y que `sesionDe` encuentra la
+    sesion del dia. Es el que habria cazado esto.
+  - Tambien `pantalla_planning_test.dart`, que fija que la semana pinta sus
+    sesiones. Ojo: hay que **agrandar el viewport** en estos tests; con los 600 px
+    por defecto un `ListView` solo construye los primeros dias y el test dice que
+    faltan sesiones cuando no es verdad.
+- Revisados todos los demas campos de lista que salen de un recurso incrustado
+  (`bloques`, `ejercicios`, `series`, `seriesRealizadas`, `fotos`): sus claves
+  generadas son correctas.
+
+**Hecho (fase 6, CU-22):**
+- **Edge Function `enviar-recordatorios`**: busca las sesiones de manana en
+  plannings activos y los clientes cuyo dia de control es hoy, y avisa por correo
+  (siempre) y por push (si el cliente lo tiene activado). Calcula "hoy" y "manana"
+  en **Europe/Madrid**, no en UTC: a las 23:30 de Madrid en verano, en UTC todavia
+  es el dia anterior y "manana" saldria mal.
+- **Job diario de pg_cron** a las 17:00 UTC (19:00 en Espana en verano, 18:00 en
+  invierno), que invoca la funcion por `pg_net`. La URL y el secreto estan en
+  **Vault**, no en la migracion: cambian por entorno y el secreto no debe vivir en
+  el repositorio. `seed.sql` los crea para local.
+- **La funcion no acepta JWT de usuario**: quien la llama es un job. Se identifica
+  con la cabecera `x-secreto-cron`. Sin `SECRETO_CRON` configurado devuelve 500 y
+  no atiende a nadie, en vez de quedarse abierta.
+- **Tres tablas**: `preferencias_notificacion`, `suscripciones_push` y
+  `avisos_enviados`. Esta ultima es la que cumple la excepcion de CU-22: un push
+  que no se manda porque el cliente lo tiene apagado queda como **`omitido`** con
+  su motivo, no se pierde. Indice unico por cliente, tipo, canal y fecha: si el
+  job se dispara dos veces, el segundo no reenvia.
+- **Push web con VAPID, sin proveedor de terceros y sin dependencias nuevas en
+  Flutter**: el puente con `PushManager` esta en `web/index.html` y se llama con
+  `dart:js_interop` desde `servicio_push_web.dart`, detras de la interfaz
+  `ServicioPush`. El service worker del push es propio (`web/push_sw.js`) y se
+  registra en el ambito `push/`, porque el de Flutter ocupa la raiz y lo regenera
+  cada build.
+- **Pantalla de preferencias** para el cliente, con interruptor solo para el push.
+  El correo aparece como "siempre activo" y sin interruptor, con su explicacion:
+  es el canal de respaldo.
+- `probar_local.sh` pasa de 128 a **153 comprobaciones**. Entre ellas, que un
+  cliente dado de baja no recibe avisos, que el segundo disparo no reenvia, y que
+  el job llega de verdad hasta la funcion (Vault -> pg_net -> Kong -> funcion).
+- 7 tests nuevos (288 en total).
+
+**Corregido:**
+- Nada roto por el camino, pero si dos cosas que solo se ven ejecutando:
+  `npm:web-push` no se puede importar con el especificador en linea (lo prohibe
+  `deno lint`), va por el import map de `deno.json`; y Dart **no deja hacer un
+  tear-off de un miembro externo de JavaScript**, cosa que `dart analyze` no ve
+  porque analiza la rama no-web del import condicional: lo caza `flutter build web`.
+
+**Pendiente / notas:**
+- **La rama de "suscripcion caducada" (404/410) no esta probada de punta a punta.**
+  `web-push` fuerza https, asi que no se puede apuntar un endpoint de prueba al
+  Kong local, que va por http. El codigo que borra la suscripcion caducada esta
+  escrito y revisado, pero hace falta un navegador real para verlo. Queda para la
+  primera prueba en la nube.
+- **El envio real de un push no se ha podido probar en local** por lo mismo: hace
+  falta una suscripcion real de navegador. Lo que si esta verificado es que la
+  firma VAPID y el cifrado se ejecutan (el fallo llega en el paso de red, no antes)
+  y que los estados `omitido` y `fallido` se registran bien.
+- **`deno check` falla en `crear-cliente`** (TS2353: `data` no existe en
+  `GenerateInviteOrMagiclinkParams`). Es de la fase 3, no de esta, y **funciona en
+  tiempo de ejecucion**: el flujo de invitacion esta verificado. Es un desajuste
+  entre los tipos de `supabase-js` y lo que acepta GoTrue; el arreglo seria mover
+  `data` dentro de `options`, pero toca una Edge Function ya verificada y no se ha
+  tocado sin acordarlo.
+- Las claves VAPID de local estan en `supabase/functions/.env` (ignorado por git).
+  **Produccion necesita un par propio**, generado con
+  `deno eval "import w from 'npm:web-push@3.6.7'; console.log(JSON.stringify(w.generateVAPIDKeys()))"`.
+

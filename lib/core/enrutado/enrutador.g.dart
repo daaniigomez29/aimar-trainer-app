@@ -48,4 +48,4 @@ final class EnrutadorProvider
   }
 }
 
-String _$enrutadorHash() => r'a7c2b1ef05441d12d112a9b21c1acd477b0a4e71';
+String _$enrutadorHash() => r'767d8ca987e42489e0226a21c30fc9678ebdc66b';
