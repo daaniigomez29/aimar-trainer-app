@@ -36,6 +36,10 @@ class ProgresoRepositorioSupabase implements ProgresoRepositorio {
   static const String _vistaProgreso = 'vista_progreso_ejercicios';
   static const String _vistaEjercicios = 'vista_ejercicios_con_registro';
 
+  /// Tope de filas del historico que mira la planificacion. Son series sueltas:
+  /// 400 dan de sobra para las ultimas semanas de un planning normal.
+  static const int _topeDeHistorico = 400;
+
   /// Bucket privado de las fotos. Mismo nombre en local (`config.toml`) y en la
   /// nube.
   static const String bucketFotos = 'fotos-progreso';
@@ -303,6 +307,31 @@ class ProgresoRepositorioSupabase implements ProgresoRepositorio {
           .gte('fecha', soloFecha(rango.desde))
           .lte('fecha', soloFecha(rango.hasta))
           .order('fecha');
+      return Success(filas.map(RegistroProgreso.fromJson).toList());
+    } on Object catch (error, traza) {
+      return Failure(_traducir(error, traza));
+    }
+  }
+
+  @override
+  Future<Result<List<RegistroProgreso>>> ultimoDeCadaEjercicio({
+    required String clienteId,
+    required List<String> ejercicioIds,
+    required DateTime antesDe,
+  }) async {
+    if (ejercicioIds.isEmpty) return const Success([]);
+    try {
+      final filas = await cliente
+          .from(_vistaProgreso)
+          .select()
+          .eq('cliente_id', clienteId)
+          .inFilter('ejercicio_id', ejercicioIds)
+          .lt('fecha', soloFecha(antesDe))
+          .order('fecha', ascending: false)
+          // De lo mas reciente hacia atras: el tope solo recorta lo viejo, que es
+          // lo que no se va a ensenar. Esta para que un cliente con un ano de
+          // historico no se traiga la vida entera en cada planning.
+          .limit(_topeDeHistorico);
       return Success(filas.map(RegistroProgreso.fromJson).toList());
     } on Object catch (error, traza) {
       return Failure(_traducir(error, traza));

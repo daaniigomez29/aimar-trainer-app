@@ -4,7 +4,7 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-04, con las sesiones numeradas y el reordenado por arrastre.
+Última actualización: 2026-10-05, con lo realizado la última vez visible al planificar y datos de demostración en el seed.
 
 ## Fases
 
@@ -19,7 +19,7 @@ ya se han pisado y qué queda abierto**.
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
 Verificación actual: `supabase db reset` aplica **18 migraciones** limpias,
-`./scripts/probar_local.sh` da **177/177**, `flutter test` **337**,
+`./scripts/probar_local.sh` da **177/177**, `flutter test` **353**,
 `dart analyze --fatal-infos` sin incidencias, `flutter build web` compila.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -48,6 +48,21 @@ supabase functions serve --no-verify-jwt  # imprescindible para alta/baja de cli
 
 Cuentas de prueba y contraseña: al principio de `supabase/seed.sql`. Correo de
 pruebas: Mailpit en <http://127.0.0.1:54324>.
+
+**Datos para trastear** (`supabase/seed_demo.sql`, cargado también por
+`supabase db reset`): 15 ejercicios de biblioteca y un cliente de demostración,
+**Ana Demo** (`demo@local.test`, misma contraseña), con tres semanas de
+planificación: dos archivadas y con resultados registrados, y la de esta semana
+activa y sin registrar. Trae a propósito los casos que cuesta montar a mano:
+una sesión a medias, un ejercicio que está esta semana y la anterior no (para
+ver la referencia "Última vez · dd/mm"), cardio con minutos realizados, medidas
+y check-in. Para arrancar con la base pelada, quita ese archivo de
+`[db.seed] sql_paths` en `config.toml`.
+
+El cliente de demostración es **otro distinto** de `cliente@local.test` a
+propósito: `probar_local.sh` usa ese y le crea un planning activo de la semana en
+curso, así que si el seed le dejara uno, el índice de "un planning activo por
+cliente y semana" tumbaría ese bloque entero con un 409.
 
 `./scripts/probar_local.sh` verifica 177 cosas por la API REST. **Requiere partir de
 `supabase db reset`**: el propio script da de baja al cliente del seed al comprobar
@@ -222,6 +237,14 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   RLS no puede limitar **qué columnas** se tocan. Se vio en el script, que
   devolvía 204 donde esperaba 403. Es la "nota de seguridad conocida" de
   `sql-schema.md`, que sigue abierta para el `update` directo a la tabla.
+- **Al planificar se ve lo que el cliente hizo la última vez** (2026-10-05), en
+  una columna a la derecha de las series, con un botón que lo copia a lo
+  planificado. Es como trabaja el entrenador: parte de la semana pasada y ajusta.
+  La referencia es el Día N del planning anterior y, si esa semana no hizo ese
+  ejercicio, el último registro que haya, **diciéndolo con la fecha** ("Última vez
+  · 16/09") para que nadie planifique creyendo que es de hace siete días.
+  Sin SQL nuevo: sale de la jerarquía que ya se carga y de
+  `vista_progreso_ejercicios`. Detalle en `architecture.md`.
 - **La foto del ejercicio se pinta en un único widget** (`MiniaturaEjercicio`),
   compartido por la biblioteca, la planificación y el registro del cliente.
   Antes cada pantalla tenía su copia del hueco gris, y por eso la planificación
@@ -258,19 +281,62 @@ Decisiones que quedaron sin cerrar:
 ## Lo que queda: desplegar
 
 Las seis fases del ERS están implementadas y verificadas **en local**. Lo que falta
-no es funcionalidad, es puesta en producción:
+no es funcionalidad, es puesta en producción.
 
-1. **Proyecto de Supabase en la nube** (dev y prod): aplicar las 16 migraciones por
-   el pipeline, crear los buckets `fotos-progreso` e `imagenes-ejercicios` (las
-   políticas de los dos ya viajan en migración) y crear los dos secretos de Vault con la URL real de la función y un
-   `secreto_cron` largo y aleatorio.
-2. **Secretos de las Edge Functions** en la nube: `supabase secrets set` con
-   `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`, `SECRETO_CRON` y un par
-   VAPID **propio de producción** (el de local no vale).
-3. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
+El **pipeline ya está escrito**: el job `desplegar` de `.github/workflows/ci.yml`
+aplica las migraciones (`supabase db push`) y publica las Edge Functions
+(`supabase functions deploy`) en cada push a `dev` y a `main`, después de que
+pasen análisis, tests y las comprobaciones de Deno. El proyecto al que va lo
+decide el **Environment** de GitHub, que se llama como la rama (`main`, `dev`),
+porque los secretos son suyos. Mientras un entorno no tenga secretos, el job se
+salta solo y lo dice en el resumen, en vez de poner la rama en rojo.
+
+**El despliegue lo lleva Actions, no la integración del panel de Supabase.** Ese
+proyecto tenía la integración de GitHub conectada a `main` (branching con
+`git_branch: main`), que aplicaba las migraciones por su cuenta **sin mirar el
+CI**: con los tests en rojo desplegaba igual. Se desconecta en el panel del
+proyecto; si se dejan las dos, cada push despliega dos veces.
+
+Secretos por Environment (Settings → Environments):
+
+| Secreto | De dónde sale |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | Account → Access Tokens, en el panel de Supabase |
+| `SUPABASE_PROJECT_REF` | El ref del proyecto (está en la URL del panel) |
+| `SUPABASE_DB_PASSWORD` | La contraseña de Postgres de ese proyecto |
+
+Lo que **no** hace el pipeline, a propósito: la web (la despliega Vercel con su
+integración de GitHub), los secretos de las funciones y los de Vault (son
+valores, no código: se ponen una vez a mano y no tienen por qué pasar por un log
+de CI) y el seed (es solo local).
+
+Queda por hacer:
+
+1. **Desconectar la integración de GitHub** en el panel del proyecto, para que
+   el despliegue no se haga por duplicado.
+2. **Crear los tres secretos del entorno `main`**, apuntando al proyecto que ya
+   existe (`app-aimar-trainer-dev`, ref `aihlqyyeqrybhrawxkut`, eu-west-1).
+   Después, crear los buckets
+   `fotos-progreso` e `imagenes-ejercicios` desde el panel: sus políticas sí
+   viajan en migración, pero los buckets en sí los crea `config.toml`, que es
+   cosa de local.
+3. **Los dos secretos de Vault** del job de recordatorios, con la URL real de la
+   función y un `secreto_cron` largo y aleatorio. La migración del job crea
+   `pg_cron` y `pg_net` y la función que los lee, pero no los secretos: sin
+   ellos el job se dispara y no llega a ninguna parte. (Se podrían automatizar
+   con la sección `[db.vault]` de `config.toml`, que `db push` aplica antes de
+   las migraciones; está sin decidir.)
+4. **Secretos de las Edge Functions**: `supabase secrets set` con
+   `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`, `SECRETO_CRON` (el
+   mismo que el de Vault) y un par VAPID **propio de producción** (el de local no
+   vale).
+5. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
    recordatorios solo llegan a Mailpit en local.
-4. **Vercel y GitHub Actions**: build con los `--dart-define` del entorno
-   (incluido `VAPID_PUBLIC_KEY`) y despliegue.
-5. **Probar el push de verdad** con un navegador real: es lo único de CU-22 que no
+6. **Vercel**: conectar el repo y configurar el build con los `--dart-define` del
+   entorno (incluido `VAPID_PUBLIC_KEY`).
+7. **Proyecto aparte para pruebas** (opcional): crearlo, rellenar el Environment `produccion` (y,
+   si se quiere, exigirle revisores para que el despliegue a `main` espere
+   aprobación).
+8. **Probar el push de verdad** con un navegador real: es lo único de CU-22 que no
    se puede cerrar en local (ver la nota de la bitácora sobre la rama de
    suscripción caducada).

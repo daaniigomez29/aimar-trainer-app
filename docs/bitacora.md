@@ -985,3 +985,134 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 - Queda decidir si la foto debe verse tambien en la lista de sesiones de "Mi
   planning" del cliente, y donde iria entonces el estado de la sesion.
 
+### 2026-10-05
+
+**Hecho:**
+
+- **Al planificar, el entrenador ve lo que el cliente hizo la ultima vez.** En la
+  fila de cada ejercicio, las series quedan a la izquierda (lo que escribe) y a la
+  derecha lo realizado, con su fecha. Es como trabaja de verdad: no planifica
+  desde cero, mira como le fue al cliente y ajusta a partir de ahi. Antes tenia
+  que abrir el planning de la semana pasada en otra pantalla.
+- **De donde sale el dato**, en este orden: el Dia N del planning inmediatamente
+  anterior (cruzando por `ejercicio_id`, no por posicion, porque el ejercicio
+  puede haberse movido de bloque) y, para lo que no este ahi, el ultimo registro
+  que haya de ese ejercicio. El segundo caso se marca como "Ultima vez · 16/09"
+  en vez de "Semana pasada", porque no es lo mismo planificar sobre lo de hace
+  siete dias que sobre algo de hace un mes.
+- **Sin SQL nuevo**: la jerarquia completa ya trae `series_realizadas` desde la
+  fase 5, y el historico sale de `vista_progreso_ejercicios`, la misma vista de
+  CU-21, con un metodo nuevo en el repositorio de progreso
+  (`ultimoDeCadaEjercicio`) que pide varios ejercicios de una vez en lugar de uno
+  por viaje.
+- **Boton de copiar** por ejercicio: vuelca kg, reps y RIR de lo realizado a los
+  campos de lo planificado, listo para retocar. **No guarda**: queda como cambio
+  pendiente del boton de siempre. Si el cliente hizo cuatro series donde habia
+  tres planificadas, se copian las cuatro, y las series se renumeran del 1 por si
+  el registro tuviera huecos.
+- En Cardio no hay boton: los minutos no se editan en esta pantalla, se cambian
+  en el formulario del ejercicio. Si se ensena lo que hizo ("Semana pasada: 28
+  min").
+- Con poco ancho las dos mitades no caben, asi que lo realizado pasa debajo, una
+  linea por serie, con el mismo boton de copiar. Umbral de 560 px medidos con
+  `LayoutBuilder` sobre el espacio real, no sobre el tamano de pantalla.
+
+**Pendiente / notas:**
+
+- La referencia **no bloquea la pantalla**: si la consulta falla o tarda, la
+  planificacion funciona igual sin ella. Es una ayuda; quedarse sin poder
+  planificar porque no carga el historico seria peor que no verla.
+- Verificado en el navegador contra Supabase local, con tres semanas de datos
+  sembrados: Press banca ensena "Semana pasada · 30/09" con sus tres series
+  (incluida la cuarta fila de la serie que el cliente hizo de mas, sin campo
+  enfrente), Dominadas cae a "Ultima vez · 16/09", y el Cardio ensena sus
+  minutos. Copiado y guardado comprobados en Postgres.
+- `flutter test` **353** (16 nuevos: eleccion del planning anterior, cruce por
+  ejercicio, agrupado del historico, orden de las dos fuentes y conversion del
+  boton de copiar). `dart analyze --fatal-infos` limpio y `flutter build web`
+  compila. `probar_local.sh` no cambia: no hay SQL nuevo que comprobar.
+- Esto es solo el editor del entrenador. La vista de detalle del planning
+  (`pantalla_planning.dart`) no lo ensena, porque ahi no se editan series; si se
+  quiere tambien alli, hay que decidir como.
+
+**Hecho (datos de demostracion):**
+
+- `supabase/seed_demo.sql`, cargado por `supabase db reset` junto al seed de
+  siempre (listado en `[db.seed] sql_paths`). Trae 15 ejercicios de biblioteca
+  con grupo muscular, equipamiento y descripcion de verdad, y un cliente de
+  demostracion, **Ana Demo** (`demo@local.test`), con tres semanas: dos
+  archivadas con sus resultados registrados y la de esta semana activa y sin
+  registrar, mas medidas y check-in para que el progreso no salga vacio.
+- Esta montado para que aparezcan los casos que cuesta reproducir a mano: una
+  sesion dejada a medias, un ejercicio que esta esta semana pero no la pasada
+  (asi se ve la referencia "Ultima vez · dd/mm" y no solo "Semana pasada"),
+  cardio con minutos realizados, y carga que sube de una semana a otra.
+- **Cliente distinto de `cliente@local.test`** a proposito: `probar_local.sh` usa
+  ese cliente y le crea un planning activo de la semana en curso. Si el seed le
+  dejara uno, el indice de "un planning activo por cliente y semana" tumbaria ese
+  bloque entero con un 409 antes de empezar.
+
+**Corregido:**
+
+- La comprobacion 'el entrenador ve todas las fichas' del script esperaba **1**
+  cliente fijo, asi que fallaba en cuanto el seed traia otro. Ahora compara
+  contra el total real de la tabla, que es lo que decia su nombre: lo que se
+  verifica es que el entrenador los ve **todos**, no cuantos hay. Con los datos
+  de demostracion cargados, el script sigue en **177/177**.
+
+**Pendiente / notas:**
+
+- El seed deja el video de ejemplo de un ejercicio apuntando a un corto libre de
+  YouTube, solo para probar que el reproductor incrustado tira. Hay que
+  sustituirlo por los videos reales de Aimar cuando los haya.
+
+**Hecho (pipeline de despliegue):**
+
+- Job `desplegar` en `.github/workflows/ci.yml`: aplica migraciones
+  (`supabase db push --linked`) y publica las Edge Functions
+  (`supabase functions deploy --use-api`, que empaqueta en el servidor y no
+  necesita Docker en el runner) en cada push a `dev` y a `main`.
+- **Depende de que CI este en verde** (`needs: [flutter, edge-functions]`):
+  desplegar un esquema cuyo codigo no compila o no pasa los tests es justo lo que
+  el pipeline existe para impedir.
+- El proyecto destino lo decide el **Environment** de GitHub (`desarrollo` para
+  `dev`, `produccion` para `main`), no un `if` con dos juegos de secretos: asi la
+  receta es una sola y a `produccion` se le pueden exigir revisores desde
+  Settings. Hoy solo existe el proyecto de dev (`app-aimar-trainer-dev`), asi que
+  el entorno de produccion se queda sin secretos y el job **se salta solo** en vez
+  de dejar `main` en rojo.
+- `cancel-in-progress` pasa a ser solo para los PR. Antes cancelaba cualquier
+  ejecucion anterior de la misma referencia; con el despliegue dentro, eso podria
+  cortar un `db push` por la mitad y dejar el esquema en un estado que nadie ha
+  probado.
+- La version de la CLI va fijada (2.119.0), no `latest`: lo que se aplica a una
+  base de datos no debe cambiar porque salga una version nueva de una herramienta.
+
+**Pendiente / notas:**
+
+- **No se ha desplegado nada todavia**: falta crear los tres secretos del
+  entorno `desarrollo` (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`,
+  `SUPABASE_DB_PASSWORD`). Hasta entonces el job se salta.
+- El pipeline **no** lleva los secretos de Vault del job de recordatorios ni los
+  de las Edge Functions. Son valores, no codigo, y meterlos en el workflow los
+  pasearia por un log de CI. Se ponen una vez a mano; los pasos estan en
+  `estado-actual.md`. Alternativa sin decidir: la seccion `[db.vault]` de
+  `config.toml`, que `db push` aplica antes de las migraciones.
+- Ojo con el primer `db push` a la nube: la migracion del job de recordatorios
+  crea `pg_cron` y `pg_net`. En Supabase cloud son extensiones permitidas, pero
+  si el proyecto las tuviera bloqueadas habria que habilitarlas antes desde el
+  panel.
+
+- **Correccion del reparto de ramas, el mismo dia:** el proyecto de Supabase ya
+  tenia la **integracion de GitHub conectada a `main`** (branching con
+  `git_branch: main`, visto con `supabase branches list`), asi que ya desplegaba
+  solo al hacer push a esa rama. El primer reparto que escribi (`dev` al proyecto
+  actual, `main` a un hipotetico produccion) no encajaba con eso y ademas habria
+  dejado dos sistemas escribiendo en la misma base.
+  - Ahora el Environment **se llama como la rama** (`main`, `dev`): los secretos
+    del proyecto actual van en `main`, y `dev` queda preparado por si algun dia
+    hay un segundo proyecto.
+  - Decision tomada: **lo lleva Actions y se desconecta la integracion del
+    panel**. El motivo es que la integracion aplica las migraciones sin mirar el
+    CI: con los tests en rojo desplegaba igual.
+

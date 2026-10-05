@@ -90,6 +90,7 @@ postcondición, excepciones.
 
 **CU-09 a CU-12 Editar planning / sesión / bloque / ejercicio en bloque**
 - Mismo patrón: seleccionar → mostrar datos actuales → modificar → validar → guardar → notificar. Excepción común: datos inválidos o conflicto (orden duplicado) → error, vuelta a editar.
+- Al planificar las series de un ejercicio (CU-08 y CU-12), la pantalla muestra al lado **lo que el cliente hizo la última vez** en ese mismo ejercicio: el Día N de la semana anterior o, si esa semana no lo hizo, el último registro que haya, indicando la fecha. Un botón lo copia a lo planificado como punto de partida. Es consulta: no altera lo registrado ni obliga a que planificado y realizado coincidan.
 - CU-11 y CU-12 incluyen **cambiar el orden arrastrando**: el entrenador mueve un bloque dentro de su sesión, o un ejercicio dentro de su bloque, y el sistema renumera el conjunto en una sola operación. Solo el entrenador; el cliente ve el orden pero no lo toca.
 
 **CU-13 a CU-16 Eliminar planning / sesión / bloque / ejercicio en bloque**

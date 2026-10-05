@@ -14,7 +14,9 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_clie
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referencia_anterior.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
@@ -769,6 +771,13 @@ class _Sesion extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textos = Theme.of(context).textTheme;
     final ejercicios = sesion.bloques.expand((b) => b.ejercicios).length;
+    // Lo que hizo el cliente la ultima vez, para planificar mirandolo. Es una
+    // ayuda: mientras carga, o si falla, la pantalla funciona igual sin ella.
+    final referencias =
+        ref
+            .watch(referenciasDeSesionProvider(planning.id, sesion.orden))
+            .value ??
+        const <String, ReferenciaAnterior>{};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,6 +845,7 @@ class _Sesion extends ConsumerWidget {
                   sesion: sesion,
                   planning: planning,
                   pendientes: pendientes,
+                  referencias: referencias,
                   onCambiarSeries: onCambiarSeries,
                 ),
               ),
@@ -865,12 +875,14 @@ class _Bloque extends ConsumerWidget {
     required this.sesion,
     required this.planning,
     required this.pendientes,
+    required this.referencias,
     required this.onCambiarSeries,
   });
 
   final BloqueEjercicio bloque;
   final int indice;
   final bool sePuedeMover;
+  final Map<String, ReferenciaAnterior> referencias;
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final Map<String, List<DatosSerie>> pendientes;
@@ -943,6 +955,7 @@ class _Bloque extends ConsumerWidget {
                   sePuedeMover: bloque.ejercicios.length > 1,
                   bloque: bloque,
                   planning: planning,
+                  referencia: referencias[ejercicio.ejercicioId],
                   series: pendientes[ejercicio.id],
                   onCambiarSeries: (series) =>
                       onCambiarSeries(ejercicio.id, series),
@@ -979,6 +992,7 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
     required this.sePuedeMover,
     required this.bloque,
     required this.planning,
+    required this.referencia,
     required this.series,
     required this.onCambiarSeries,
     super.key,
@@ -989,6 +1003,10 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
   final bool sePuedeMover;
   final BloqueEjercicio bloque;
   final PlanningSemanal planning;
+
+  /// Lo que el cliente hizo la ultima vez en este ejercicio. `null` si no hay
+  /// nada registrado todavia.
+  final ReferenciaAnterior? referencia;
 
   /// Series pendientes de guardar, si ya se han tocado.
   final List<DatosSerie>? series;
@@ -1021,6 +1039,43 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
           ),
         ),
     ];
+  }
+
+  /// Vuelca lo que el cliente hizo la ultima vez sobre lo planificado.
+  ///
+  /// Es el punto de partida del entrenador, no el resultado: deja los campos
+  /// rellenos para retocarlos, y **no guarda**. Se guarda con el boton de
+  /// siempre, igual que si lo hubiera tecleado.
+  ///
+  /// El numero de series pasa a ser el de lo realizado: si el cliente hizo
+  /// cuatro donde habia tres planificadas, se copian las cuatro. Lo planificado
+  /// y lo realizado son independientes, pero aqui el entrenador esta pidiendo
+  /// explicitamente partir de lo segundo.
+  void _copiarDeLaReferencia() {
+    final referencia = widget.referencia;
+    if (referencia == null || referencia.series.isEmpty) return;
+
+    final nuevas = [
+      for (final serie in comoPlanificadas(referencia))
+        _FilaSerie(
+          numero: serie.numeroSerie,
+          peso: TextEditingController(
+            text: serie.peso == null ? '' : _numero(serie.peso!),
+          ),
+          reps: TextEditingController(text: '${serie.repeticiones}'),
+          rir: TextEditingController(
+            text: serie.rir == null ? '' : '${serie.rir}',
+          ),
+        ),
+    ];
+
+    setState(() {
+      for (final fila in _filas) {
+        fila.dispose();
+      }
+      _filas = nuevas;
+    });
+    _avisarCambio();
   }
 
   @override
@@ -1098,71 +1153,183 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
           if (esCardio)
             Padding(
               padding: const EdgeInsets.only(left: 44),
-              child: Text(
-                widget.ejercicio.minutosPlanificados == null
-                    ? 'Sin minutos planificados'
-                    : '${_numero(widget.ejercicio.minutosPlanificados!)} min',
-                style: textos.bodyMedium?.copyWith(color: Tokens.secundario),
-              ),
-            )
-          else ...[
-            Row(
-              children: [
-                const SizedBox(width: 44),
-                SizedBox(
-                  width: 44,
-                  child: Text('Serie', style: textos.labelSmall),
-                ),
-                Expanded(child: Text('Kg', style: textos.labelSmall)),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Reps', style: textos.labelSmall)),
-                const SizedBox(width: 8),
-                Expanded(child: Text('RIR', style: textos.labelSmall)),
-              ],
-            ),
-            for (final fila in _filas)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 44),
-                    SizedBox(
-                      width: 44,
-                      child: Text('${fila.numero}', style: textos.bodyMedium),
+              child: Row(
+                children: [
+                  Text(
+                    widget.ejercicio.minutosPlanificados == null
+                        ? 'Sin minutos planificados'
+                        : '${_numero(widget.ejercicio.minutosPlanificados!)} min',
+                    style: textos.bodyMedium?.copyWith(
+                      color: Tokens.secundario,
                     ),
+                  ),
+                  // En Cardio no hay boton de copiar: los minutos no se editan
+                  // aqui, se cambian en el formulario del ejercicio.
+                  if (widget.referencia?.minutos case final minutos?) ...[
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: _Celda(
-                        clave: Key(
-                          'plan_peso_${widget.ejercicio.id}_${fila.numero}',
-                        ),
-                        controlador: fila.peso,
-                        decimal: true,
-                        onCambio: _avisarCambio,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _Celda(
-                        clave: Key(
-                          'plan_reps_${widget.ejercicio.id}_${fila.numero}',
-                        ),
-                        controlador: fila.reps,
-                        onCambio: _avisarCambio,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _Celda(
-                        clave: Key(
-                          'plan_rir_${widget.ejercicio.id}_${fila.numero}',
-                        ),
-                        controlador: fila.rir,
-                        onCambio: _avisarCambio,
+                      child: Text(
+                        '${_tituloReferencia(widget.referencia!)}: '
+                        '${_numero(minutos)} min',
+                        style: textos.bodySmall,
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
+            )
+          else ...[
+            LayoutBuilder(
+              builder: (context, limites) {
+                // Con poco ancho, las dos mitades se quedan en nada: lo
+                // realizado pasa debajo, en una linea por serie.
+                final cabe = limites.maxWidth >= _anchoParaDosMitades;
+                final referencia = widget.referencia;
+                final hayQueEnsenar = referencia?.series.isNotEmpty ?? false;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const SizedBox(width: 44),
+                        SizedBox(
+                          width: 44,
+                          child: Text('Serie', style: textos.labelSmall),
+                        ),
+                        Expanded(child: Text('Kg', style: textos.labelSmall)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('Reps', style: textos.labelSmall)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('RIR', style: textos.labelSmall)),
+                        if (hayQueEnsenar && cabe) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: _CabeceraReferencia(
+                              referencia: referencia!,
+                              ejercicioId: widget.ejercicio.id,
+                              onCopiar: _copiarDeLaReferencia,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    for (final fila in _filas)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 44),
+                            SizedBox(
+                              width: 44,
+                              child: Text(
+                                '${fila.numero}',
+                                style: textos.bodyMedium,
+                              ),
+                            ),
+                            Expanded(
+                              child: _Celda(
+                                clave: Key(
+                                  'plan_peso_${widget.ejercicio.id}_${fila.numero}',
+                                ),
+                                controlador: fila.peso,
+                                decimal: true,
+                                onCambio: _avisarCambio,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _Celda(
+                                clave: Key(
+                                  'plan_reps_${widget.ejercicio.id}_${fila.numero}',
+                                ),
+                                controlador: fila.reps,
+                                onCambio: _avisarCambio,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _Celda(
+                                clave: Key(
+                                  'plan_rir_${widget.ejercicio.id}_${fila.numero}',
+                                ),
+                                controlador: fila.rir,
+                                onCambio: _avisarCambio,
+                              ),
+                            ),
+                            if (hayQueEnsenar && cabe) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  _serieAnterior(
+                                    referencia!.serieNumero(fila.numero),
+                                  ),
+                                  key: Key(
+                                    'anterior_${widget.ejercicio.id}_${fila.numero}',
+                                  ),
+                                  style: textos.bodyMedium?.copyWith(
+                                    color: Tokens.textoSuave,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    // Series que hizo de mas: se ensenan igual, porque son
+                    // informacion para planificar, aunque no haya fila que
+                    // rellenar enfrente.
+                    if (hayQueEnsenar && cabe)
+                      for (final serie in referencia!.series.where(
+                        (s) => _filas.every((f) => f.numero != s.numeroSerie),
+                      ))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 44),
+                              SizedBox(
+                                width: 44,
+                                child: Text(
+                                  '${serie.numeroSerie}',
+                                  style: textos.bodyMedium?.copyWith(
+                                    color: Tokens.textoTenue,
+                                  ),
+                                ),
+                              ),
+                              const Expanded(child: SizedBox()),
+                              const SizedBox(width: 8),
+                              const Expanded(child: SizedBox()),
+                              const SizedBox(width: 8),
+                              const Expanded(child: SizedBox()),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  _serieAnterior(serie),
+                                  style: textos.bodyMedium?.copyWith(
+                                    color: Tokens.textoSuave,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    if (hayQueEnsenar && !cabe)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 44),
+                        child: _ReferenciaCompacta(
+                          referencia: referencia!,
+                          ejercicioId: widget.ejercicio.id,
+                          onCopiar: _copiarDeLaReferencia,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
             if (widget.series != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6, left: 44),
@@ -1174,6 +1341,116 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Desde este ancho caben las dos mitades, planificado y realizado, una al lado
+/// de la otra. Por debajo, lo realizado va en una linea aparte.
+const double _anchoParaDosMitades = 560;
+
+/// "Semana pasada" o "Ultima vez", segun de donde salga el dato. La diferencia
+/// importa: no es lo mismo planificar sobre lo de hace siete dias que sobre algo
+/// de hace un mes.
+String _tituloReferencia(ReferenciaAnterior referencia) =>
+    referencia.esSemanaAnterior ? 'Semana pasada' : 'Ultima vez';
+
+String _conFecha(ReferenciaAnterior referencia) {
+  final titulo = _tituloReferencia(referencia);
+  final fecha = referencia.fecha;
+  return fecha == null ? titulo : '$titulo · ${_comoDiaYMes(fecha)}';
+}
+
+String _comoDiaYMes(DateTime fecha) =>
+    '${fecha.day.toString().padLeft(2, '0')}/'
+    '${fecha.month.toString().padLeft(2, '0')}';
+
+/// Una serie realizada, en una linea: "60 kg · 10 reps · RIR 2".
+String _serieAnterior(SerieRealizada? serie) {
+  if (serie == null) return '—';
+  return [
+    if (serie.pesoReal case final peso?) '${_numero(peso)} kg',
+    '${serie.repeticionesRealizadas} reps',
+    if (serie.rirReal case final rir?) 'RIR $rir',
+  ].join(' · ');
+}
+
+/// Cabecera de la mitad derecha: de cuando es lo que se ensena, y el boton que
+/// lo copia a lo planificado.
+class _CabeceraReferencia extends StatelessWidget {
+  const _CabeceraReferencia({
+    required this.referencia,
+    required this.ejercicioId,
+    required this.onCopiar,
+  });
+
+  final ReferenciaAnterior referencia;
+  final String ejercicioId;
+  final VoidCallback onCopiar;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            _conFecha(referencia).toUpperCase(),
+            style: textos.labelSmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        IconButton(
+          key: Key('copiar_anterior_$ejercicioId'),
+          tooltip: 'Copiar a lo planificado',
+          icon: const Icon(Icons.west, size: 16),
+          visualDensity: VisualDensity.compact,
+          onPressed: onCopiar,
+        ),
+      ],
+    );
+  }
+}
+
+/// Lo mismo cuando no hay ancho para dos mitades: una linea por serie, debajo.
+class _ReferenciaCompacta extends StatelessWidget {
+  const _ReferenciaCompacta({
+    required this.referencia,
+    required this.ejercicioId,
+    required this.onCopiar,
+  });
+
+  final ReferenciaAnterior referencia;
+  final String ejercicioId;
+  final VoidCallback onCopiar;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(_conFecha(referencia).toUpperCase(), style: textos.labelSmall),
+            const Spacer(),
+            TextButton.icon(
+              key: Key('copiar_anterior_compacto_$ejercicioId'),
+              onPressed: onCopiar,
+              icon: const Icon(Icons.west, size: 14),
+              label: const Text('Copiar'),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            ),
+          ],
+        ),
+        for (final serie in referencia.series)
+          Text(
+            '${serie.numeroSerie}. ${_serieAnterior(serie)}',
+            style: textos.bodySmall,
+          ),
+      ],
     );
   }
 }

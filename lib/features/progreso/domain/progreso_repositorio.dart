@@ -85,4 +85,16 @@ abstract interface class ProgresoRepositorio {
     required String ejercicioId,
     required RangoFechas rango,
   });
+
+  /// Lo registrado de varios ejercicios antes de [antesDe], lo mas reciente
+  /// primero. Lo usa la planificacion para ensenar al entrenador como le fue al
+  /// cliente la ultima vez, sin pedir un viaje por ejercicio.
+  ///
+  /// Trae filas sueltas, sin agrupar: quedarse con la ultima vez de cada
+  /// ejercicio es cosa de quien llama.
+  Future<Result<List<RegistroProgreso>>> ultimoDeCadaEjercicio({
+    required String clienteId,
+    required List<String> ejercicioIds,
+    required DateTime antesDe,
+  });
 }

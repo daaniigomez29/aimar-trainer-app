@@ -187,6 +187,30 @@ de lado mayor y lo vuelve a codificar en **PNG** antes de subirlo
 - El reescalado no es cosmético: un PNG sin reducir de una cámara moderna se acerca
   al límite de 20 MiB del bucket.
 
+## Lo realizado como referencia al planificar
+
+La pantalla de planificación enseña, junto a cada serie que el entrenador
+escribe, lo que el cliente hizo la última vez en ese ejercicio. Sale de dos
+sitios, por este orden:
+
+1. El **Día N del planning inmediatamente anterior** del mismo cliente, cruzando
+   por `ejercicio_id` (no por posición: el ejercicio puede haberse movido de
+   bloque). Se obtiene con la consulta que ya trae la jerarquía completa, que
+   desde la fase 5 incluye `series_realizadas`.
+2. Para lo que no esté ahí, `vista_progreso_ejercicios` filtrada por los
+   ejercicios que falten y por fecha anterior al planning: de ahí sale el último
+   día con registro de cada uno. Es la misma vista de CU-21, sin SQL nuevo.
+
+Dos decisiones que importan:
+
+- **No bloquea la pantalla.** Si el histórico falla, el provider devuelve lo que
+  tenga en vez de propagar el error: es una ayuda, y quedarse sin poder
+  planificar porque no carga sería peor que no verla.
+- **No se mezcla con lo planificado.** Se pinta en una columna aparte y solo se
+  vuelca cuando el entrenador pulsa copiar. Lo planificado y lo realizado siguen
+  siendo independientes, como manda el dominio; el botón es una comodidad de
+  escritura, no una relación entre ambos.
+
 ## Notificaciones y correo
 
 - Proveedor único de correo: Resend, con dominio propio verificado (puede ser un
