@@ -345,9 +345,13 @@ Queda por hacer:
    vale).
 5. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
    recordatorios solo llegan a Mailpit en local.
-6. **Vercel**: la configuración ya está en `vercel.json` (instala el SDK de
-   Flutter 3.47.5, compila con los `--dart-define` leídos de las variables de
-   entorno del proyecto y publica `build/web`). Falta importar el repo en Vercel,
+6. **Vercel**: la configuración ya está en `vercel.json`, que solo apunta a dos
+   scripts (`scripts/vercel_install.sh` instala el SDK de Flutter 3.47.5;
+   `scripts/vercel_build.sh` compila con los `--dart-define` leídos de las
+   variables de entorno) y publica `build/web`. Los comandos van en scripts
+   porque el schema de Vercel **no admite más de 256 caracteres** en
+   `installCommand` ni en `buildCommand`. Los dos están probados en un contenedor
+   Linux limpio. Falta importar el repo en Vercel,
    crear allí las cuatro variables (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
    `APP_ENV`, `VAPID_PUBLIC_KEY`) y, una vez haya dominio, **apuntarlo en los
    sitios que dependen de él**: `APP_BASE_URL` de las Edge Functions y las *Redirect
