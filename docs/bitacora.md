@@ -1116,3 +1116,57 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
     panel**. El motivo es que la integracion aplica las migraciones sin mirar el
     CI: con los tests en rojo desplegaba igual.
 
+**Corregido (el CI estaba en rojo):**
+
+- **`deno check` fallaba en `crear-cliente`** con `TS2353: 'data' does not exist
+  in type 'GenerateInviteOrMagiclinkParams'`. No tenia nada que ver con el
+  despliegue ni con las Edge Functions del proyecto en la nube: era el job de
+  comprobacion de tipos.
+  - Causa: `deno.json` pedia `npm:@supabase/supabase-js@2`, **sin version fija**,
+    asi que el CI resolvia una version mas nueva que cuando se escribio aquello.
+    `auth-js` movio `data` dentro de `options`.
+  - El codigo **funcionaba** igual con `data` en la raiz, porque la libreria monta
+    el cuerpo con `{...resto, ...options}`. Era un fallo de tipos, no de
+    comportamiento; por eso el script local nunca lo vio.
+  - Arreglado moviendo `data` dentro de `options` y **fijando la version**
+    (2.117.2), como ya estaba `web-push`. Comprobado que la bandera sigue
+    llegando: el cliente que crea la funcion tiene
+    `{"debe_fijar_contrasena": true}` en `raw_user_meta_data`.
+- **`enviar-recordatorios` no pasaba por `deno check`**: se anadio en la fase 6 y
+  el paso del CI se quedo con las dos funciones antiguas. Ahora comprueba las
+  tres (pasa limpia).
+
+**Pendiente / notas:**
+
+- Verificado en local con las Edge Functions reales servidas en Docker:
+  `./scripts/probar_local.sh` **177/177**, y `deno fmt`, `deno lint` y
+  `deno check` de las tres funciones en verde.
+- El job de despliegue no llego a ejecutarse en esas ejecuciones rojas, que es lo
+  que se buscaba con `needs`: si los tipos no compilan, no se toca ninguna base
+  de datos.
+
+**Hecho (Vercel):**
+
+- `vercel.json` con la receta de despliegue de la web: descarga el SDK de Flutter
+  3.47.5 (el mismo del CI y el de local, y se comprobo que el tar de esa version
+  existe), hace `pub get`, compila en release y publica `build/web`.
+- Los cuatro `--dart-define` salen de **variables de entorno del proyecto en
+  Vercel**, no de `config/prod.json`, que no esta en git. El comando falla pronto
+  y con mensaje claro si faltan `SUPABASE_URL` o `SUPABASE_PUBLISHABLE_KEY`, en
+  vez de compilar una app que arranca sin saber a donde conectarse.
+- Cabeceras de cache: `index.html`, `version.json` y los **dos** service workers
+  (`flutter_service_worker.js` y `push_sw.js`) sin cachear; `canvaskit/` y
+  `assets/` un ano e inmutables. Un service worker cacheado es la razon clasica de
+  "he desplegado y sigo viendo lo viejo".
+- No hacen falta *rewrites* de SPA: el enrutador usa rutas con `#`, asi que el
+  servidor nunca ve rutas que no existan como fichero.
+
+**Pendiente / notas:**
+
+- `Service-Worker-Allowed` en `/push/` no hace falta y se quito: el ambito
+  (`push/`) es mas restrictivo que la ubicacion del script (`/push_sw.js`), y esa
+  cabecera solo se necesita para lo contrario.
+- Cuando haya dominio hay que apuntarlo en `APP_BASE_URL` (secreto de las Edge
+  Functions) y en las *Redirect URLs* de Auth, o los enlaces de invitacion y de
+  recuperacion de contrasena no volveran a la app.
+

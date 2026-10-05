@@ -172,6 +172,19 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     apaño no cubre es el salto desde Postgres por Kong, porque esa URL apunta al
     contenedor que falta.
 
+24. **Una dependencia sin versión fija rompe el CI sola, sin tocar código.**
+    `supabase/functions/deno.json` pedía `npm:@supabase/supabase-js@2`, así que
+    cada ejecución resolvía la última 2.x. El día que `auth-js` movió `data`
+    dentro de `options` en `GenerateInviteOrMagiclinkParams`, `deno check` empezó
+    a fallar con `TS2353` en `crear-cliente` sin que nadie hubiera cambiado nada.
+    Ahora está fijada (2.117.2), como ya lo estaba `web-push`. Curiosidad útil: el
+    código **funcionaba** igual con `data` en la raíz, porque la librería monta el
+    cuerpo con `{...resto, ...options}`; era un fallo de tipos, no de
+    comportamiento, y por eso el script local nunca lo vio.
+25. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
+    se añadió en la fase 6 y no se incluyó en el paso del CI, así que su código no
+    pasaba por el comprobador de tipos. Ya están las tres.
+
 ## Decisiones tomadas (no reabrir sin motivo)
 
 - **CU-24 mantiene el mensaje genérico** cuando el correo no está registrado: no se
@@ -332,8 +345,14 @@ Queda por hacer:
    vale).
 5. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
    recordatorios solo llegan a Mailpit en local.
-6. **Vercel**: conectar el repo y configurar el build con los `--dart-define` del
-   entorno (incluido `VAPID_PUBLIC_KEY`).
+6. **Vercel**: la configuración ya está en `vercel.json` (instala el SDK de
+   Flutter 3.47.5, compila con los `--dart-define` leídos de las variables de
+   entorno del proyecto y publica `build/web`). Falta importar el repo en Vercel,
+   crear allí las cuatro variables (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+   `APP_ENV`, `VAPID_PUBLIC_KEY`) y, una vez haya dominio, **apuntarlo en los
+   sitios que dependen de él**: `APP_BASE_URL` de las Edge Functions y las *Redirect
+   URLs* de Auth en el panel de Supabase, o los enlaces de invitación y de
+   recuperación no llevarán a ninguna parte.
 7. **Proyecto aparte para pruebas** (opcional): crearlo, rellenar el Environment `produccion` (y,
    si se quiere, exigirle revisores para que el despliegue a `main` espere
    aprobación).

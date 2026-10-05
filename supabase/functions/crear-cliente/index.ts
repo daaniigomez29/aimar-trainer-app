@@ -111,12 +111,19 @@ Deno.serve(async (req) => {
     .generateLink({
       type: "invite",
       email: correo,
-      // Marca para la app: un enlace de invitación hace que GoTrue emita
-      // `signedIn`, igual que un login normal, así que sin esta bandera el cliente
-      // entraría sin haber fijado contraseña y luego no podría volver a entrar.
-      // La app la lee y lo lleva a elegir contraseña; se limpia al guardarla.
-      data: { debe_fijar_contrasena: true },
-      options: urlBase ? { redirectTo: urlBase } : undefined,
+      options: {
+        // Marca para la app: un enlace de invitación hace que GoTrue emita
+        // `signedIn`, igual que un login normal, así que sin esta bandera el
+        // cliente entraría sin haber fijado contraseña y luego no podría volver
+        // a entrar. La app la lee y lo lleva a elegir contraseña; se limpia al
+        // guardarla.
+        //
+        // Va dentro de `options`, que es donde lo espera el tipo. Estuvo en la
+        // raíz y funcionaba igual, porque la librería monta el cuerpo con
+        // `{...resto, ...options}`, pero no compilaba.
+        data: { debe_fijar_contrasena: true },
+        ...(urlBase ? { redirectTo: urlBase } : {}),
+      },
     });
 
   if (errorEnlace || !datosEnlace?.user) {
