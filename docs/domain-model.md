@@ -47,17 +47,17 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 | Atributo | Tipo | Descripción |
 | --- | --- | --- |
 | id | uuid | Clave |
-| planningId | referencia a Planning semanal | Propietario |
-| fecha | date | Fecha real de la sesión (planificación por calendario) |
-| nombre | text | Nombre descriptivo |
-| resultadoRegistrado | boolean | Derivado: todos sus ejercicios planificados están "registrado" |
-| bloques | colección de Bloque de ejercicio | Composición |
+| planningId | referencia | Planning al que pertenece |
+| orden | integer | Su número dentro del planning: Día 1, Día 2… |
+| nombre | text | Nombre de la sesión ("Empuje", "Pierna") |
+| fechaRealizada | date? | Día en que el cliente la hizo. `null` mientras no la empiece |
+| resultadoRegistrado | boolean | Derivado: todos sus ejercicios registrados |
 
 **Reglas de dominio**
-- No puede haber dos sesiones con la misma `fecha` en el mismo planning.
-- `fecha` debe caer dentro de la semana del planning (`fechaInicio` … `fechaInicio + 6`).
-- Eliminar una sesión elimina en cascada sus bloques y ejercicios planificados.
-- Se ordenan directamente por `fecha`; no tienen campo `orden` propio.
+- **La sesión no tiene fecha planificada.** El entrenador decide cuántas sesiones tiene la semana y en qué orden, no en qué día caen: si el cliente no puede ir el miércoles y acaba yendo el jueves, es la misma sesión.
+- No puede haber dos sesiones con el mismo `orden` dentro de un planning.
+- `fechaRealizada` la escribe un **trigger** en cuanto hay un ejercicio registrado, y vuelve a `null` si el cliente deshace todo lo registrado. La app no la escribe nunca, y hoy no condiciona ninguna regla: solo queda guardada y sirve de eje en la gráfica de progreso (CU-21).
+- `resultadoRegistrado` es derivado, igual que antes: lo mantienen los triggers de recálculo.
 
 ## 4. Bloque de ejercicio
 
@@ -72,6 +72,7 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 
 **Reglas de dominio**
 - No puede haber dos bloques con el mismo `orden` en la misma sesión.
+- El `orden` lo cambia el entrenador **arrastrando**, y se renumera el conjunto entero de una vez: no se mueve un bloque suelto dejando huecos ni repetidos. El cliente no reordena lo que le han planificado.
 - Eliminar un bloque elimina en cascada sus ejercicios planificados (no afecta a la biblioteca general de Ejercicio).
 
 ## 5. Ejercicio (biblioteca)
@@ -83,7 +84,8 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 | grupoMuscular | text? | Grupo muscular principal |
 | equipamiento | text? | Material necesario |
 | descripcion | text | Técnica de ejecución |
-| videoEjemploUrl | text? | Vídeo de ejemplo |
+| videoEjemploUrl | text? | Vídeo de ejemplo. Si es de YouTube se reproduce dentro de la app; cualquier otro enlace se queda como enlace |
+| imagenRuta | text? | Ilustración o foto de la ejecución. Ruta dentro del bucket público `imagenes-ejercicios`, no la URL |
 | tipo | enum (fuerza / cardio) | Determina series vs. minutos |
 | estado | enum (activo / eliminado) | Baja lógica |
 
@@ -91,7 +93,9 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 - No puede haber dos ejercicios activos con el mismo `nombre`.
 - Baja siempre lógica: un ejercicio "eliminado" no puede añadirse a nuevos bloques, pero sigue visible en los que ya lo usaban.
 - Editar nombre/descripción/grupo muscular no altera parámetros ya guardados en ejercicios planificados existentes.
-- Todos los usuarios autenticados (incluidos clientes) pueden **leer** la biblioteca completa (para ver vídeos de ejemplo).
+- Todos los usuarios autenticados (incluidos clientes) pueden **leer** la biblioteca completa (para ver la imagen y el vídeo de ejemplo).
+- La imagen es material de la biblioteca, no dato personal: su bucket es público y cualquiera con el enlace la ve. Subirla, reemplazarla o borrarla es solo del entrenador.
+- La imagen acompaña al ejercicio **allá donde se muestre**: la biblioteca, la planificación del entrenador y la pantalla con la que el cliente registra su resultado. Donde no la haya, un hueco con el icono de su tipo.
 
 ## 6. Ejercicio planificado
 
@@ -109,7 +113,7 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 
 **Reglas de dominio**
 - **Fuerza y Cardio son mutuamente excluyentes**: si `Ejercicio.tipo = fuerza`, usa series (no minutos); si `= cardio`, usa minutos (no series).
-- No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque.
+- No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque. Se reordena arrastrando, igual que los bloques, y también es cosa solo del entrenador.
 - `estadoRegistro` pasa a "registrado" si existe al menos una Serie realizada (Fuerza) o si `minutosRealizados` tiene valor (Cardio).
 - Eliminarlo no elimina el Ejercicio de la biblioteca, solo la referencia en ese bloque.
 

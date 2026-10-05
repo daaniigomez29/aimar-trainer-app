@@ -1,0 +1,52 @@
+{
+  // VS Code solo lee las configuraciones de lanzamiento desde .vscode/launch.json.
+  // `toolArgs` son argumentos para `flutter run`: sin el --dart-define-from-file
+  // la app arranca sin SUPABASE_URL ni SUPABASE_PUBLISHABLE_KEY y muestra la
+  // pantalla de configuracion incompleta.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      // 54330 esta fuera del rango dinamico de Windows (1024-15000), del que
+      // Hyper-V y Docker reservan bloques: el 3000 dejo de poder bindearse
+      // justo por eso (errno 10013). Debe coincidir con `site_url` de
+      // supabase/config.toml, porque GoTrue solo redirige los enlaces de
+      // invitacion y recuperacion a una URL permitida.
+      "toolArgs": [
+        "--dart-define-from-file=config/dev.json",
+        "--web-hostname=127.0.0.1",
+        "--web-port=54330"
+      ]
+    },
+    {
+      "name": "Flutter (dev, Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      // 54330 esta fuera del rango dinamico de Windows (1024-15000), del que
+      // Hyper-V y Docker reservan bloques: el 3000 dejo de poder bindearse
+      // justo por eso (errno 10013). Debe coincidir con `site_url` de
+      // supabase/config.toml, porque GoTrue solo redirige los enlaces de
+      // invitacion y recuperacion a una URL permitida.
+      "toolArgs": [
+        "--dart-define-from-file=config/dev.json",
+        "--web-hostname=127.0.0.1",
+        "--web-port=54330"
+      ]
+    },
+    {
+      // Requiere config/prod.json rellenado; hoy esta vacio porque el proyecto
+      // de produccion todavia no existe.
+      "name": "Flutter (prod, Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "toolArgs": ["--dart-define-from-file=config/prod.json"]
+    }
+  ]
+}

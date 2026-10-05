@@ -4,6 +4,23 @@ Esquema SQL de referencia: tablas, tipos, restricciones, RLS y triggers.
 Corresponde 1:1 al modelo de `domain-model.md`. Vive versionado como
 migraciones en `supabase/migrations/`; este archivo es la vista de conjunto.
 
+**Sobre los `GRANT`:** el proyecto de Supabase tiene desactivada la opción
+"Automatically expose new tables" (recomendado por seguridad), así que cada
+tabla necesita su propio `grant ... to authenticated` explícito, además de
+`enable row level security` y sus políticas. Sin el `GRANT`, PostgREST
+deniega el acceso a la tabla antes de que RLS llegue a evaluarse — es un
+paso obligatorio, no opcional.
+
+`service_role` **también necesita `GRANT`** en las tablas que usen las Edge
+Functions. Ese rol se salta RLS (tiene `BYPASSRLS`), pero **no** los privilegios
+de tabla de Postgres: sin el `GRANT` recibe `permission denied for table`. Se le
+concede solo lo que usa y nunca `delete`: para deshacer un alta a medias basta
+`auth.admin.deleteUser`, que cascadea por la FK a `auth.users`.
+Ninguna tabla concede `delete` salvo las que tienen un caso de uso real de
+borrado físico (plannings, sesiones, bloques, ejercicios planificados,
+series planificadas, fotos de progreso); clientes y ejercicios de la
+biblioteca nunca conceden `delete`, porque su baja es siempre lógica.
+
 ## Base: perfiles y funciones auxiliares
 
 ```sql
@@ -16,6 +33,10 @@ create table perfiles (
 );
 
 alter table perfiles enable row level security;
+
+-- Necesario si "Automatically expose new tables" está desactivada en el proyecto:
+-- sin este GRANT, PostgREST deniega el acceso antes de evaluar RLS.
+grant select on perfiles to authenticated;
 
 create policy "cada usuario ve su propio perfil"
   on perfiles for select
@@ -64,6 +85,8 @@ create unique index clientes_correo_activo_unico
 
 alter table clientes enable row level security;
 
+grant select, insert, update on clientes to authenticated;
+
 create policy "el cliente ve su propia ficha"
   on clientes for select
   using (id = auth.uid());
@@ -81,8 +104,8 @@ create policy "el cliente edita datos limitados de su ficha"
 
 `id` es el mismo `auth.users.id` (1:1, sin id propio duplicado). La
 unicidad de correo solo aplica a clientes activos. `dia_control_preferido`
-usa el enum `dia_semana` porque representa una preferencia recurrente, a
-diferencia de la fecha real de una sesión (ver más abajo).
+usa el enum `dia_semana` porque representa una preferencia recurrente, que se
+repite cada semana; no es la fecha de ningún hecho concreto.
 
 ## Planning semanal
 
@@ -104,6 +127,8 @@ create unique index plannings_cliente_semana_unico
 
 alter table plannings_semanales enable row level security;
 
+grant select, insert, update, delete on plannings_semanales to authenticated;
+
 create policy "el cliente ve sus propios plannings"
   on plannings_semanales for select
   using (cliente_id = auth.uid());
@@ -120,22 +145,35 @@ duplicados entre plannings activos; uno archivado con la misma
 
 ## Sesión de entrenamiento
 
-Se planifica sobre calendario real: usa `fecha` (date), no un día de semana
-suelto.
+**No se planifica sobre el calendario**: la sesión se numera dentro de su
+planning (Día 1, Día 2…). El entrenador decide *cuántas* sesiones tiene la
+semana, no en qué día caen, para que entrenar el jueves lo previsto para el
+miércoles no desplace ni duplique nada. Hasta la fase 6 sí tenía `fecha` (date)
+planificada y un trigger que la validaba dentro de la semana; lo cambió
+`20261004100000_sesiones_por_orden.sql`.
+
+Lo que sí se guarda es `fecha_realizada`: **el día en que el cliente la hizo**,
+que es un dato distinto. Es nullable (una sesión no empezada no tiene fecha), la
+rellena el trigger de recálculo en el primer registro y la app nunca la escribe.
+Hoy no condiciona ninguna regla: solo queda registrada y sirve de eje en las
+vistas de progreso (CU-21), donde antes se usaba la fecha planificada.
 
 ```sql
 create table sesiones_entrenamiento (
   id uuid primary key default gen_random_uuid(),
   planning_id uuid not null references plannings_semanales(id) on delete cascade,
-  fecha date not null,
+  orden integer not null check (orden > 0),
   nombre text not null,
+  fecha_realizada date,
   resultado_registrado boolean not null default false
 );
 
-create unique index sesiones_planning_fecha_unico
-  on sesiones_entrenamiento (planning_id, fecha);
+create unique index sesiones_planning_orden_unico
+  on sesiones_entrenamiento (planning_id, orden);
 
 alter table sesiones_entrenamiento enable row level security;
+
+grant select, insert, update, delete on sesiones_entrenamiento to authenticated;
 
 create policy "el cliente ve las sesiones de sus plannings"
   on sesiones_entrenamiento for select
@@ -151,26 +189,14 @@ create policy "el entrenador gestiona todas las sesiones"
   using (es_entrenador())
   with check (es_entrenador());
 
-create function validar_fecha_sesion() returns trigger
-  language plpgsql as $$
-declare
-  v_inicio date;
-begin
-  select fecha_inicio into v_inicio from plannings_semanales where id = new.planning_id;
-  if new.fecha < v_inicio or new.fecha > v_inicio + 6 then
-    raise exception 'La fecha de la sesión debe estar dentro de la semana del planning';
-  end if;
-  return new;
-end;
-$$;
-
-create trigger comprobar_fecha_sesion
-  before insert or update on sesiones_entrenamiento
-  for each row execute function validar_fecha_sesion();
 ```
 
-No hay `orden`: se ordenan por `fecha`. `resultado_registrado` es una
-columna calculada y mantenida por triggers (ver más abajo).
+No hay trigger de validación de fecha: sin fecha planificada no hay nada que
+validar, y el índice único ya impide dos sesiones con el mismo número. Tanto
+`resultado_registrado` como `fecha_realizada` son columnas calculadas y
+mantenidas por `recalcular_resultado_sesion` (ver más abajo): la fecha se fija
+en el primer ejercicio registrado (con `coalesce`, para que sea la del primer
+registro y no la del último) y vuelve a `null` si el cliente deshace todo.
 
 ## Bloque de ejercicio
 
@@ -190,6 +216,8 @@ create unique index bloques_sesion_orden_unico
 
 alter table bloques_ejercicio enable row level security;
 
+grant select, insert, update, delete on bloques_ejercicio to authenticated;
+
 create policy "el cliente ve los bloques de sus sesiones"
   on bloques_ejercicio for select
   using (
@@ -206,8 +234,9 @@ create policy "el entrenador gestiona todos los bloques"
   with check (es_entrenador());
 ```
 
-Aquí sí se mantiene `orden`: varios bloques comparten la misma sesión sin
-una fecha propia que los distinga.
+Aquí también hay `orden`, por el mismo motivo que en la sesión: varios bloques
+comparten la misma sesión sin nada más que los distinga. Se reordena
+arrastrando, con `reordenar_bloques` (ver más abajo).
 
 ## Ejercicio (biblioteca) y Ejercicio planificado
 
@@ -222,6 +251,9 @@ create table ejercicios (
   equipamiento text,
   descripcion text not null,
   video_ejemplo_url text,
+  -- Ruta dentro del bucket publico `imagenes-ejercicios` (no la URL: el dominio
+  -- cambia entre local y la nube). Anadida en la migracion 20261004090000.
+  imagen_ruta text,
   tipo tipo_ejercicio not null,
   estado estado_ejercicio not null default 'activo',
   creado_en timestamptz not null default now()
@@ -232,6 +264,8 @@ create unique index ejercicios_nombre_activo_unico
   where estado = 'activo';
 
 alter table ejercicios enable row level security;
+
+grant select, insert, update on ejercicios to authenticated;
 
 create policy "cualquier usuario autenticado lee la biblioteca"
   on ejercicios for select
@@ -273,6 +307,8 @@ create unique index ejer_planif_bloque_orden_unico
   on ejercicios_planificados (bloque_id, orden);
 
 alter table ejercicios_planificados enable row level security;
+
+grant select, insert, update, delete on ejercicios_planificados to authenticated;
 
 create policy "el cliente ve los ejercicios de sus bloques"
   on ejercicios_planificados for select
@@ -332,6 +368,13 @@ por ahora vía RLS + interfaz. Pendiente a futuro: separar en columnas con
 `GRANT` por columna o mover el registro del cliente a tabla propia si se
 necesita mayor garantía.
 
+Esto se comprobó al añadir el reordenado por arrastre (2026-10-04): con solo
+RLS, un cliente **sí** podía renumerar los ejercicios de su propio planning
+(la prueba devolvía 204 donde se esperaba 403), mientras que con los bloques
+se quedaba en 403 porque ahí no tiene política de `update`. Por eso
+`reordenar_ejercicios_planificados` comprueba `es_entrenador()` además de
+apoyarse en RLS. La nota sigue abierta para el `update` directo a la tabla.
+
 ## Serie planificada y Serie realizada
 
 ```sql
@@ -352,6 +395,8 @@ create unique index series_planif_numero_unico
   on series_planificadas (ejercicio_planificado_id, numero_serie);
 
 alter table series_planificadas enable row level security;
+
+grant select, insert, update, delete on series_planificadas to authenticated;
 
 create policy "visible a través del ejercicio planificado (lectura)"
   on series_planificadas for select
@@ -391,6 +436,8 @@ create unique index series_realiz_numero_unico
   on series_realizadas (ejercicio_planificado_id, numero_serie);
 
 alter table series_realizadas enable row level security;
+
+grant select, insert, update on series_realizadas to authenticated;
 
 create policy "el cliente registra sus propias series"
   on series_realizadas for insert
@@ -529,6 +576,8 @@ create unique index registros_medidas_cliente_fecha_unico
 
 alter table registros_medidas enable row level security;
 
+grant select, insert, update on registros_medidas to authenticated;
+
 create policy "el cliente gestiona sus propios registros de medidas"
   on registros_medidas for all
   using (cliente_id = auth.uid())
@@ -546,6 +595,8 @@ create table fotos_progreso (
 );
 
 alter table fotos_progreso enable row level security;
+
+grant select, insert, update, delete on fotos_progreso to authenticated;
 
 create policy "el cliente gestiona sus propias fotos"
   on fotos_progreso for all
@@ -591,6 +642,8 @@ create unique index checkins_cliente_fecha_unico
 
 alter table checkins_recuperacion enable row level security;
 
+grant select, insert, update on checkins_recuperacion to authenticated;
+
 create policy "el cliente gestiona sus propios check-in"
   on checkins_recuperacion for all
   using (cliente_id = auth.uid())
@@ -610,10 +663,70 @@ Ninguna tabla de esta sección (medidas, fotos, check-in, series realizadas)
 tiene política para `es_administrador()`: la ausencia de política ya
 bloquea el acceso del administrador por defecto.
 
+## Añadidos de la fase 5 (no estaban en el diseño original)
+
+Lo que las migraciones de la fase 5 incorporan sobre lo descrito arriba.
+
+### `registrar_resultado_ejercicio` (RPC de CU-20)
+
+Guarda el resultado de un ejercicio en **una sola transacción**: las series si es
+Fuerza, los minutos si es Cardio, nunca las dos cosas. Es `security invoker`, así
+que RLS sigue aplicando dentro y no amplía permisos a nadie. Mismo motivo que
+`guardar_ejercicio_planificado`: PostgREST abre una transacción por petición.
+
+A diferencia de aquélla, aquí **no se borra y se vuelve a insertar**, sino
+`insert ... on conflict (ejercicio_planificado_id, numero_serie) do update`: a
+`series_realizadas` no se le concede `delete` a propósito. Consecuencia conocida:
+si el cliente registra 3 series y luego corrige a 2, la tercera sigue ahí.
+
+### `reordenar_bloques` y `reordenar_ejercicios_planificados` (CU-11, CU-12)
+
+Renumeran `orden` cuando el entrenador arrastra un bloque dentro de su sesión o
+un ejercicio dentro de su bloque. Reciben la lista **completa** de ids en el
+orden que debe quedar.
+
+No se puede hacer con `update` sueltos: `(sesion_id, orden)` y
+`(bloque_id, orden)` son índices únicos y se comprueban fila a fila, así que
+cualquier renumeración pasa por un estado intermedio con dos filas en la misma
+posición. Las funciones lo resuelven en dos fases dentro de una transacción:
+primero restan un millón a todos los órdenes de ese padre (un desplazamiento
+uniforme, que mantiene la unicidad) y luego escriben los definitivos.
+
+Validan que la lista traiga todos los elementos y ninguno repetido, y
+comprueban `es_entrenador()` (ver la nota de seguridad de "Ejercicio
+planificado"). Son `security invoker`, así que RLS sigue aplicando encima.
+Después del primer `update` miran `row_count`: con RLS, un `update` prohibido
+no da error, simplemente no toca filas, y sin esa comprobación la función se
+iría sin excepción y sin haber reordenado nada.
+
+### Vistas `vista_progreso_ejercicios` y `vista_ejercicios_con_registro` (CU-21)
+
+Aplanan la cadena `series_realizadas → ejercicios_planificados → bloques →
+sesiones → plannings` y exponen la `fecha_realizada` de la **sesión** (no la de
+`fecha_hora_registro`), filtrando las sesiones que aún no la tienen. Incluyen también el cardio, con sus minutos. Se declaran
+`with (security_invoker = on)`: sin esa opción la vista correría con los permisos
+de su dueño y sería un agujero que puentearía RLS.
+
+### Bucket `imagenes-ejercicios`
+
+El segundo bucket, y el único **público**: la ilustración de un ejercicio no es
+dato personal, la ven todos los clientes y se pinta en una lista. Con un bucket
+privado habría que firmar una URL por ejercicio cada vez que se abre la
+biblioteca, y ninguna se podría cachear. Las políticas sobre `storage.objects`
+solo gobiernan la **escritura**: subir, reemplazar y borrar es del entrenador.
+
+### Políticas del bucket `fotos-progreso`
+
+Son RLS normal sobre `storage.objects`, con la ruta
+`<cliente_id>/<registro_medidas_id>/<archivo>`: el dueño se resuelve por el primer
+segmento, con `(storage.foldername(name))[1] = auth.uid()::text`. El cliente
+gestiona lo suyo; el entrenador solo lee; el administrador, sin política, no
+accede.
+
 ## Notas técnicas pendientes para el futuro
 
 | Nota | Contexto |
 | --- | --- |
 | Denormalizar `cliente_id` en tablas hijas (sesiones, bloques, ejercicios planificados) si el rendimiento de RLS con varios `join` se volviera un problema real | Por ahora modelo normalizado; con el volumen previsto, impacto despreciable |
 | Seguridad a nivel de columna (`GRANT` por columna) para separar "planificado" (entrenador) de "realizado" (cliente) en `ejercicios_planificados` | Revisar si el equipo crece o se necesita mayor garantía |
-| Trigger `after update` adicional en `ejercicios_planificados` para completar el recálculo de `resultado_registrado` en cardio | Detalle de implementación pendiente |
+| ~~Trigger `after update` adicional en `ejercicios_planificados` para completar el recálculo de `resultado_registrado` en cardio~~ | **Resuelto** al cerrar la fase 4 (`propagar_estado_registro`). Ojo: sin `OF estado_registro`, porque `UPDATE OF columna` se dispara según las columnas mencionadas en la sentencia, no según las que cambian |

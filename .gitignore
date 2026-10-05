@@ -46,3 +46,15 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Scripts used to launch the env variables
+config/dev.json
+config/prod.json
+scripts/probar_local.sh
+
+# Variables de entorno con secretos, en cualquier nivel
+.env
+.env.*
+!.env.example
+
+supabase/seed.sql

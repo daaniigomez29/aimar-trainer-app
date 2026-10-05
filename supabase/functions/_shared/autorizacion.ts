@@ -1,0 +1,139 @@
+// Especificador simple resuelto por el import map de `supabase/functions/deno.json`,
+// que el runtime de Supabase Edge Functions respeta. Evita repetir la version
+// `npm:@supabase/supabase-js@2` en cada archivo.
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+/** Roles autorizados a dar de alta y de baja clientes (docs/architecture.md). */
+export const ROLES_GESTORES = ["entrenador", "administrador"] as const;
+
+export type RolUsuario = "administrador" | "entrenador" | "cliente";
+
+export interface Autorizacion {
+  /** Cliente que actúa con el JWT de quien llama (sujeto a RLS). */
+  readonly supabaseDelLlamante: SupabaseClient;
+  readonly idUsuario: string;
+  readonly rol: RolUsuario;
+}
+
+/**
+ * Comprueba el JWT de la petición y el rol en `perfiles`.
+ *
+ * La comprobación vive aquí y no solo en RLS porque crear un usuario en Auth
+ * exige `service_role`: sin esta verificación, cualquiera con la URL del
+ * endpoint podría crear o dar de baja cuentas.
+ *
+ * Devuelve la autorización, o una `Response` (401/403) ya lista para devolver.
+ */
+export async function autorizarGestorDeClientes(
+  req: Request,
+): Promise<Autorizacion | Response> {
+  const cabeceraAuth = req.headers.get("Authorization");
+  if (!cabeceraAuth) {
+    return respuestaError(
+      401,
+      "no_autorizado",
+      "Falta la cabecera Authorization.",
+    );
+  }
+
+  const supabaseDelLlamante = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    clavePublicaDelProyecto(),
+    { global: { headers: { Authorization: cabeceraAuth } } },
+  );
+
+  const { data: { user }, error: errorAuth } = await supabaseDelLlamante.auth
+    .getUser();
+  if (errorAuth || !user) {
+    return respuestaError(401, "no_autorizado", "El token no es válido.");
+  }
+
+  const { data: perfil } = await supabaseDelLlamante
+    .from("perfiles")
+    .select("rol")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const rol = perfil?.rol as RolUsuario | undefined;
+  if (!rol || !ROLES_GESTORES.includes(rol as "entrenador" | "administrador")) {
+    return respuestaError(
+      403,
+      "prohibido",
+      "Solo el entrenador o el administrador pueden realizar esta operación.",
+    );
+  }
+
+  return { supabaseDelLlamante, idUsuario: user.id, rol };
+}
+
+/**
+ * Clave pública del proyecto para el cliente del llamante.
+ *
+ * OJO al renombrar: el runtime de Edge Functions NO inyecta
+ * `SUPABASE_PUBLISHABLE_KEY` en singular. Inyecta dos variables distintas, con
+ * dos claves de valor distinto, ambas válidas para identificar el proyecto:
+ *
+ *   - `SUPABASE_PUBLISHABLE_KEYS`: JSON `{"default":"sb_publishable_..."}`, el
+ *     formato actual. Es la que se prefiere.
+ *   - `SUPABASE_ANON_KEY`: la clave heredada, que es un JWT (`eyJ...`), NO la
+ *     publicable. Solo se usa si la anterior no estuviera disponible.
+ *
+ * Los dos nombres los fija Supabase, no son elección de este proyecto:
+ * cambiarlos por `SUPABASE_PUBLISHABLE_KEY` deja la clave en `undefined`.
+ *
+ * Solo identifica el proyecto: quien autentica la petición es el JWT del
+ * usuario que viaja en `Authorization`.
+ */
+export function clavePublicaDelProyecto(): string {
+  const publicables = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if (publicables) {
+    try {
+      const porNombre = JSON.parse(publicables) as Record<string, string>;
+      const clave = porNombre.default ?? Object.values(porNombre)[0];
+      if (clave) return clave;
+    } catch {
+      // Formato inesperado: se usa la clave heredada.
+    }
+  }
+  return Deno.env.get("SUPABASE_ANON_KEY")!;
+}
+
+/**
+ * Cliente con `service_role`. Salta RLS, así que solo debe crearse DESPUÉS de
+ * que `autorizarGestorDeClientes` haya devuelto una autorización válida.
+ */
+export function clienteAdministrativo(): SupabaseClient {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
+
+export function respuestaJson(estado: number, cuerpo: unknown): Response {
+  return new Response(JSON.stringify(cuerpo), {
+    status: estado,
+    headers: { ...cabecerasCors, "Content-Type": "application/json" },
+  });
+}
+
+export function respuestaError(
+  estado: number,
+  codigo: string,
+  mensaje: string,
+): Response {
+  return respuestaJson(estado, { error: codigo, mensaje });
+}
+
+export const cabecerasCors: Record<string, string> = {
+  "Access-Control-Allow-Origin": Deno.env.get("APP_BASE_URL") ?? "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+/** Responde al preflight CORS del navegador; `null` si no es un preflight. */
+export function respuestaPreflight(req: Request): Response | null {
+  if (req.method !== "OPTIONS") return null;
+  return new Response(null, { status: 204, headers: cabecerasCors });
+}

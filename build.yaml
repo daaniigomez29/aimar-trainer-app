@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      # Mapeo Dart camelCase <-> Postgres/JSON snake_case, generado, nunca a mano
+      # (convencion de AGENTS.md).
+      json_serializable:
+        options:
+          field_rename: snake
+          create_to_json: true
+          explicit_to_json: true

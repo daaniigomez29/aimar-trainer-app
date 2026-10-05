@@ -1,0 +1,15 @@
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
+
+# Secretos de las Edge Functions en local (RESEND_API_KEY, etc.). `.env.local` ya
+# estaba cubierto, pero `supabase/functions/.env` -- la ruta que lee
+# `supabase functions serve` por defecto -- no lo estaba.
+.env
+.env.*
+!.env.example

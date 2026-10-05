@@ -24,7 +24,7 @@
 | Cliente | Flutter Web (PWA), Riverpod | Interfaz y validación de reglas de dominio para feedback inmediato |
 | Autenticación | Supabase Auth | Login, recuperación de contraseña, sesiones |
 | Datos | Supabase Postgres (región UE) | Persistencia, constraints, triggers, RLS |
-| Ficheros | Supabase Storage (bucket privado) | Fotos de progreso, URLs firmadas |
+| Ficheros | Supabase Storage | Fotos de progreso (bucket privado, URLs firmadas) e imágenes de ejercicios (bucket público) |
 | Lógica de servidor | Supabase Edge Functions | Operaciones con privilegios elevados |
 | Tareas programadas | pg_cron | Disparo de recordatorios |
 | Correo | Resend (dominio propio verificado) | Invitaciones, recuperación, recordatorios |
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
   const supabaseCliente = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    clavePublicaDelProyecto(),
     { global: { headers: { Authorization: authHeader } } }
   );
 
@@ -125,7 +125,7 @@ Respuesta `201`: `{ "clienteId": "uuid", "estado": "invitado" }`
 Errores: `401` sin token · `403` rol no autorizado · `409` correo ya
 registrado (activo) · `400` datos inválidos
 
-Variables de entorno: `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+Variables de entorno: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`,
 `SUPABASE_SERVICE_ROLE_KEY` (inyectadas por Supabase), más
 `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`.
 
@@ -137,17 +137,136 @@ Errores: `401` · `403` · `404` cliente no encontrado · `409` ya estaba de baj
 
 Mismas variables de entorno que `crear-cliente`.
 
+## Almacenamiento de ficheros (Storage)
+
+- Dos buckets:
+  - `fotos-progreso`, **privado**: las fotos de progreso del cliente.
+  - `imagenes-ejercicios`, **público**: las ilustraciones de la biblioteca. Es
+    material compartido, no dato personal, y se pinta en listas; firmar una URL
+    por ejercicio no tendría sentido. Escribir en él es solo del entrenador.
+- Lo que sigue describe `fotos-progreso`, que es el que tiene datos personales.
+- Se declara en `supabase/config.toml` (`[storage.buckets.fotos-progreso]`,
+  `public = false`, 20 MiB, `image/png` e `image/jpeg`). En local lo crea
+  `supabase start` / `supabase db reset`. Para dev y producción, la declaración
+  no viaja sola: hay que crearlo en el panel de Supabase o empujar la
+  configuración con `supabase config push` sobre el proyecto enlazado. Un bucket
+  creado en el panel **no existe en local**, y al revés.
+- Sin `objects_path`: ese ajuste precarga en el bucket los ficheros de una
+  carpeta local, y si la carpeta no existe (una copia recién clonada, o CI) el
+  arranque falla al sembrar el bucket. No hay objetos de ejemplo que precargar.
+- Las políticas de acceso al bucket son políticas RLS sobre `storage.objects`,
+  así que viven en `supabase/migrations` como el resto del esquema, no en el
+  panel.
+- En base de datos solo se guarda la ruta (`fotos_progreso.ruta_storage`),
+  nunca el fichero ni una URL. La imagen se muestra con una **URL firmada de
+  corta duración**, generada en el momento.
+- El bucket no puede ser público: con la ruta bastaría para ver la foto de
+  cualquier cliente, incluido el administrador, que por diseño no debe tener
+  acceso a las fotos de progreso.
+- Convención de ruta: `<clienteId>/<registroMedidasId>/<archivo>`. Las políticas
+  del bucket resuelven el propietario por el primer segmento
+  (`(storage.foldername(name))[1] = auth.uid()`), sin tener que consultar
+  `fotos_progreso`.
+
+### Conversión de la imagen antes de subirla
+
+El bucket solo admite `image/png` e `image/jpeg`, y un iPhone entrega **HEIC**.
+La app **no sube nunca el fichero original**: lo decodifica, lo reduce a 1600 px
+de lado mayor y lo vuelve a codificar en **PNG** antes de subirlo
+(`ServicioImagenesFlutter`, detrás de la interfaz `ServicioImagenes` de
+`core/plataforma`, con `dart:ui`; el selector es `image_picker`).
+
+- Se recodifica **siempre**, no solo cuando el fichero parece HEIC: así el
+  resultado es PNG venga lo que venga, sin fiarse de la extensión ni del tipo MIME
+  que declare el navegador.
+- El límite está en la **decodificación**, que la hace el navegador. Safari e iOS
+  leen HEIC, que es justo donde aparece (y además iOS suele convertir a JPEG por su
+  cuenta al subir por un `input` de archivo). Chrome de escritorio no lo lee: ahí la
+  conversión no es posible y la app devuelve un error que lo explica, en lugar de
+  intentar subir algo que el bucket rechazaría.
+- El reescalado no es cosmético: un PNG sin reducir de una cámara moderna se acerca
+  al límite de 20 MiB del bucket.
+
+## Lo realizado como referencia al planificar
+
+La pantalla de planificación enseña, junto a cada serie que el entrenador
+escribe, lo que el cliente hizo la última vez en ese ejercicio. Sale de dos
+sitios, por este orden:
+
+1. El **Día N del planning inmediatamente anterior** del mismo cliente, cruzando
+   por `ejercicio_id` (no por posición: el ejercicio puede haberse movido de
+   bloque). Se obtiene con la consulta que ya trae la jerarquía completa, que
+   desde la fase 5 incluye `series_realizadas`.
+2. Para lo que no esté ahí, `vista_progreso_ejercicios` filtrada por los
+   ejercicios que falten y por fecha anterior al planning: de ahí sale el último
+   día con registro de cada uno. Es la misma vista de CU-21, sin SQL nuevo.
+
+Dos decisiones que importan:
+
+- **No bloquea la pantalla.** Si el histórico falla, el provider devuelve lo que
+  tenga en vez de propagar el error: es una ayuda, y quedarse sin poder
+  planificar porque no carga sería peor que no verla.
+- **No se mezcla con lo planificado.** Se pinta en una columna aparte y solo se
+  vuelca cuando el entrenador pulsa copiar. Lo planificado y lo realizado siguen
+  siendo independientes, como manda el dominio; el botón es una comodidad de
+  escritura, no una relación entre ambos.
+
 ## Notificaciones y correo
 
-- Proveedor único: Resend, con dominio propio verificado (puede ser un
+- Proveedor único de correo: Resend, con dominio propio verificado (puede ser un
   subdominio del dominio web existente de Aimar).
 - Un job de pg_cron invoca diariamente una Edge Function que identifica:
-  clientes con sesión programada al día siguiente, y clientes cuyo
-  `diaControlPreferido` es el día actual.
+  clientes cuyo planning **arranca hoy** (se les resume cuántas sesiones trae la
+  semana), y clientes cuyo `diaControlPreferido` es el día actual. El primer aviso
+  era "mañana tienes sesión" hasta el 2026-10-04; al dejar las sesiones de tener
+  fecha planificada, ya no hay un "mañana" que anunciar.
 - Canales combinados: notificación push web + correo. El push llega en
   Android/Chrome y en iOS 16.4+ solo con la PWA instalada; el correo es el
   respaldo universal.
 - Cálculo de fechas en zona horaria Europe/Madrid.
+
+### Cómo está montado (CU-22)
+
+| Pieza | Dónde |
+| --- | --- |
+| Programación | `cron.schedule('recordatorios-diarios', '0 17 * * *', …)`, migración `20261003110100` |
+| Invocación | `enviar_recordatorios_programados()` → `net.http_post` (pg_net) |
+| Lógica de aviso | Edge Function `enviar-recordatorios` |
+| Preferencias y dispositivos | `preferencias_notificacion`, `suscripciones_push` |
+| Resultado de cada aviso | `avisos_enviados` (`enviado` / `omitido` / `fallido`) |
+
+- **pg_cron programa en UTC.** Las 17:00 UTC son las 19:00 en España en verano y
+  las 18:00 en invierno: por la tarde en ambos casos. Qué día es "hoy" y "mañana"
+  lo decide la función en `Europe/Madrid`, no la expresión horaria. Lo mismo vale
+  para la `fecha_realizada` que fija el trigger de la sesión.
+- **La URL de la función y el secreto viven en Vault**, no en la migración:
+  cambian por entorno y el secreto no debe estar en el repositorio. En local los
+  crea `supabase/seed.sql`; en dev y producción se crean una vez a mano.
+- **La función no acepta JWT de usuario**: quien la llama es un job, no una
+  persona. Se identifica con la cabecera `x-secreto-cron` contra su propio
+  `SECRETO_CRON`. Sin ese secreto configurado, no atiende a nadie.
+- **Idempotencia**: índice único por cliente, tipo, canal y fecha de referencia.
+  Si el job se dispara dos veces, el segundo no vuelve a avisar.
+- **Un cliente dado de baja no recibe avisos**: las dos consultas filtran por
+  `estado = 'activo'`.
+
+### Push web: Web Push con VAPID
+
+- Sin proveedor de terceros (no hay Firebase). Se usa el estándar del navegador:
+  el cliente se suscribe y entrega `endpoint` y dos claves; la Edge Function firma
+  con VAPID y cifra el payload con `web-push`.
+- **Las claves VAPID se generan una vez por entorno.** La pública viaja en el
+  bundle de la app (`--dart-define=VAPID_PUBLIC_KEY`), que es su sitio: el
+  navegador la necesita. La privada vive solo en el entorno de la función.
+- En Flutter, el puente con `PushManager` está en `web/index.html` y se llama
+  desde `servicio_push_web.dart` con `dart:js_interop`, detrás de la interfaz
+  `ServicioPush` (RNF-03). **No hay ninguna dependencia nueva en `pubspec.yaml`.**
+- El service worker del push es propio (`web/push_sw.js`) y se registra en el
+  ámbito `push/`: el de Flutter ocupa la raíz y lo regenera cada build, así que no
+  se le puede añadir código.
+- **El correo no se puede desactivar.** La pantalla de preferencias solo ofrece el
+  interruptor del push: desactivar el respaldo dejaría al cliente sin enterarse de
+  nada.
 
 ## Entornos y despliegue
 
@@ -170,19 +289,22 @@ Mismas variables de entorno que `crear-cliente`.
 | Dónde | Nombre | Contenido |
 | --- | --- | --- |
 | Flutter (`--dart-define`) | `SUPABASE_URL` | URL pública del proyecto (dev/prod) |
-| Flutter (`--dart-define`) | `SUPABASE_ANON_KEY` | Clave pública |
+| Flutter (`--dart-define`) | `SUPABASE_PUBLISHABLE_KEY` | Clave pública (`sb_publishable_...`) |
 | Flutter (`--dart-define`) | `APP_ENV` | `development` \| `production` |
 | Supabase Edge Functions | `SUPABASE_SERVICE_ROLE_KEY` | Inyectada automáticamente, nunca a mano |
 | Supabase Edge Functions | `RESEND_API_KEY` | Clave de API de Resend |
 | Supabase Edge Functions | `RESEND_FROM_EMAIL` | Remitente verificado |
 | Supabase Edge Functions | `APP_BASE_URL` | URL pública de la PWA |
+| Supabase Edge Functions | `SECRETO_CRON` | Cabecera con la que el job se identifica; igual que el secreto `secreto_cron` de Vault |
+| Supabase Edge Functions | `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Firma del push web. La privada **nunca** sale de aquí |
+| Flutter (`--dart-define`) | `VAPID_PUBLIC_KEY` | Clave pública del push; es pública por diseño |
 | GitHub Actions | `SUPABASE_ACCESS_TOKEN` | Migraciones vía CLI |
 | GitHub Actions | `SUPABASE_PROJECT_ID_DEV` / `_PROD` | Referencia de proyecto por entorno |
-| GitHub Actions | `SUPABASE_URL_DEV` / `_PROD`, `SUPABASE_ANON_KEY_DEV` / `_PROD` | Para el build por entorno |
+| GitHub Actions | `SUPABASE_URL_DEV` / `_PROD`, `SUPABASE_PUBLISHABLE_KEY_DEV` / `_PROD` | Para el build por entorno |
 | GitHub Actions | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | Despliegue a Vercel |
 
 **Nunca** en código Flutter ni en `--dart-define`: `SUPABASE_SERVICE_ROLE_KEY`,
-`RESEND_API_KEY`.
+`RESEND_API_KEY`, `VAPID_PRIVATE_KEY`, `SECRETO_CRON`.
 
 ## Riesgos de infraestructura gratuita y mitigaciones
 
