@@ -75,11 +75,15 @@ jobs:
 
       # El import map vive en supabase/functions/deno.json, no en la raiz, asi
       # que hay que pasarlo explicitamente.
+      #
+      # Las TRES funciones: `enviar-recordatorios` se quedo fuera cuando se
+      # anadio en la fase 6, asi que su codigo no pasaba por aqui.
       - name: Comprobar tipos
         run: >
           deno check --config supabase/functions/deno.json
           supabase/functions/crear-cliente/index.ts
           supabase/functions/dar-de-baja-cliente/index.ts
+          supabase/functions/enviar-recordatorios/index.ts
 
   # ---------------------------------------------------------------------------
   # Despliegue a Supabase
