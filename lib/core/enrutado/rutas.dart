@@ -58,6 +58,88 @@ abstract final class Rutas {
     RolUsuario.administrador => inicioAdministrador,
   };
 
+  /// Pantallas que cuelgan de la biblioteca y de clientes.
+  ///
+  /// POR QUE SON RUTAS Y NO `Navigator.push`: en web, un `push` imperativo no
+  /// deja rastro en el historial del navegador, así que su botón de atrás
+  /// retrocedía a la última ruta visitada (la planificación o los ajustes) en
+  /// vez de a la pantalla anterior. Con rutas, el atrás del navegador y el gesto
+  /// atrás del móvil funcionan, y la URL dice dónde estás.
+  static const String nuevo = 'nuevo';
+  static const String editar = 'editar';
+
+  /// `:idEjercicio` y `:idCliente` son los parámetros que leen las pantallas.
+  static const String detalleEjercicio = ':idEjercicio';
+  static const String detalleCliente = ':idCliente';
+
+  static String ejercicioDeLaBiblioteca(RolUsuario rol, String id) =>
+      '${bibliotecaSegunRol(rol)}/$id';
+  static String nuevoEjercicio() => '$bibliotecaEntrenador/$nuevo';
+  static String editarEjercicio(String id) =>
+      '$bibliotecaEntrenador/$id/$editar';
+
+  static String fichaDeCliente(String id) => '$clientesEntrenador/$id';
+  static String nuevoCliente() => '$clientesEntrenador/$nuevo';
+  static String editarCliente(String id) => '$clientesEntrenador/$id/$editar';
+
+  /// Lo que se consulta desde la ficha de un cliente.
+  static const String plannings = 'plannings';
+  static const String controlDelCliente = 'control';
+  static String planningsDeCliente(String id) =>
+      '$clientesEntrenador/$id/$plannings';
+  static String progresoDeCliente(String id) =>
+      '$clientesEntrenador/$id/$progreso';
+  static String controlDeCliente(String id) =>
+      '$clientesEntrenador/$id/$controlDelCliente';
+
+  /// Un planning concreto. El cliente llega desde su historico; el entrenador,
+  /// desde la ficha del cliente, por eso cuelgan de sitios distintos.
+  static const String unPlanning = ':planningId';
+  static String planningDelCliente(String planningId) =>
+      '$planningCliente/$planningId';
+  static String planningDeClienteConcreto(
+    String idCliente,
+    String planningId,
+  ) => '${planningsDeCliente(idCliente)}/$planningId';
+
+  /// Registro del resultado de una sesión (CU-20) y de un ejercicio suelto.
+  static const String sesiones = 'sesiones';
+  static const String unaSesion = ':idSesion';
+  static const String ejerciciosDeSesion = 'ejercicios';
+  static const String unEjercicioPlanificado = ':idEjercicioPlanificado';
+
+  static String registroDeSesion(String planningId, String idSesion) =>
+      '${planningDelCliente(planningId)}/$sesiones/$idSesion';
+  static String registroDeEjercicio(
+    String planningId,
+    String idSesion,
+    String idEjercicioPlanificado,
+  ) =>
+      '${registroDeSesion(planningId, idSesion)}/$ejerciciosDeSesion/'
+      '$idEjercicioPlanificado';
+
+  /// Formulario de un ejercicio dentro de un bloque (CU-08 y CU-12). Cuelga del
+  /// planning porque el bloque solo existe dentro de él.
+  static const String bloques = 'bloques';
+  static const String unBloque = ':idBloque';
+  static const String ejercicioDelBloque = 'ejercicio';
+  static String nuevoEjercicioEnBloque(
+    String rutaDelPlanning,
+    String idBloque,
+  ) => '$rutaDelPlanning/$bloques/$idBloque/$ejercicioDelBloque';
+  static String editarEjercicioDelBloque(
+    String rutaDelPlanning,
+    String idBloque,
+    String idEjercicioPlanificado,
+  ) =>
+      '${nuevoEjercicioEnBloque(rutaDelPlanning, idBloque)}/'
+      '$idEjercicioPlanificado';
+
+  /// El planning que el entrenador edita en su pantalla de entrada: no se llega
+  /// a él por una lista, pero el formulario de un ejercicio sí necesita ruta.
+  static String planningEnEdicion(String planningId) =>
+      '$inicioEntrenador/$plannings/$planningId';
+
   /// Ajustes del entrenador: cuarto destino de su navegacion.
   static const String ajustes = 'ajustes';
   static const String ajustesEntrenador = '$inicioEntrenador/$ajustes';

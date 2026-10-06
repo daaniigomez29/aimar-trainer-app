@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_cargando.dart';
@@ -11,9 +12,6 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_clie
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mis_plannings.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_sesion.dart';
 
 /// Pantalla de entrada del cliente (`docs/ui-design.md`, 6.1).
 ///
@@ -157,21 +155,10 @@ class _SemanaState extends ConsumerState<_Semana> {
     SesionEntrenamiento sesion,
   ) {
     final pendiente = _siguientePendiente(sesion);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => pendiente == null
-            ? PantallaRegistroSesion(
-                planningId: planning.id,
-                sesionId: sesion.id,
-                clienteId: widget.idCliente,
-              )
-            : PantallaRegistroEjercicio(
-                ejercicio: pendiente,
-                planningId: planning.id,
-                clienteId: widget.idCliente,
-                sesion: sesion,
-              ),
-      ),
+    context.go(
+      pendiente == null
+          ? Rutas.registroDeSesion(planning.id, sesion.id)
+          : Rutas.registroDeEjercicio(planning.id, sesion.id, pendiente.id),
     );
   }
 }
@@ -218,9 +205,7 @@ class _Cabecera extends StatelessWidget {
           key: const Key('boton_historico_semanas'),
           tooltip: 'Semanas anteriores',
           icon: const Icon(Icons.history),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PantallaMisPlannings()),
-          ),
+          onPressed: () => context.go(Rutas.planningCliente),
         ),
         const SizedBox(width: 4),
         CircleAvatar(
@@ -404,14 +389,11 @@ class _TarjetaSesion extends StatelessWidget {
               ejercicio: ejercicio,
               esElSiguiente: ejercicio.id == siguiente?.id,
               onTap: planning.estado.esActivo
-                  ? () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PantallaRegistroEjercicio(
-                          ejercicio: ejercicio,
-                          planningId: planning.id,
-                          clienteId: idCliente,
-                          sesion: sesion,
-                        ),
+                  ? () => context.go(
+                      Rutas.registroDeEjercicio(
+                        planning.id,
+                        sesion.id,
+                        ejercicio.id,
                       ),
                     )
                   : null,

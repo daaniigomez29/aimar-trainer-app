@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
@@ -157,14 +160,15 @@ class _PantallaRegistroEjercicioState
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PantallaRegistroEjercicio(
-          ejercicio: lista[indice + 1],
-          planningId: widget.planningId,
-          clienteId: widget.clienteId,
-          sesion: widget.sesion,
-        ),
+    // `pushReplacement` y no `push`: encadenar ejercicios no debe llenar el
+    // historial, para que el atrás vuelva a la sesión y no al ejercicio previo.
+    final sesion = widget.sesion;
+    if (sesion == null) return;
+    context.go(
+      Rutas.registroDeEjercicio(
+        widget.planningId,
+        sesion.id,
+        lista[indice + 1].id,
       ),
     );
   }

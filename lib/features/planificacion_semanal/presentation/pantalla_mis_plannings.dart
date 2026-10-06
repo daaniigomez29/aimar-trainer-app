@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -137,11 +140,7 @@ class _SemanaActiva extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         key: Key('planning_${planning.id}'),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PantallaPlanning(planningId: planning.id),
-          ),
-        ),
+        onTap: () => context.go(Rutas.planningDelCliente(planning.id)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -232,11 +231,7 @@ class _FilaArchivada extends StatelessWidget {
         ),
         subtitle: Text([?planning.nombreObjetivo, 'Archivado'].join(' · ')),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PantallaPlanning(planningId: planning.id),
-          ),
-        ),
+        onTap: () => context.go(Rutas.planningDelCliente(planning.id)),
       ),
     );
   }

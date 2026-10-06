@@ -274,6 +274,21 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   devuelve ese, con `Vary: Origin`. Un origen desconocido recibe el primero de la
   lista, que no coincide con el suyo, y el navegador lo bloquea. Para los
   **enlaces de los correos** se usa siempre el primero, que es el canónico.
+- **Toda la navegación va por rutas de go_router** (2026-10-06): no queda ni un
+  `Navigator.push` imperativo. El motivo fue un fallo real: en web ese `push` no
+  deja entrada en el historial, así que el botón atrás del navegador (y el gesto
+  atrás del móvil) retrocedía a la última ruta visitada —la planificación o los
+  ajustes— en vez de a la pantalla anterior.
+- **Se navega con `context.go`, no con `context.push`.** `push` apila sin tocar
+  la URL del navegador, así que mantiene el mismo fallo; se comprobó en la app ya
+  convertida, donde la URL seguía sin cambiar. Con `go` la URL refleja dónde
+  estás, el atrás funciona y se puede **recargar sin perder el sitio**. Que la
+  flecha de la cabecera siga volviendo donde toca lo da la **jerarquía**: cada
+  pantalla se declara como ruta hija de aquella desde la que se abre.
+- **Lo que no cabe en una URL se resuelve desde el planning**: el bloque, la
+  sesión y el ejercicio planificado llegan como `id` y los busca
+  `ResolverDelPlanning`, que carga el planning completo (lo que la pantalla iba a
+  hacer igualmente) y avisa si eso ya no existe.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

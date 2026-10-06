@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
 
 /// Los ejercicios previstos de una sesion, con lo que falta por registrar (CU-20).
 ///
@@ -185,15 +187,8 @@ class _FilaEjercicio extends StatelessWidget {
         trailing: habilitado ? const Icon(Icons.chevron_right) : null,
         enabled: habilitado,
         onTap: habilitado
-            ? () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PantallaRegistroEjercicio(
-                    ejercicio: ejercicio,
-                    planningId: planningId,
-                    clienteId: clienteId,
-                    sesion: sesion,
-                  ),
-                ),
+            ? () => context.go(
+                Rutas.registroDeEjercicio(planningId, sesion.id, ejercicio.id),
               )
             : null,
       ),

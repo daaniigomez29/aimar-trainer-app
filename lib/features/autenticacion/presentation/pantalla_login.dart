@@ -98,7 +98,7 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
         TextButton(
           onPressed: estado.enCurso
               ? null
-              : () => context.push(Rutas.recuperarContrasena),
+              : () => context.go(Rutas.recuperarContrasena),
           child: const Text('He olvidado mi contraseña'),
         ),
       ],

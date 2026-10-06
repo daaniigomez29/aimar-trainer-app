@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/tarjeta_sesion.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_sesion.dart';
 
 /// La semana completa: sesiones, bloques y ejercicios (CU-06 a CU-16).
 ///
@@ -263,6 +264,10 @@ class _FilaSesion extends ConsumerWidget {
     final textos = Theme.of(context).textTheme;
     final esquema = Theme.of(context).colorScheme;
     final actual = sesion;
+    // Esta pantalla la usan los dos roles y el planning cuelga de sitios
+    // distintos (`/cliente/planning/:id` y `/entrenador/clientes/:id/...`), así
+    // que las rutas hijas se construyen sobre aquella por la que se ha llegado.
+    final rutaDeEstePlanning = GoRouterState.of(context).uri.path;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -287,14 +292,8 @@ class _FilaSesion extends ConsumerWidget {
             puedeEditar: puedeEditar,
             onRegistrar: !puedeRegistrar
                 ? null
-                : () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PantallaRegistroSesion(
-                        planningId: planning.id,
-                        sesionId: actual.id,
-                        clienteId: planning.clienteId,
-                      ),
-                    ),
+                : () => context.go(
+                    Rutas.registroDeSesion(planning.id, actual.id),
                   ),
             onAnadirBloque: () => pedirDatosBloque(
               context: context,
@@ -327,24 +326,16 @@ class _FilaSesion extends ConsumerWidget {
               bloque: bloque,
               planningId: planning.id,
             ),
-            onAnadirEjercicio: (bloque) => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PantallaFormularioEjercicioPlanificado(
-                  bloque: bloque,
-                  planningId: planning.id,
-                ),
+            onAnadirEjercicio: (bloque) => context.go(
+              Rutas.nuevoEjercicioEnBloque(rutaDeEstePlanning, bloque.id),
+            ),
+            onEditarEjercicio: (bloque, ejercicio) => context.go(
+              Rutas.editarEjercicioDelBloque(
+                rutaDeEstePlanning,
+                bloque.id,
+                ejercicio.id,
               ),
             ),
-            onEditarEjercicio: (bloque, ejercicio) =>
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PantallaFormularioEjercicioPlanificado(
-                      bloque: bloque,
-                      planningId: planning.id,
-                      ejercicioPlanificado: ejercicio,
-                    ),
-                  ),
-                ),
             onEliminarEjercicio: (ejercicio) => confirmarEliminarEjercicio(
               context: context,
               ref: ref,

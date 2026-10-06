@@ -7,26 +7,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_ficha_cliente.dart';
+import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/dia_semana.dart';
 
 /// CU-17 (alta) y CU-19 (editar ficha).
 ///
-/// Con `cliente` a `null` da de alta; con un cliente, edita su ficha.
-class PantallaFormularioCliente extends ConsumerStatefulWidget {
-  const PantallaFormularioCliente({this.cliente, super.key});
+/// Igual que el formulario de ejercicio: acepta la ficha ya cargada o su `id`
+/// cuando se llega por la URL.
+class PantallaFormularioCliente extends ConsumerWidget {
+  const PantallaFormularioCliente({this.cliente, this.idCliente, super.key});
+
+  final Cliente? cliente;
+  final String? idCliente;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (idCliente == null || cliente != null) {
+      return _FormularioCliente(cliente: cliente);
+    }
+
+    return ref
+        .watch(clientePorIdProvider(idCliente!))
+        .when(
+          data: (c) => _FormularioCliente(cliente: c),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text(mensajeDeErrorCliente(error))),
+          ),
+        );
+  }
+}
+
+class _FormularioCliente extends ConsumerStatefulWidget {
+  const _FormularioCliente({this.cliente});
 
   final Cliente? cliente;
 
   bool get esEdicion => cliente != null;
 
   @override
-  ConsumerState<PantallaFormularioCliente> createState() =>
+  ConsumerState<_FormularioCliente> createState() =>
       _EstadoPantallaFormularioCliente();
 }
 
 class _EstadoPantallaFormularioCliente
-    extends ConsumerState<PantallaFormularioCliente> {
+    extends ConsumerState<_FormularioCliente> {
   late final TextEditingController _nombre;
   late final TextEditingController _correo;
   late final TextEditingController _altura;
