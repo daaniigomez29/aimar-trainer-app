@@ -46,7 +46,6 @@ class TarjetaEjercicio extends ConsumerWidget {
             ejercicio: ejercicio,
             lado: TarjetaEjercicio.ladoMiniatura,
             radio: Tokens.radioBoton,
-            iconoDeVideo: true,
           ),
           const SizedBox(width: 14),
           Expanded(

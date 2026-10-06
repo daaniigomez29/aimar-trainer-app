@@ -10,6 +10,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercici
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/data/planning_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning_repositorio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
 
@@ -45,7 +46,11 @@ void main() {
         .thenAnswer((_) async => Success([fuerza, cardio]));
   });
 
-  Future<void> montar(WidgetTester tester) async {
+  /// Con `previo` el formulario es el de editar (CU-12); sin el, el de anadir.
+  Future<void> montar(
+    WidgetTester tester, {
+    EjercicioPlanificado? previo,
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -54,14 +59,30 @@ void main() {
         ],
         child: MaterialApp(
           home: PantallaFormularioEjercicioPlanificado(
-            bloque: bloqueDePrueba(),
+            bloque: bloqueDePrueba(ejercicios: [?previo]),
             planningId: 'p-1',
+            ejercicioPlanificado: previo,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
+
+  /// Un ejercicio ya anadido al bloque, con tres series.
+  EjercicioPlanificado conTresSeries() => ejercicioPlanificadoDePrueba(
+    ejercicio: fuerza,
+    descansoSeg: 90,
+    series: [
+      for (var i = 1; i <= 3; i++)
+        serieDePrueba(
+          id: 'sp-$i',
+          numeroSerie: i,
+          repeticiones: 8 + i,
+          peso: 60,
+        ),
+    ],
+  );
 
   /// Elige un ejercicio del desplegable por su nombre.
   Future<void> elegir(WidgetTester tester, String nombre) async {
@@ -187,6 +208,91 @@ void main() {
     expect(capturado.series.first.repeticiones, 10);
     expect(capturado.series.first.peso, 60);
     expect(capturado.series.first.rir, 2);
+  });
+
+  testWidgets('al editar llegan las series que ya tenía', (tester) async {
+    await montar(tester, previo: conTresSeries());
+
+    expect(find.text('Editar ejercicio'), findsOneWidget);
+    expect(find.byKey(const Key('campo_reps_2')), findsOneWidget);
+    expect(find.byKey(const Key('campo_reps_3')), findsNothing);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('campo_reps_0')))
+          .controller
+          ?.text,
+      '9',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('campo_descanso')))
+          .controller
+          ?.text,
+      '90',
+    );
+  });
+
+  // El agujero que esto cubre: una vez anadido el ejercicio no habia forma de
+  // quitarle una serie, porque a este formulario no se llegaba.
+  testWidgets(
+    'quitar una serie de un ejercicio ya añadido lo guarda con una menos',
+    (tester) async {
+      when(
+        () => planning.editarEjercicioPlanificado(
+          id: any(named: 'id'),
+          datos: any(named: 'datos'),
+        ),
+      ).thenAnswer((_) async => Success(ejercicioPlanificadoDePrueba()));
+      await montar(tester, previo: conTresSeries());
+
+      await tester.ensureVisible(find.byKey(const Key('quitar_serie_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('quitar_serie_1')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('campo_reps_2')), findsNothing);
+      await tester.ensureVisible(
+        find.byKey(const Key('boton_guardar_ejercicio_planificado')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('boton_guardar_ejercicio_planificado')),
+      );
+      await tester.pumpAndSettle();
+
+      final capturado =
+          verify(
+                () => planning.editarEjercicioPlanificado(
+                  id: 'ep-1',
+                  datos: captureAny(named: 'datos'),
+                ),
+              ).captured.single
+              as DatosEjercicioPlanificado;
+      // Quedan las series 1 y 3, renumeradas como 1 y 2: el numero de serie es la
+      // posicion en el ejercicio, no un identificador.
+      expect(capturado.series, hasLength(2));
+      expect(capturado.series.map((s) => s.numeroSerie), [1, 2]);
+      expect(capturado.series.map((s) => s.repeticiones), [9, 11]);
+    },
+  );
+
+  testWidgets('al editar también se puede añadir una serie', (tester) async {
+    await montar(tester, previo: conTresSeries());
+
+    await tester.tap(find.byKey(const Key('boton_anadir_serie')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('campo_reps_3')), findsOneWidget);
+  });
+
+  // El mismo orden que la cuadricula de la planificacion y que el registro del
+  // cliente: primero el peso, luego las repeticiones.
+  testWidgets('el peso va antes que las repeticiones', (tester) async {
+    await montar(tester, previo: conTresSeries());
+
+    expect(
+      tester.getTopLeft(find.byKey(const Key('campo_peso_0'))).dx,
+      lessThan(tester.getTopLeft(find.byKey(const Key('campo_reps_0'))).dx),
+    );
   });
 
   testWidgets('la biblioteca vacía lo explica y ofrece añadir antes', (

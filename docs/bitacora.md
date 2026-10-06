@@ -1358,3 +1358,42 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 - `flutter test` **356**, `dart analyze --fatal-infos` limpio, `flutter build
   web` compila.
 
+
+**Corregido (no se podían añadir ni quitar series a un ejercicio ya añadido):**
+
+- Sintoma: en la pantalla de planificacion del entrenador, la cuadricula de
+  series deja escribir kg, reps y RIR, pero el numero de series queda fijado al
+  anadir el ejercicio. Si al final sobraba una serie, no habia forma de quitarla.
+- Causa: el formulario que si sabe hacerlo (`PantallaFormularioEjercicioPlanificado`,
+  CU-08 y CU-12) ya aceptaba un ejercicio previo y su ruta de edicion existia,
+  pero **a esa pantalla no se llegaba desde la planificacion**: la fila del
+  ejercicio solo tenia la X de quitarlo del bloque. En Cardio era aun mas visible,
+  porque los minutos tampoco se editan en la cuadricula.
+- Ahora cada ejercicio lleva un boton de editar a la izquierda de la X, que abre
+  ese mismo formulario con sus datos (`Rutas.editarEjercicioDelBloque`). No hay
+  logica nueva de guardado: es la de siempre.
+- **Anadir y editar han dejado de estar anidadas**: la ruta de editar colgaba de
+  la de anadir, asi que al guardar (o al pulsar atras) el entrenador aparecia en
+  un formulario de "Anadir ejercicio" vacio en vez de volver al planning. Ahora
+  son rutas hermanas, en los tres sitios donde se declaran.
+- `_EjercicioEditable` recarga sus filas con `didUpdateWidget` cuando las series
+  cambian por detras, y avisa al padre para que **olvide lo pendiente** de ese
+  ejercicio. Sin eso, al volver del formulario la cuadricula seguia enseñando lo
+  de antes y "Guardar cambios" lo habria escrito encima de lo recien guardado.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador contra Supabase local: desde el planning se edita
+  "Sentadilla trasera", se le anade una serie, se guarda (vuelve a `#/entrenador`)
+  y la cuadricula pasa a dos series; al quitarla, vuelve a una.
+- `flutter test` **359** (tres nuevos sobre el formulario en modo edicion),
+  `dart analyze --fatal-infos` limpio.
+
+### 2026-10-07
+
+**Hecho:**
+
+- En el formulario de anadir y editar un ejercicio de un bloque, la fila de cada
+  serie pone **primero el peso y luego las repeticiones**. Es el orden que ya
+  tenian la cuadricula de la planificacion (Kg · Reps · RIR) y el registro del
+  cliente; el formulario era el unico sitio que lo llevaba al reves.

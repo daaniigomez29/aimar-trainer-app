@@ -138,13 +138,14 @@ GoRouter enrutador(Ref ref) {
                                 '${Rutas.ejercicioDelBloque}',
                             builder: (context, state) =>
                                 _formularioDeEjercicio(state),
-                            routes: [
-                              GoRoute(
-                                path: Rutas.unEjercicioPlanificado,
-                                builder: (context, state) =>
-                                    _formularioDeEjercicio(state),
-                              ),
-                            ],
+                          ),
+                          GoRoute(
+                            path:
+                                '${Rutas.bloques}/${Rutas.unBloque}/'
+                                '${Rutas.ejercicioDelBloque}/'
+                                '${Rutas.unEjercicioPlanificado}',
+                            builder: (context, state) =>
+                                _formularioDeEjercicio(state),
                           ),
                         ],
                       ),
@@ -169,20 +170,24 @@ GoRouter enrutador(Ref ref) {
             ],
           ),
           // El entrenador edita el planning en su pantalla de entrada, así que
-          // esta ruta solo existe para lo que se abre encima: el formulario de
-          // un ejercicio dentro de un bloque.
+          // estas rutas solo existen para lo que se abre encima: el formulario
+          // de un ejercicio dentro de un bloque.
+          //
+          // Añadir y editar son **hermanas**, no una dentro de otra: anidadas,
+          // cerrar el formulario de editar dejaba al entrenador en el de
+          // añadir, vacío, en vez de volver al planning.
           GoRoute(
             path:
-                '${Rutas.plannings}/${Rutas.unPlanning}/'
-                '${Rutas.bloques}/${Rutas.unBloque}/'
-                '${Rutas.ejercicioDelBloque}',
+                '${Rutas.plannings}/${Rutas.unPlanning}/${Rutas.bloques}/'
+                '${Rutas.unBloque}/${Rutas.ejercicioDelBloque}',
             builder: (context, state) => _formularioDeEjercicio(state),
-            routes: [
-              GoRoute(
-                path: Rutas.unEjercicioPlanificado,
-                builder: (context, state) => _formularioDeEjercicio(state),
-              ),
-            ],
+          ),
+          GoRoute(
+            path:
+                '${Rutas.plannings}/${Rutas.unPlanning}/${Rutas.bloques}/'
+                '${Rutas.unBloque}/${Rutas.ejercicioDelBloque}/'
+                '${Rutas.unEjercicioPlanificado}',
+            builder: (context, state) => _formularioDeEjercicio(state),
           ),
           GoRoute(
             path: Rutas.ajustes,
@@ -236,13 +241,13 @@ GoRouter enrutador(Ref ref) {
                         '${Rutas.bloques}/${Rutas.unBloque}/'
                         '${Rutas.ejercicioDelBloque}',
                     builder: (context, state) => _formularioDeEjercicio(state),
-                    routes: [
-                      GoRoute(
-                        path: Rutas.unEjercicioPlanificado,
-                        builder: (context, state) =>
-                            _formularioDeEjercicio(state),
-                      ),
-                    ],
+                  ),
+                  GoRoute(
+                    path:
+                        '${Rutas.bloques}/${Rutas.unBloque}/'
+                        '${Rutas.ejercicioDelBloque}/'
+                        '${Rutas.unEjercicioPlanificado}',
+                    builder: (context, state) => _formularioDeEjercicio(state),
                   ),
                 ],
               ),

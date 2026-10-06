@@ -289,6 +289,16 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   sesión y el ejercicio planificado llegan como `id` y los busca
   `ResolverDelPlanning`, que carga el planning completo (lo que la pantalla iba a
   hacer igualmente) y avisa si eso ya no existe.
+- **Añadir y editar un ejercicio del bloque son rutas hermanas**, no una dentro
+  de otra: anidadas, al guardar la edición (o al pulsar atrás) el entrenador
+  acababa en un formulario de "Añadir ejercicio" vacío en lugar de volver al
+  planning.
+- **Las series se añaden y se quitan en el formulario del ejercicio**, no en la
+  cuadrícula de la planificación, que solo edita los valores de las series que ya
+  existen. Por eso cada ejercicio tiene botón de editar junto a la X. La
+  cuadrícula se rehace (`didUpdateWidget`) cuando las series cambian por detrás y
+  olvida lo que tuviera sin guardar de ese ejercicio: si no, "Guardar cambios"
+  escribiría lo viejo encima de lo que se acaba de guardar en el formulario.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

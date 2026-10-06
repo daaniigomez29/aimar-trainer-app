@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
@@ -129,8 +130,16 @@ class _PantallaPlanificacionEntrenadorState
             sesionElegida: _sesionElegida,
             pendientes: _pendientes,
             onElegirSesion: (orden) => setState(() => _sesionElegida = orden),
-            onCambiarSeries: (ejercicioId, series) =>
-                setState(() => _pendientes[ejercicioId] = series),
+            onCambiarSeries: (ejercicioId, series) => setState(() {
+              // `null` es olvidar lo tecleado: el ejercicio acaba de guardarse
+              // desde su formulario, asi que lo pendiente ya no corresponde con
+              // lo que hay y se escribiria encima de lo recien guardado.
+              if (series == null) {
+                _pendientes.remove(ejercicioId);
+              } else {
+                _pendientes[ejercicioId] = series;
+              }
+            }),
           ),
         );
       },
@@ -465,7 +474,7 @@ class _Semana extends ConsumerWidget {
   final int? sesionElegida;
   final Map<String, List<DatosSerie>> pendientes;
   final ValueChanged<int> onElegirSesion;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -566,7 +575,7 @@ class _Planning extends ConsumerWidget {
   final int? sesionElegida;
   final Map<String, List<DatosSerie>> pendientes;
   final ValueChanged<int> onElegirSesion;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -768,7 +777,7 @@ class _Sesion extends ConsumerWidget {
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final Map<String, List<DatosSerie>> pendientes;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -889,7 +898,7 @@ class _Bloque extends ConsumerWidget {
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final Map<String, List<DatosSerie>> pendientes;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1011,7 +1020,7 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
 
   /// Series pendientes de guardar, si ya se han tocado.
   final List<DatosSerie>? series;
-  final ValueChanged<List<DatosSerie>> onCambiarSeries;
+  final ValueChanged<List<DatosSerie>?> onCambiarSeries;
 
   @override
   ConsumerState<_EjercicioEditable> createState() => _EjercicioEditableState();
@@ -1023,24 +1032,45 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
   @override
   void initState() {
     super.initState();
-    _filas = [
-      for (final serie in widget.ejercicio.series)
-        _FilaSerie(
-          numero: serie.numeroSerie,
-          peso: TextEditingController(
-            text: serie.pesoPlanificado == null
-                ? ''
-                : _numero(serie.pesoPlanificado!),
-          ),
-          reps: TextEditingController(
-            text: '${serie.repeticionesPlanificadas}',
-          ),
-          rir: TextEditingController(
-            text: serie.rirPlanificado == null ? '' : '${serie.rirPlanificado}',
-          ),
-        ),
-    ];
+    _filas = _filasDe(widget.ejercicio.series);
   }
+
+  /// Rehace la cuadricula cuando las series cambian por detras.
+  ///
+  /// POR QUE HACE FALTA: anadir o quitar una serie se hace en el formulario del
+  /// ejercicio, no aqui. Al volver de el, esta pantalla sigue viva y seguiria
+  /// ensenando las filas de antes; peor aun, lo que quedara sin guardar aqui se
+  /// escribiria encima de lo que se acaba de guardar alli.
+  @override
+  void didUpdateWidget(_EjercicioEditable anterior) {
+    super.didUpdateWidget(anterior);
+    if (listEquals(anterior.ejercicio.series, widget.ejercicio.series)) return;
+
+    for (final fila in _filas) {
+      fila.dispose();
+    }
+    setState(() => _filas = _filasDe(widget.ejercicio.series));
+    // El aviso al padre cambia su estado, asi que va despues del fotograma.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onCambiarSeries(null);
+    });
+  }
+
+  static List<_FilaSerie> _filasDe(List<SeriePlanificada> series) => [
+    for (final serie in series)
+      _FilaSerie(
+        numero: serie.numeroSerie,
+        peso: TextEditingController(
+          text: serie.pesoPlanificado == null
+              ? ''
+              : _numero(serie.pesoPlanificado!),
+        ),
+        reps: TextEditingController(text: '${serie.repeticionesPlanificadas}'),
+        rir: TextEditingController(
+          text: serie.rirPlanificado == null ? '' : '${serie.rirPlanificado}',
+        ),
+      ),
+  ];
 
   /// Vuelca lo que el cliente hizo la ultima vez sobre lo planificado.
   ///
@@ -1137,6 +1167,19 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                 ),
               ),
               IconButton(
+                key: Key('editar_ejercicio_${widget.ejercicio.id}'),
+                tooltip: 'Editar ejercicio',
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => context.go(
+                  Rutas.editarEjercicioDelBloque(
+                    Rutas.planningEnEdicion(widget.planning.id),
+                    widget.bloque.id,
+                    widget.ejercicio.id,
+                  ),
+                ),
+              ),
+              IconButton(
                 key: Key('eliminar_ejercicio_${widget.ejercicio.id}'),
                 tooltip: 'Quitar del bloque',
                 icon: const Icon(Icons.close, size: 16),
@@ -1164,8 +1207,8 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                       color: Tokens.secundario,
                     ),
                   ),
-                  // En Cardio no hay boton de copiar: los minutos no se editan
-                  // aqui, se cambian en el formulario del ejercicio.
+                  // En Cardio no hay boton de copiar: los minutos no se
+                  // editan aqui, se cambian con el boton de editar.
                   if (widget.referencia?.minutos case final minutos?) ...[
                     const SizedBox(width: 12),
                     Expanded(

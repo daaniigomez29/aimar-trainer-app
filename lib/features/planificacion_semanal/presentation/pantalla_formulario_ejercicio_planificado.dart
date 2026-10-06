@@ -404,22 +404,6 @@ class _CamposFuerza extends StatelessWidget {
                 ),
                 Expanded(
                   child: TextField(
-                    key: Key('campo_reps_$i'),
-                    controller: series[i].repeticiones,
-                    enabled: habilitado,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => onCambio(),
-                    decoration: InputDecoration(
-                      labelText: 'Reps *',
-                      isDense: true,
-                      errorText: i == 0 ? errorRepeticiones : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
                     key: Key('campo_peso_$i'),
                     controller: series[i].peso,
                     enabled: habilitado,
@@ -434,6 +418,22 @@ class _CamposFuerza extends StatelessWidget {
                       labelText: 'Peso',
                       isDense: true,
                       errorText: i == 0 ? errorPeso : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    key: Key('campo_reps_$i'),
+                    controller: series[i].repeticiones,
+                    enabled: habilitado,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (_) => onCambio(),
+                    decoration: InputDecoration(
+                      labelText: 'Reps *',
+                      isDense: true,
+                      errorText: i == 0 ? errorRepeticiones : null,
                     ),
                   ),
                 ),
@@ -455,6 +455,7 @@ class _CamposFuerza extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  key: Key('quitar_serie_$i'),
                   tooltip: 'Quitar serie',
                   icon: const Icon(Icons.remove_circle_outline, size: 20),
                   // Siempre debe quedar al menos una serie.
