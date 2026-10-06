@@ -93,7 +93,7 @@ void main() {
   group('PlanningSemanal.fromJson con la respuesta de PostgREST', () {
     final planning = PlanningSemanal.fromJson(_respuestaReal);
 
-    test('las sesiones llegan, no una lista vacia', () {
+    test('las sesiones llegan, no una lista vacía', () {
       expect(planning.sesiones, hasLength(1));
       expect(planning.sesiones.single.nombre, 'Empuje');
       expect(planning.sesiones.single.orden, 1);
@@ -105,7 +105,7 @@ void main() {
       expect(planning.sesionNumero(2), isNull);
     });
 
-    test('los bloques y sus ejercicios tambien', () {
+    test('los bloques y sus ejercicios también', () {
       final bloque = planning.sesiones.single.bloques.single;
 
       expect(bloque.tipo, TipoBloque.fuerza);

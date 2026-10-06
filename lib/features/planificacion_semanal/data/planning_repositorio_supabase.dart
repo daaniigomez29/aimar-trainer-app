@@ -404,12 +404,12 @@ sesiones_entrenamiento(
           'Falta algo de lo que esto depende, o ya se ha eliminado.',
         ),
         '22003' => const ErrorValidacion(
-          'Algun numero esta fuera del rango admitido.',
+          'Algún número está fuera del rango admitido.',
         ),
         _ => Registro.inesperado(
           error,
           traza,
-          contexto: 'el repositorio de planificacion',
+          contexto: 'el repositorio de planificación',
         ),
       };
     }
@@ -421,7 +421,7 @@ sesiones_entrenamiento(
     return Registro.inesperado(
       error,
       traza,
-      contexto: 'el repositorio de planificacion',
+      contexto: 'el repositorio de planificación',
     );
   }
 
@@ -431,16 +431,16 @@ sesiones_entrenamiento(
       return 'Ese cliente ya tiene un planning activo para esa semana.';
     }
     if (mensaje.contains('sesiones_planning_orden_unico')) {
-      return 'Ese planning ya tiene una sesion con ese numero.';
+      return 'Ese planning ya tiene una sesión con ese número.';
     }
     if (mensaje.contains('bloques_sesion_orden_unico')) {
-      return 'Ya hay un bloque en esa posicion.';
+      return 'Ya hay un bloque en esa posición.';
     }
     if (mensaje.contains('ejer_planif_bloque_orden_unico')) {
-      return 'Ya hay un ejercicio en esa posicion del bloque.';
+      return 'Ya hay un ejercicio en esa posición del bloque.';
     }
     if (mensaje.contains('series_planif_numero_unico')) {
-      return 'Hay dos series con el mismo numero.';
+      return 'Hay dos series con el mismo número.';
     }
     return 'Ese elemento ya existe.';
   }

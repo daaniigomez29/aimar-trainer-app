@@ -7,7 +7,7 @@ void main() {
   group('Result', () {
     const error = ErrorCredencialesInvalidas();
 
-    test('Success expone el valor y ningun error', () {
+    test('Success expone el valor y ningún error', () {
       const resultado = Success(42);
 
       expect(resultado.esExito, isTrue);
@@ -16,7 +16,7 @@ void main() {
       expect(resultado.errorONulo, isNull);
     });
 
-    test('Failure expone el error y ningun valor', () {
+    test('Failure expone el error y ningún valor', () {
       const resultado = Failure<int>(error);
 
       expect(resultado.esFallo, isTrue);

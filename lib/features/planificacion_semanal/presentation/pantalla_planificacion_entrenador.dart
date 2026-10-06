@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -67,19 +69,19 @@ class _PantallaPlanificacionEntrenadorState
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => _Armazon(
-        titulo: const Text('Planificacion'),
+        titulo: const Text('Planificación'),
         cuerpo: Center(child: Text(mensajeDeErrorPlanificacion(error))),
       ),
       data: (lista) {
         final activos = lista.where((c) => c.estado.esActivo).toList();
         if (activos.isEmpty) {
           return _Armazon(
-            titulo: const Text('Planificacion'),
+            titulo: const Text('Planificación'),
             cuerpo: const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Text(
-                  'Todavia no hay clientes activos a los que planificar.',
+                  'Todavía no hay clientes activos a los que planificar.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -202,6 +204,7 @@ class _PantallaPlanificacionEntrenadorState
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: Avisos.duracion,
         content: Text(
           fallos == 0
               ? 'Cambios guardados.'
@@ -664,7 +667,7 @@ Future<void> _abrirBibliotecaEnModal(
 
 /// Pestanas de las sesiones del planning, con el boton de anadir otra al final.
 ///
-/// Sustituye a las pestanas de dia: una sesion es "Dia 1", "Dia 2"..., no
+/// Sustituye a las pestanas de dia: una sesion es "Día 1", "Día 2"..., no
 /// "miercoles". El entrenador decide **cuantas** sesiones tiene la semana.
 class _PestanasDeSesion extends ConsumerWidget {
   const _PestanasDeSesion({
@@ -700,13 +703,13 @@ class _PestanasDeSesion extends ConsumerWidget {
                     )
                   : null,
               icon: const Icon(Icons.add, size: 18),
-              label: Text('Dia ${planning.siguienteOrden}'),
+              label: Text('Día ${planning.siguienteOrden}'),
             );
           }
 
           final sesion = sesiones[indice];
           return ChipFiltro(
-            etiqueta: 'Dia ${sesion.orden}',
+            etiqueta: 'Día ${sesion.orden}',
             activo: sesion.orden == elegida,
             onPulsar: () => onElegir(sesion.orden),
           );
@@ -732,7 +735,7 @@ class _SemanaVacia extends ConsumerWidget {
           Text('Semana sin sesiones', style: textos.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Anade la primera sesion para empezar a planificar.',
+            'Añade la primera sesión para empezar a planificar.',
             style: textos.bodySmall,
           ),
           const SizedBox(height: 14),
@@ -746,7 +749,7 @@ class _SemanaVacia extends ConsumerWidget {
                   )
                 : null,
             icon: const Icon(Icons.add, size: 18),
-            label: const Text('Anadir sesion'),
+            label: const Text('Añadir sesión'),
           ),
         ],
       ),
@@ -789,7 +792,7 @@ class _Sesion extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dia ${sesion.orden} · ${sesion.nombre}',
+                    'Día ${sesion.orden} · ${sesion.nombre}',
                     style: textos.headlineSmall,
                   ),
                   const SizedBox(height: 4),
@@ -801,7 +804,7 @@ class _Sesion extends ConsumerWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Editar sesion',
+              tooltip: 'Editar sesión',
               icon: const Icon(Icons.edit_outlined, size: 18),
               onPressed: () => pedirDatosSesion(
                 context: context,
@@ -812,7 +815,7 @@ class _Sesion extends ConsumerWidget {
             ),
             IconButton(
               key: Key('eliminar_sesion_${sesion.id}'),
-              tooltip: 'Eliminar sesion',
+              tooltip: 'Eliminar sesión',
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: () => confirmarEliminarSesion(
                 context: context,
@@ -860,7 +863,7 @@ class _Sesion extends ConsumerWidget {
             planningId: planning.id,
           ),
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Anadir bloque'),
+          label: const Text('Añadir bloque'),
         ),
       ],
     );
@@ -963,7 +966,7 @@ class _Bloque extends ConsumerWidget {
             ],
           ),
           if (bloque.ejercicios.isEmpty)
-            Text('Sin ejercicios todavia.', style: textos.bodySmall),
+            Text('Sin ejercicios todavía.', style: textos.bodySmall),
           const SizedBox(height: 8),
           TextButton.icon(
             key: Key('anadir_ejercicio_${bloque.id}'),
@@ -976,7 +979,7 @@ class _Bloque extends ConsumerWidget {
               ),
             ),
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('Anadir ejercicio'),
+            label: const Text('Añadir ejercicio'),
           ),
         ],
       ),
@@ -1349,11 +1352,11 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
 /// de la otra. Por debajo, lo realizado va en una linea aparte.
 const double _anchoParaDosMitades = 560;
 
-/// "Semana pasada" o "Ultima vez", segun de donde salga el dato. La diferencia
+/// "Semana pasada" o "Última vez", segun de donde salga el dato. La diferencia
 /// importa: no es lo mismo planificar sobre lo de hace siete dias que sobre algo
 /// de hace un mes.
 String _tituloReferencia(ReferenciaAnterior referencia) =>
-    referencia.esSemanaAnterior ? 'Semana pasada' : 'Ultima vez';
+    referencia.esSemanaAnterior ? 'Semana pasada' : 'Última vez';
 
 String _conFecha(ReferenciaAnterior referencia) {
   final titulo = _tituloReferencia(referencia);
@@ -1551,7 +1554,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
               Expanded(
                 child: Text(
                   widget.enModal
-                      ? 'Anadir ejercicio'
+                      ? 'Añadir ejercicio'
                       : 'Biblioteca de ejercicios',
                   style: textos.titleMedium,
                 ),
@@ -1598,7 +1601,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
                 final activos = lista.where((e) => e.estado.esActivo).toList();
                 if (activos.isEmpty) {
                   return Text(
-                    'Ningun ejercicio coincide.',
+                    'Ningún ejercicio coincide.',
                     style: textos.bodySmall,
                   );
                 }
@@ -1629,9 +1632,10 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final sesion = widget.sesion!;
     if (sesion.bloques.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
+          duration: Avisos.duracion,
           content: Text(
-            'Anade antes un bloque: el ejercicio va dentro de uno.',
+            'Añade antes un bloque: el ejercicio va dentro de uno.',
           ),
         ),
       );
@@ -1664,8 +1668,9 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
 
     if (!mounted) return;
     if (resultado.errorONulo case final error?) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.mensaje)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(duration: Avisos.duracion, content: Text(error.mensaje)),
+      );
     } else if (widget.enModal) {
       Navigator.of(context).pop();
     }
@@ -1703,7 +1708,7 @@ class _FilaBiblioteca extends StatelessWidget {
           ),
           IconButton.filledTonal(
             key: Key('anadir_biblioteca_${ejercicio.id}'),
-            tooltip: 'Anadir a la sesion',
+            tooltip: 'Añadir a la sesión',
             icon: const Icon(Icons.add, size: 18),
             onPressed: onAnadir,
             // En acento, no en el ambar que trae por defecto: aqui el ambar

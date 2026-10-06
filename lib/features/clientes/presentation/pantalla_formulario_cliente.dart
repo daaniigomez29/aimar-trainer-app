@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -109,11 +111,14 @@ class _EstadoPantallaFormularioCliente
             SnackBar(
               content: Text(
                 valor.invitacionEnviada
-                    ? 'Cliente dado de alta. Invitacion enviada por correo.'
-                    : 'Cliente dado de alta, pero la invitacion no ha salido: '
-                          '${valor.avisoInvitacion ?? "revisa la configuracion de correo"}',
+                    ? 'Cliente dado de alta. Invitación enviada por correo.'
+                    : 'Cliente dado de alta, pero la invitación no ha salido: '
+                          '${valor.avisoInvitacion ?? "revisa la configuración de correo"}',
               ),
-              duration: Duration(seconds: valor.invitacionEnviada ? 4 : 8),
+              // El caso de error dura más: lleva un aviso que hay que leer.
+              duration: valor.invitacionEnviada
+                  ? Avisos.duracion
+                  : Avisos.duracionConAccion,
             ),
           );
         case Failure():
@@ -127,8 +132,12 @@ class _EstadoPantallaFormularioCliente
     if (!mounted) return;
     if (resultado.esExito) {
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Ficha actualizada.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: Avisos.duracion,
+          content: Text('Ficha actualizada.'),
+        ),
+      );
     }
   }
 
@@ -142,7 +151,7 @@ class _EstadoPantallaFormularioCliente
       titulo: widget.esEdicion ? 'Editar ficha' : 'Nuevo cliente',
       subtitulo: widget.esEdicion
           ? null
-          : 'Se creara su cuenta y recibira una invitacion por correo.',
+          : 'Se creara su cuenta y recibira una invitación por correo.',
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
           AvisoEnLinea(mensaje: mensaje),
@@ -173,7 +182,7 @@ class _EstadoPantallaFormularioCliente
             errorText: estado.errorDelCampo('correo'),
             helperText: widget.esEdicion
                 ? 'El correo no se puede cambiar: es su usuario de acceso.'
-                : 'A esta direccion se envia la invitacion.',
+                : 'A esta dirección se envía la invitación.',
           ),
         ),
         const SizedBox(height: 16),
@@ -232,9 +241,9 @@ class _EstadoPantallaFormularioCliente
           key: const Key('selector_dia_control'),
           initialValue: _diaControl,
           decoration: const InputDecoration(
-            labelText: 'Dia de control preferido',
+            labelText: 'Día de control preferido',
             helperText:
-                'Dia en que se le recordara registrar medidas y check-in.',
+                'Día en que se le recordara registrar medidas y check-in.',
           ),
           items: [
             for (final dia in DiaSemana.values)

@@ -74,7 +74,7 @@ class _Listado extends StatelessWidget {
               Icon(Icons.calendar_month_outlined, size: 48),
               SizedBox(height: 16),
               Text(
-                'Tu entrenador todavia no te ha preparado ningun planning.',
+                'Tu entrenador todavía no te ha preparado ningún planning.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -206,7 +206,7 @@ class _SemanaActiva extends ConsumerWidget {
     final siguiente = completo.siguientePendiente;
     return siguiente == null
         ? '$hechas de $total sesiones hechas.'
-        : 'Te toca el dia ${siguiente.orden}: ${siguiente.nombre} '
+        : 'Te toca el día ${siguiente.orden}: ${siguiente.nombre} '
               '($hechas de $total hechas).';
   }
 }

@@ -44,7 +44,7 @@ void main() {
       expect(VideoEjemplo.idDeYoutube('  https://youtu.be/$id  '), id);
     });
 
-    test('devuelve null para lo que no es un video de YouTube', () {
+    test('devuelve null para lo que no es un vídeo de YouTube', () {
       expect(VideoEjemplo.idDeYoutube(null), isNull);
       expect(VideoEjemplo.idDeYoutube(''), isNull);
       expect(VideoEjemplo.idDeYoutube('https://vimeo.com/123456'), isNull);
@@ -73,7 +73,7 @@ void main() {
       expect(url.queryParameters['playsinline'], '1');
     });
 
-    test('null cuando el enlace no se puede reproducir aqui', () {
+    test('null cuando el enlace no se puede reproducir aquí', () {
       expect(VideoEjemplo.urlIncrustada('https://vimeo.com/123456'), isNull);
       expect(VideoEjemplo.urlIncrustada(null), isNull);
     });

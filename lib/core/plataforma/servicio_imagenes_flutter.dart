@@ -97,7 +97,7 @@ class ServicioImagenesFlutter implements ServicioImagenes {
         ),
       );
     } on Object catch (error, traza) {
-      Registro.fallo(error, traza, contexto: 'la conversion de la imagen');
+      Registro.fallo(error, traza, contexto: 'la conversión de la imagen');
       return const Failure(
         ErrorValidacion(
           'No se ha podido leer esa imagen. Si es una foto de iPhone en '

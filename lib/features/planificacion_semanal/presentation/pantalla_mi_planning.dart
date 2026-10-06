@@ -49,7 +49,7 @@ class PantallaMiPlanning extends ConsumerWidget {
           if (planning == null) {
             return _Aviso(
               mensaje:
-                  'Tu entrenador todavia no te ha preparado ninguna '
+                  'Tu entrenador todavía no te ha preparado ninguna '
                   'semana.',
               onReintentar: () => ref.invalidate(misPlanningsProvider),
             );
@@ -138,7 +138,7 @@ class _SemanaState extends ConsumerState<_Semana> {
               if (sesion != null && planning.estado.esActivo)
                 BotonCta(
                   etiqueta: _siguientePendiente(sesion) == null
-                      ? 'Revisar la sesion'
+                      ? 'Revisar la sesión'
                       : 'Continuar entrenamiento',
                   onPulsar: () => _abrirSesion(context, planning, sesion),
                 ),
@@ -232,7 +232,7 @@ class _Cabecera extends StatelessWidget {
     );
   }
 
-  /// Dos iniciales como mucho: "Marta Lopez" -> "ML".
+  /// Dos iniciales como mucho: "Marta López" -> "ML".
   static String _iniciales(String nombre) {
     final partes = nombre
         .trim()
@@ -293,7 +293,7 @@ class _TiraDeSesiones extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'DIA ${sesion.orden}',
+                    'DÍA ${sesion.orden}',
                     style: textos.labelMedium?.copyWith(
                       color: activa ? Tokens.sobreAcento : Tokens.textoSuave,
                     ),
@@ -334,7 +334,7 @@ class _SinSesiones extends StatelessWidget {
           Text('Semana sin sesiones', style: textos.titleLarge),
           const SizedBox(height: 4),
           Text(
-            'Tu entrenador aun no ha anadido ninguna sesion a esta semana.',
+            'Tu entrenador aun no ha añadido ninguna sesión a esta semana.',
             style: textos.bodySmall,
           ),
         ],
@@ -378,8 +378,8 @@ class _TarjetaSesion extends StatelessWidget {
                   children: [
                     Text(
                       sesion.fechaRealizada == null
-                          ? 'DIA ${sesion.orden}'
-                          : 'DIA ${sesion.orden} · HECHA EL '
+                          ? 'DÍA ${sesion.orden}'
+                          : 'DÍA ${sesion.orden} · HECHA EL '
                                 '${_comoFechaCorta(sesion.fechaRealizada!)}',
                       style: textos.labelMedium,
                     ),
@@ -419,7 +419,7 @@ class _TarjetaSesion extends StatelessWidget {
           ],
           if (ejercicios.isEmpty)
             Text(
-              'Esta sesion aun no tiene ejercicios.',
+              'Esta sesión aun no tiene ejercicios.',
               style: textos.bodySmall,
             ),
         ],
@@ -537,7 +537,7 @@ class _Estadisticas extends StatelessWidget {
       children: [
         Expanded(
           child: _Dato(
-            etiqueta: 'PROXIMO CONTROL',
+            etiqueta: 'PRÓXIMO CONTROL',
             valor: ficha?.diaControlPreferido.etiqueta ?? '-',
             color: Tokens.secundario,
           ),

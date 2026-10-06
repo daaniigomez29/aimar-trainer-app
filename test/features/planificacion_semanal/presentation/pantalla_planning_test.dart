@@ -95,18 +95,18 @@ void main() {
     expect(find.text('jjjj'), findsOneWidget);
   });
 
-  testWidgets('las sesiones van numeradas y se puede anadir la siguiente', (
+  testWidgets('las sesiones van numeradas y se puede añadir la siguiente', (
     tester,
   ) async {
     await montar(tester, planning: semanaConCuatroSesiones());
 
-    expect(find.text('Dia 1'), findsOneWidget);
-    expect(find.text('Dia 4'), findsOneWidget);
+    expect(find.text('Día 1'), findsOneWidget);
+    expect(find.text('Día 4'), findsOneWidget);
     // El boton propone el numero que toca, no un dia de la semana.
-    expect(find.text('Anadir dia 5'), findsOneWidget);
+    expect(find.text('Añadir día 5'), findsOneWidget);
   });
 
-  testWidgets('una sesion hecha muestra cuando se hizo', (tester) async {
+  testWidgets('una sesión hecha muestra cuando se hizo', (tester) async {
     await montar(
       tester,
       planning: planningDePrueba(
@@ -135,7 +135,7 @@ void main() {
     );
 
     expect(find.text('Empuje'), findsOneWidget);
-    expect(find.textContaining('Anadir dia'), findsNothing);
+    expect(find.textContaining('Añadir día'), findsNothing);
     // Pero si el boton de registrar su resultado (CU-20).
     expect(find.byKey(const Key('boton_eliminar_planning')), findsNothing);
   });

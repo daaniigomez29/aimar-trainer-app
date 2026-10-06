@@ -15,7 +15,7 @@ Ejercicio _ejercicio({
 }) => Ejercicio(
   id: id,
   nombre: nombre,
-  descripcion: 'Descripcion.',
+  descripcion: 'Descripción.',
   tipo: tipo,
   estado: estado,
   creadoEn: DateTime.utc(2026),
@@ -35,13 +35,16 @@ void main() {
       );
     });
 
-    test('con incluirEliminados los muestra', () {
-      const filtro = FiltroEjercicios(incluirEliminados: true);
+    // El chip de "Dados de baja" es una pestana para revisar las bajas, no un
+    // "además de": mezclarlas con los activos no deja ver cuales son.
+    test('con soloEliminados muestra las bajas y SOLO las bajas', () {
+      const filtro = FiltroEjercicios(soloEliminados: true);
 
       expect(
         filtro.aceptar(_ejercicio(estado: EstadoEjercicio.eliminado)),
         isTrue,
       );
+      expect(filtro.aceptar(_ejercicio()), isFalse);
     });
   });
 
@@ -120,7 +123,7 @@ void main() {
   });
 
   group('FiltroEjercicios: estaVacio', () {
-    test('un filtro recien creado esta vacio', () {
+    test('un filtro recien creado esta vacío', () {
       expect(const FiltroEjercicios().estaVacio, isTrue);
     });
 
@@ -131,10 +134,7 @@ void main() {
         isFalse,
       );
       expect(const FiltroEjercicios(grupoMuscular: 'Pecho').estaVacio, isFalse);
-      expect(
-        const FiltroEjercicios(incluirEliminados: true).estaVacio,
-        isFalse,
-      );
+      expect(const FiltroEjercicios(soloEliminados: true).estaVacio, isFalse);
     });
   });
 }

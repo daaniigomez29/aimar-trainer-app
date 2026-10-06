@@ -33,7 +33,7 @@ Ejercicio _ejercicio({
 }) => Ejercicio(
   id: id,
   nombre: nombre,
-  descripcion: 'Descripcion.',
+  descripcion: 'Descripción.',
   tipo: tipo,
   estado: estado,
   creadoEn: DateTime.utc(2026),
@@ -129,7 +129,7 @@ void main() {
     expect(find.text('Dados de baja'), findsOneWidget);
   });
 
-  testWidgets('la busqueda filtra el listado', (tester) async {
+  testWidgets('la búsqueda filtra el listado', (tester) async {
     await montar(
       tester,
       rol: RolUsuario.entrenador,
@@ -164,19 +164,19 @@ void main() {
     expect(find.text('Quitar filtros'), findsOneWidget);
   });
 
-  testWidgets('la biblioteca vacia invita al entrenador a anadir', (
+  testWidgets('la biblioteca vacía invita al entrenador a añadir', (
     tester,
   ) async {
     await montar(tester, rol: RolUsuario.entrenador, biblioteca: []);
 
-    expect(find.textContaining('Anade el primer ejercicio'), findsOneWidget);
+    expect(find.textContaining('Añade el primer ejercicio'), findsOneWidget);
   });
 
-  testWidgets('la biblioteca vacia da al cliente otro mensaje', (tester) async {
+  testWidgets('la biblioteca vacía da al cliente otro mensaje', (tester) async {
     await montar(tester, rol: RolUsuario.cliente, biblioteca: []);
 
     expect(
-      find.textContaining('todavia no ha anadido ejercicios'),
+      find.textContaining('todavía no ha añadido ejercicios'),
       findsOneWidget,
     );
   });

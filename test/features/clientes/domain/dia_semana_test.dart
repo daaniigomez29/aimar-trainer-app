@@ -7,19 +7,19 @@ void main() {
     // 2026-10-03 cae en sabado.
     final sabado = DateTime(2026, 10, 3);
 
-    test('si hoy es el dia de control, devuelve hoy', () {
+    test('si hoy es el día de control, devuelve hoy', () {
       expect(DiaSemana.sabado.ultimaFecha(hoy: sabado), sabado);
     });
 
-    test('devuelve el dia de esta semana que ya ha pasado', () {
+    test('devuelve el día de esta semana que ya ha pasado', () {
       expect(DiaSemana.jueves.ultimaFecha(hoy: sabado), DateTime(2026, 10));
     });
 
-    test('si el dia aun no ha llegado, se va al de la semana pasada', () {
+    test('si el día aun no ha llegado, se va al de la semana pasada', () {
       expect(DiaSemana.domingo.ultimaFecha(hoy: sabado), DateTime(2026, 9, 27));
     });
 
-    test('descarta la hora: lo que se registra es un dia', () {
+    test('descarta la hora: lo que se registra es un día', () {
       expect(
         DiaSemana.sabado.ultimaFecha(hoy: DateTime(2026, 10, 3, 23, 45)),
         sabado,

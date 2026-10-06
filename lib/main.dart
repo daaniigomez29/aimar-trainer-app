@@ -21,7 +21,7 @@ Future<void> _arrancar() async {
     // rompe en tiempo de ejecucion si esta pantalla pasa a consumir uno
     // (riverpod_lint: missing_provider_scope).
     Registro.info(
-      'Configuracion incompleta: falta SUPABASE_URL o SUPABASE_PUBLISHABLE_KEY.',
+      'Configuración incompleta: falta SUPABASE_URL o SUPABASE_PUBLISHABLE_KEY.',
     );
     runApp(const ProviderScope(child: PantallaConfiguracionInvalida()));
     return;

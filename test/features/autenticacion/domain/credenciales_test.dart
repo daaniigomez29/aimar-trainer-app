@@ -4,7 +4,7 @@ import 'package:aimar_trainer_app/features/autenticacion/domain/credenciales.dar
 
 void main() {
   group('Credenciales.validarCorreo', () {
-    test('rechaza el correo vacio', () {
+    test('rechaza el correo vacío', () {
       expect(Credenciales.validarCorreo('   ')?.campo, 'correo');
     });
 
@@ -29,20 +29,20 @@ void main() {
   });
 
   group('Credenciales.validarContrasenaDeAcceso', () {
-    test('solo exige que no este vacia', () {
+    test('solo exige que no este vacía', () {
       expect(Credenciales.validarContrasenaDeAcceso('')?.campo, 'contrasena');
       expect(Credenciales.validarContrasenaDeAcceso('corta'), isNull);
     });
   });
 
   group('Credenciales.validarContrasenaNueva', () {
-    test('exige la longitud minima', () {
+    test('exige la longitud mínima', () {
       final corta = 'a' * (Credenciales.longitudMinimaContrasena - 1);
 
       expect(Credenciales.validarContrasenaNueva(corta)?.campo, 'contrasena');
     });
 
-    test('acepta una contrasena con la longitud minima justa', () {
+    test('acepta una contraseña con la longitud mínima justa', () {
       final valida = 'a' * Credenciales.longitudMinimaContrasena;
 
       expect(Credenciales.validarContrasenaNueva(valida), isNull);

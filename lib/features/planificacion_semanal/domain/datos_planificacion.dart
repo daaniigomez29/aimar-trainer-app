@@ -58,7 +58,7 @@ class DatosSesion {
     final valor = nombre.trim();
     if (valor.isEmpty) {
       return const ErrorValidacion(
-        'Pon un nombre a la sesion (por ejemplo, "Empuje" o "Pierna").',
+        'Pon un nombre a la sesión (por ejemplo, "Empuje" o "Pierna").',
         campo: 'nombre',
       );
     }
@@ -79,14 +79,14 @@ class DatosSesion {
     String? idSesionQueSeEdita,
   }) {
     if (orden < 1) {
-      return const ErrorValidacion('El dia empieza en 1.', campo: 'orden');
+      return const ErrorValidacion('El día empieza en 1.', campo: 'orden');
     }
     final ocupado = planning.sesiones
         .where((s) => s.orden == orden && s.id != idSesionQueSeEdita)
         .firstOrNull;
     if (ocupado != null) {
       return ErrorValidacion(
-        'El dia $orden ya es "${ocupado.nombre}".',
+        'El día $orden ya es "${ocupado.nombre}".',
         campo: 'orden',
       );
     }
@@ -144,7 +144,7 @@ class DatosBloque {
         .firstOrNull;
     if (ocupado != null) {
       return ErrorValidacion(
-        'Ya hay un bloque de ${ocupado.tipo.etiqueta} en la posicion $orden.',
+        'Ya hay un bloque de ${ocupado.tipo.etiqueta} en la posición $orden.',
         campo: 'orden',
       );
     }
@@ -197,7 +197,7 @@ class DatosSerie {
     }
     if (repeticiones > repeticionesMaximas) {
       return const ErrorValidacion(
-        'Revisa las repeticiones: el maximo es $repeticionesMaximas.',
+        'Revisa las repeticiones: el máximo es $repeticionesMaximas.',
         campo: 'repeticiones',
       );
     }
@@ -208,7 +208,7 @@ class DatosSerie {
     if (peso == null) return null;
     if (peso <= 0) {
       return const ErrorValidacion(
-        'El peso debe ser mayor que cero. Dejalo vacio si no aplica.',
+        'El peso debe ser mayor que cero. Dejalo vacío si no aplica.',
         campo: 'peso',
       );
     }
@@ -295,7 +295,7 @@ class DatosEjercicioPlanificado {
     if (segundos == null) return null;
     if (segundos <= 0) {
       return const ErrorValidacion(
-        'El descanso debe ser mayor que cero. Dejalo vacio si no aplica.',
+        'El descanso debe ser mayor que cero. Dejalo vacío si no aplica.',
         campo: 'descansoSeg',
       );
     }
@@ -323,7 +323,7 @@ class DatosEjercicioPlanificado {
     }
     if (minutos > minutosMaximos) {
       return const ErrorValidacion(
-        'Revisa los minutos: el maximo es $minutosMaximos.',
+        'Revisa los minutos: el máximo es $minutosMaximos.',
         campo: 'minutos',
       );
     }
@@ -341,7 +341,7 @@ class DatosEjercicioPlanificado {
           .firstOrNull;
       if (ocupado != null) {
         return ErrorValidacion(
-          'Ya hay un ejercicio en la posicion $orden de este bloque.',
+          'Ya hay un ejercicio en la posición $orden de este bloque.',
           campo: 'orden',
         );
       }
@@ -372,20 +372,20 @@ class DatosEjercicioPlanificado {
     }
     if (series.isEmpty) {
       return const ErrorValidacion(
-        'Anade al menos una serie.',
+        'Añade al menos una serie.',
         campo: 'series',
       );
     }
     if (series.length > seriesMaximas) {
       return const ErrorValidacion(
-        'Como maximo $seriesMaximas series por ejercicio.',
+        'Como máximo $seriesMaximas series por ejercicio.',
         campo: 'series',
       );
     }
     final numeros = series.map((s) => s.numeroSerie).toList();
     if (numeros.toSet().length != numeros.length) {
       return const ErrorValidacion(
-        'Hay dos series con el mismo numero.',
+        'Hay dos series con el mismo número.',
         campo: 'series',
       );
     }

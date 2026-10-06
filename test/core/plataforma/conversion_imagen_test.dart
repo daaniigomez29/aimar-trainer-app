@@ -37,7 +37,7 @@ Future<({int ancho, int alto})> _tamanoDe(Uint8List bytes) async {
 }
 
 void main() {
-  test('una imagen pequena se convierte sin tocar su tamano', () async {
+  test('una imagen pequeña se convierte sin tocar su tamaño', () async {
     final origen = await _pngDePrueba(ancho: 400, alto: 300);
 
     final resultado = await ServicioImagenesFlutter.convertirAPng(origen);
@@ -49,7 +49,7 @@ void main() {
     expect(await _tamanoDe(imagen.bytes), (ancho: 400, alto: 300));
   });
 
-  test('una imagen grande se reduce al lado maximo, sin deformarla', () async {
+  test('una imagen grande se reduce al lado máximo, sin deformarla', () async {
     // 2400x1200 -> el lado mayor baja a 1600 y el otro mantiene la proporcion.
     final origen = await _pngDePrueba(ancho: 2400, alto: 1200);
 
@@ -61,7 +61,7 @@ void main() {
     expect(tamano.alto, ServicioImagenesFlutter.ladoMaximo ~/ 2);
   });
 
-  test('tambien reduce cuando lo largo es el alto', () async {
+  test('también reduce cuando lo largo es el alto', () async {
     final origen = await _pngDePrueba(ancho: 1000, alto: 3000);
 
     final resultado = await ServicioImagenesFlutter.convertirAPng(origen);

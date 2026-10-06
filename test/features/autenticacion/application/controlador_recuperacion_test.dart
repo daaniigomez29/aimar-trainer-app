@@ -43,7 +43,7 @@ void main() {
       verifyNever(() => repositorio.enviarCorreoRecuperacion(any()));
     });
 
-    test('envia el correo normalizado', () async {
+    test('envía el correo normalizado', () async {
       when(() => repositorio.enviarCorreoRecuperacion(any()))
           .thenAnswer((_) async => const Success(null));
 
@@ -57,7 +57,7 @@ void main() {
       );
     });
 
-    test('propaga el limite de envios', () async {
+    test('propaga el límite de envios', () async {
       when(() => repositorio.enviarCorreoRecuperacion(any()))
           .thenAnswer((_) async => const Failure(ErrorDemasiadasPeticiones()));
 
@@ -73,7 +73,7 @@ void main() {
     ControladorRestablecerContrasena controlador() =>
         contenedor.read(controladorRestablecerContrasenaProvider.notifier);
 
-    test('rechaza una contrasena demasiado corta', () async {
+    test('rechaza una contraseña demasiado corta', () async {
       await controlador().establecerContrasena(
         contrasena: 'corta',
         repeticion: 'corta',
@@ -88,7 +88,7 @@ void main() {
       verifyNever(() => repositorio.establecerNuevaContrasena(any()));
     });
 
-    test('rechaza que las dos contrasenas no coincidan', () async {
+    test('rechaza que las dos contraseñas no coincidan', () async {
       await controlador().establecerContrasena(
         contrasena: 'secreto123',
         repeticion: 'secreto124',
@@ -103,7 +103,7 @@ void main() {
       verifyNever(() => repositorio.establecerNuevaContrasena(any()));
     });
 
-    test('guarda la contrasena cuando los datos son validos', () async {
+    test('guarda la contraseña cuando los datos son validos', () async {
       when(() => repositorio.establecerNuevaContrasena(any()))
           .thenAnswer((_) async => const Success(null));
 

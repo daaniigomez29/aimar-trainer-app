@@ -23,14 +23,14 @@ class DatosSerieRealizada {
   static ErrorValidacion? validarRepeticiones(int repeticiones) =>
       repeticiones <= 0
       ? const ErrorValidacion(
-          'Las repeticiones deben ser un numero mayor que cero.',
+          'Las repeticiones deben ser un número mayor que cero.',
           campo: 'repeticiones',
         )
       : null;
 
   static ErrorValidacion? validarPeso(double? peso) => peso != null && peso <= 0
       ? const ErrorValidacion(
-          'El peso debe ser mayor que cero. Dejalo vacio si no usaste carga.',
+          'El peso debe ser mayor que cero. Dejalo vacío si no usaste carga.',
           campo: 'peso',
         )
       : null;
@@ -106,7 +106,7 @@ class DatosResultadoEjercicio {
     final numeros = series.map((s) => s.numeroSerie).toSet();
     if (numeros.length != series.length) {
       return const ErrorValidacion(
-        'Hay dos series con el mismo numero.',
+        'Hay dos series con el mismo número.',
         campo: 'series',
       );
     }
@@ -223,7 +223,7 @@ class DatosCheckin {
 
   static ErrorValidacion? validarEscala(int valor, String campo) =>
       valor < 1 || valor > 10
-      ? ErrorValidacion('Esa valoracion va de 1 a 10.', campo: campo)
+      ? ErrorValidacion('Esa valoración va de 1 a 10.', campo: campo)
       : null;
 
   ErrorValidacion? validar() =>

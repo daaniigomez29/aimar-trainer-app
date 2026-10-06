@@ -174,7 +174,7 @@ Future<void> abrirFormularioEjercicio(
   );
 }
 
-/// "13 ejercicios · 4 con video de ejemplo", contando lo que hay de verdad.
+/// "13 ejercicios · 4 con vídeo de ejemplo", contando lo que hay de verdad.
 class _Resumen extends StatelessWidget {
   const _Resumen({required this.ejercicios});
 
@@ -189,7 +189,7 @@ class _Resumen extends StatelessWidget {
     return Text(
       [
         '${lista.length} ${lista.length == 1 ? "ejercicio" : "ejercicios"}',
-        if (conVideo > 0) '$conVideo con video de ejemplo',
+        if (conVideo > 0) '$conVideo con vídeo de ejemplo',
       ].join(' · '),
       style: Theme.of(context).textTheme.bodySmall,
     );
@@ -235,10 +235,9 @@ class _ChipsDeGrupo extends ConsumerWidget {
             const SizedBox(width: 8),
             ChipFiltro(
               etiqueta: 'Dados de baja',
-              activo: filtro.incluirEliminados,
-              onPulsar: () => notificador.alternarEliminados(
-                incluir: !filtro.incluirEliminados,
-              ),
+              activo: filtro.soloEliminados,
+              onPulsar: () =>
+                  notificador.alternarEliminados(solo: !filtro.soloEliminados),
             ),
           ],
           const SizedBox(width: Tokens.margenPantalla),
@@ -261,10 +260,10 @@ class _SinResultados extends ConsumerWidget {
     return _Mensaje(
       icono: Icons.search_off,
       texto: conFiltro
-          ? 'Ningun ejercicio coincide con la busqueda.'
+          ? 'Ningún ejercicio coincide con la búsqueda.'
           : esEntrenador
-          ? 'La biblioteca esta vacia. Anade el primer ejercicio.'
-          : 'Tu entrenador todavia no ha anadido ejercicios.',
+          ? 'La biblioteca está vacía. Añade el primer ejercicio.'
+          : 'Tu entrenador todavía no ha añadido ejercicios.',
       accion: conFiltro
           ? TextButton(
               onPressed: () =>

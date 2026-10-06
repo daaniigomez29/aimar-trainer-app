@@ -494,7 +494,7 @@ final class ControladorControlSemanalProvider
 }
 
 String _$controladorControlSemanalHash() =>
-    r'f4b056ef539cb89004e1fe6b13745ba165c69c3e';
+    r'7cbb238f6457235dee51145212b937cd2755ff82';
 
 /// Escrituras del control semanal: medidas, check-in y fotos.
 ///

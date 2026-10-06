@@ -40,7 +40,7 @@ void main() {
       contenedor.read(controladorBajaEjercicioProvider.notifier);
 
   group('CU-04: comprobacion de uso previa', () {
-    test('devuelve el numero de usos', () async {
+    test('devuelve el número de usos', () async {
       when(() => repositorio.contarUsosEnPlanningsActivos('id-1'))
           .thenAnswer((_) async => const Success(3));
 

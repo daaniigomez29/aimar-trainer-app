@@ -30,7 +30,7 @@ class PantallaRegistroSesion extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registrar sesion'),
+        title: const Text('Registrar sesión'),
         actions: [
           IconButton(
             tooltip: 'Recargar',
@@ -59,7 +59,7 @@ class PantallaRegistroSesion extends ConsumerWidget {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Esa sesion ya no existe.'),
+                child: Text('Esa sesión ya no existe.'),
               ),
             );
           }
@@ -102,8 +102,8 @@ class _Sesion extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           sesion.fechaRealizada == null
-              ? 'Dia ${sesion.orden}'
-              : 'Dia ${sesion.orden} · hecha el '
+              ? 'Día ${sesion.orden}'
+              : 'Día ${sesion.orden} · hecha el '
                     '${_comoFecha(sesion.fechaRealizada!)}',
           style: textos.bodyMedium,
         ),
@@ -122,7 +122,7 @@ class _Sesion extends StatelessWidget {
         else
           Text(
             pendientes == 0
-                ? 'Has registrado todos los ejercicios de esta sesion.'
+                ? 'Has registrado todos los ejercicios de esta sesión.'
                 : 'Te quedan $pendientes '
                       '${pendientes == 1 ? "ejercicio" : "ejercicios"} por '
                       'registrar.',
@@ -130,7 +130,7 @@ class _Sesion extends StatelessWidget {
           ),
         const Divider(height: 32),
         if (ejercicios.isEmpty)
-          const Text('Esta sesion no tiene ejercicios.')
+          const Text('Esta sesión no tiene ejercicios.')
         else
           for (final (bloque, ejercicio) in ejercicios)
             _FilaEjercicio(

@@ -139,7 +139,7 @@ void main() {
     expect(find.byIcon(Icons.person_off_outlined), findsNothing);
   });
 
-  testWidgets('la busqueda filtra por nombre y correo', (tester) async {
+  testWidgets('la búsqueda filtra por nombre y correo', (tester) async {
     await montar(
       tester,
       rol: RolUsuario.entrenador,

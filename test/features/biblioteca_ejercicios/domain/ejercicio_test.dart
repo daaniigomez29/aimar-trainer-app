@@ -21,18 +21,18 @@ DatosEjercicio _datos({
 
 void main() {
   group('DatosEjercicio.validarNombre (CU-02, paso 4)', () {
-    test('rechaza el nombre vacio o solo espacios', () {
+    test('rechaza el nombre vacío o solo espacios', () {
       expect(DatosEjercicio.validarNombre('')?.campo, 'nombre');
       expect(DatosEjercicio.validarNombre('   ')?.campo, 'nombre');
     });
 
-    test('rechaza un nombre mas largo que el maximo', () {
+    test('rechaza un nombre mas largo que el máximo', () {
       final largo = 'a' * (DatosEjercicio.longitudMaximaNombre + 1);
 
       expect(DatosEjercicio.validarNombre(largo)?.campo, 'nombre');
     });
 
-    test('acepta el nombre justo en el maximo', () {
+    test('acepta el nombre justo en el máximo', () {
       final justo = 'a' * DatosEjercicio.longitudMaximaNombre;
 
       expect(DatosEjercicio.validarNombre(justo), isNull);
@@ -44,7 +44,7 @@ void main() {
       expect(DatosEjercicio.validarDescripcion('  ')?.campo, 'descripcion');
     });
 
-    test('acepta una descripcion normal', () {
+    test('acepta una descripción normal', () {
       expect(DatosEjercicio.validarDescripcion('Baja controlado.'), isNull);
     });
   });

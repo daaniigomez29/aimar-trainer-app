@@ -238,9 +238,8 @@ class _Filtros extends ConsumerWidget {
             alignment: Alignment.centerLeft,
             child: FilterChip(
               label: const Text('Ver dados de baja'),
-              selected: filtro.incluirBajas,
-              onSelected: (incluir) =>
-                  controlador.alternarBajas(incluir: incluir),
+              selected: filtro.soloBajas,
+              onSelected: (solo) => controlador.alternarBajas(solo: solo),
             ),
           ),
         ],
@@ -266,7 +265,7 @@ class _SinResultados extends ConsumerWidget {
     if (!filtroClientesVacio(filtro)) {
       return _Mensaje(
         icono: Icons.search_off,
-        texto: 'Ningun cliente coincide con la busqueda.',
+        texto: 'Ningún cliente coincide con la búsqueda.',
         accion: TextButton(
           onPressed: ref.read(filtroClientesProvider.notifier).limpiar,
           child: const Text('Quitar filtros'),
@@ -275,7 +274,7 @@ class _SinResultados extends ConsumerWidget {
     }
     return const _Mensaje(
       icono: Icons.people_outline,
-      texto: 'Todavia no hay clientes. Da de alta al primero.',
+      texto: 'Todavía no hay clientes. Da de alta al primero.',
     );
   }
 }

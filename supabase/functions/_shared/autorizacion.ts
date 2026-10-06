@@ -113,7 +113,7 @@ export function clienteAdministrativo(): SupabaseClient {
 export function respuestaJson(estado: number, cuerpo: unknown): Response {
   return new Response(JSON.stringify(cuerpo), {
     status: estado,
-    headers: { ...cabecerasCors, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -125,15 +125,82 @@ export function respuestaError(
   return respuestaJson(estado, { error: codigo, mensaje });
 }
 
-export const cabecerasCors: Record<string, string> = {
-  "Access-Control-Allow-Origin": Deno.env.get("APP_BASE_URL") ?? "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+/** Orígenes a los que se responde, de `APP_BASE_URL` separados por comas.
+ *
+ * Admite varios porque la aplicación vive en más de un sitio: el dominio de
+ * Vercel y el propio cuando lo haya. Vacío = `*`, que es lo que hace falta en
+ * local, donde el puerto cambia.
+ */
+function origenesPermitidos(): string[] {
+  return (Deno.env.get("APP_BASE_URL") ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter((o) => o.length > 0);
+}
 
-/** Responde al preflight CORS del navegador; `null` si no es un preflight. */
-export function respuestaPreflight(req: Request): Response | null {
-  if (req.method !== "OPTIONS") return null;
-  return new Response(null, { status: 204, headers: cabecerasCors });
+/** La URL de la app, para los enlaces de los correos.
+ *
+ * `APP_BASE_URL` puede traer varios orígenes separados por comas (ver
+ * [cabecerasCorsPara]); un enlace solo puede apuntar a uno, así que se usa el
+ * primero. Sin ella, cadena vacía: quien la use decide qué hacer.
+ */
+export function urlBaseApp(): string {
+  return origenesPermitidos()[0] ?? "";
+}
+
+/** Cabeceras CORS para **esta** petición.
+ *
+ * `Access-Control-Allow-Origin` solo admite un valor, nunca una lista: con
+ * varios orígenes configurados hay que mirar el `Origin` que llega y devolver
+ * ese. De ahí el `Vary: Origin`, o una caché intermedia serviría a un dominio la
+ * respuesta del otro.
+ */
+export function cabecerasCorsPara(req: Request): Record<string, string> {
+  const permitidos = origenesPermitidos();
+  const origen = (req.headers.get("Origin") ?? "").replace(/\/$/, "");
+  const devolver = permitidos.length === 0
+    ? "*"
+    : permitidos.includes(origen)
+    ? origen
+    // Un origen desconocido recibe el primero configurado, que no coincidirá
+    // con el suyo: el navegador bloquea la respuesta, que es lo que se busca.
+    : permitidos[0];
+
+  return {
+    "Access-Control-Allow-Origin": devolver,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+/** Atiende la petición y le pone el CORS que le toca.
+ *
+ * POR QUE UN ENVOLTORIO: el origen permitido depende de cada petición, y las
+ * respuestas se construyen en treinta sitios distintos. Resolverlo aquí deja un
+ * único punto donde pensar en CORS, en vez de pasar el `Request` a cada helper.
+ */
+export async function servirConCors(
+  req: Request,
+  manejador: () => Promise<Response> | Response,
+): Promise<Response> {
+  const cors = cabecerasCorsPara(req);
+
+  // El preflight lo manda el navegador sin credenciales y espera un 2xx.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors });
+  }
+
+  const respuesta = await manejador();
+  const cabeceras = new Headers(respuesta.headers);
+  for (const [clave, valor] of Object.entries(cors)) {
+    cabeceras.set(clave, valor);
+  }
+  return new Response(respuesta.body, {
+    status: respuesta.status,
+    statusText: respuesta.statusText,
+    headers: cabeceras,
+  });
 }

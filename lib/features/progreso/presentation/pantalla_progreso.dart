@@ -115,7 +115,7 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
           ..._filtroYGraficaCorporal(),
         const SizedBox(height: 24),
         Text(
-          'Las fechas son las de la sesion, no las del momento en que se '
+          'Las fechas son las de la sesión, no las del momento en que se '
           'anoto el resultado.',
           style: textos.bodySmall,
         ),
@@ -143,8 +143,8 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
           padding: const EdgeInsets.symmetric(vertical: 24),
           child: Text(
             widget.titulo == null
-                ? 'Todavia no has registrado el resultado de ningun ejercicio.'
-                : 'Este cliente todavia no ha registrado ningun resultado.',
+                ? 'Todavía no has registrado el resultado de ningún ejercicio.'
+                : 'Este cliente todavía no ha registrado ningún resultado.',
             textAlign: TextAlign.center,
             style: textos.bodyMedium,
           ),
@@ -195,7 +195,7 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
       DropdownButtonFormField<MetricaEjercicio>(
         key: const Key('selector_metrica'),
         initialValue: metrica,
-        decoration: const InputDecoration(labelText: 'Metrica', isDense: true),
+        decoration: const InputDecoration(labelText: 'Métrica', isDense: true),
         items: [
           for (final opcion in metricas)
             DropdownMenuItem(value: opcion, child: Text(opcion.etiqueta)),

@@ -97,7 +97,7 @@ class _Contenido extends ConsumerWidget {
               key: const Key('acceso_plannings'),
               leading: const Icon(Icons.calendar_month),
               title: const Text('Plannings'),
-              subtitle: const Text('Planificacion semanal e historico'),
+              subtitle: const Text('Planificación semanal e historico'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -112,7 +112,7 @@ class _Contenido extends ConsumerWidget {
               key: const Key('acceso_progreso'),
               leading: const Icon(Icons.show_chart),
               title: const Text('Progreso'),
-              subtitle: const Text('Evolucion por ejercicio y medidas'),
+              subtitle: const Text('Evolución por ejercicio y medidas'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -158,7 +158,7 @@ class _Contenido extends ConsumerWidget {
             valor: '${_sinCerosSobrantes(peso)} kg',
           ),
         _Dato(
-          etiqueta: 'Dia de control',
+          etiqueta: 'Día de control',
           valor: cliente.diaControlPreferido.etiqueta,
         ),
         _Dato(etiqueta: 'Alta', valor: _comoFecha(cliente.fechaAlta)),
@@ -191,7 +191,7 @@ class _Contenido extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Este cliente esta de baja: no puede acceder a la aplicacion. '
+                'Este cliente está de baja: no puede acceder a la aplicación. '
                 'Su historico se conserva completo.',
               ),
             ),

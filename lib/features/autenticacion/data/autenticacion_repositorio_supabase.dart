@@ -196,11 +196,11 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
         'otp_expired' ||
         'reauthentication_needed' => const ErrorEnlaceCaducado(),
         'weak_password' => const ErrorValidacion(
-          'La contrasena es demasiado debil. Combina letras y numeros.',
+          'La contraseña es demasiado debil. Combina letras y números.',
           campo: 'contrasena',
         ),
         'same_password' => const ErrorValidacion(
-          'La contrasena nueva debe ser distinta de la anterior.',
+          'La contraseña nueva debe ser distinta de la anterior.',
           campo: 'contrasena',
         ),
         'over_request_rate_limit' ||
@@ -217,7 +217,7 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
       _ => Registro.inesperado(
         excepcion,
         null,
-        contexto: 'el repositorio de autenticacion',
+        contexto: 'el repositorio de autenticación',
       ),
     };
   }
@@ -231,7 +231,7 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
         _ => Registro.inesperado(
           excepcion,
           null,
-          contexto: 'el repositorio de autenticacion',
+          contexto: 'el repositorio de autenticación',
         ),
       };
 
@@ -244,7 +244,7 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
     if (nombre == 'ClientException' || nombre == 'SocketException') {
       return const ErrorConexion();
     }
-    Registro.fallo(error, traza, contexto: 'el repositorio de autenticacion');
+    Registro.fallo(error, traza, contexto: 'el repositorio de autenticación');
     return ErrorInesperado(causa: error, traza: traza);
   }
 }

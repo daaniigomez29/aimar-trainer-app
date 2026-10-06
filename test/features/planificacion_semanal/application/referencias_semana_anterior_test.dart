@@ -80,7 +80,7 @@ void main() {
     return {for (final e in referencias.entries) e.key: e.value};
   }
 
-  test('usa el Dia 1 de la semana anterior y no toca el historico', () async {
+  test('usa el Día 1 de la semana anterior y no toca el historico', () async {
     final anterior = planningDePrueba(
       id: 'p-ant',
       fechaInicio: DateTime(2026, 9, 28),
@@ -157,7 +157,7 @@ void main() {
     expect(referencias['ej-press'].serieNumero(1).pesoReal, 55);
   });
 
-  test('sin semana anterior, el historico es la unica fuente', () async {
+  test('sin semana anterior, el historico es la única fuente', () async {
     when(() => plannings.obtenerPlanningCompleto('p-act'))
         .thenAnswer((_) async => Success(actual()));
     when(() => plannings.listarDeCliente(any()))
@@ -197,7 +197,7 @@ void main() {
     },
   );
 
-  test('una sesion sin ejercicios no pregunta nada', () async {
+  test('una sesión sin ejercicios no pregunta nada', () async {
     when(() => plannings.obtenerPlanningCompleto('p-act')).thenAnswer(
       (_) async => Success(
         planningDePrueba(id: 'p-act', sesiones: [sesionDePrueba(orden: 1)]),

@@ -39,7 +39,7 @@ class FiltroBiblioteca extends _$FiltroBiblioteca {
     texto: state.texto,
     tipo: tipo,
     grupoMuscular: state.grupoMuscular,
-    incluirEliminados: state.incluirEliminados,
+    soloEliminados: state.soloEliminados,
   );
 
   /// `null` quita el filtro por grupo muscular.
@@ -47,11 +47,11 @@ class FiltroBiblioteca extends _$FiltroBiblioteca {
     texto: state.texto,
     tipo: state.tipo,
     grupoMuscular: grupo,
-    incluirEliminados: state.incluirEliminados,
+    soloEliminados: state.soloEliminados,
   );
 
-  void alternarEliminados({required bool incluir}) =>
-      state = state.copiarCon(incluirEliminados: incluir);
+  void alternarEliminados({required bool solo}) =>
+      state = state.copiarCon(soloEliminados: solo);
 
   void limpiar() => state = const FiltroEjercicios();
 }

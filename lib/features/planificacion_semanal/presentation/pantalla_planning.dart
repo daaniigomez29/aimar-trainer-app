@@ -145,7 +145,7 @@ class _Semana extends ConsumerWidget {
                 planning: planning,
               ),
               icon: const Icon(Icons.add, size: 18),
-              label: Text('Anadir dia ${planning.siguienteOrden}'),
+              label: Text('Añadir día ${planning.siguienteOrden}'),
             ),
           ),
         ],
@@ -154,7 +154,7 @@ class _Semana extends ConsumerWidget {
           Center(
             child: Text(
               puedeEditar
-                  ? 'Anade la primera sesion para empezar.'
+                  ? 'Añade la primera sesión para empezar.'
                   : 'Esta semana no tiene sesiones.',
               style: textos.bodySmall,
             ),
@@ -272,7 +272,7 @@ class _FilaSesion extends ConsumerWidget {
           Row(
             children: [
               Text(
-                'Dia ${sesion.orden}',
+                'Día ${sesion.orden}',
                 style: textos.titleSmall?.copyWith(color: esquema.primary),
               ),
               const Spacer(),

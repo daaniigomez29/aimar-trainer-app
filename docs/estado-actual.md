@@ -262,6 +262,18 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   compartido por la biblioteca, la planificación y el registro del cliente.
   Antes cada pantalla tenía su copia del hueco gris, y por eso la planificación
   se quedó sin imagen cuando se añadió a la entidad.
+- **Las Edge Functions van con `verify_jwt = false`** (2026-10-06), y no es que
+  no se compruebe el token: lo valida la propia función, que además exige el rol
+  (el rol la plataforma no lo mira). El motivo es el preflight: el navegador manda
+  un `OPTIONS` **sin** `Authorization`, así que con la verificación de la
+  plataforma activada ese preflight se rechaza antes de llegar al código y el
+  navegador lo reporta como un error de CORS que no lo es.
+- **`APP_BASE_URL` admite varios orígenes separados por comas** (2026-10-06):
+  la app vive en el dominio de Vercel y en el propio. `Access-Control-Allow-Origin`
+  no admite listas, así que la función mira el `Origin` de cada petición y
+  devuelve ese, con `Vary: Origin`. Un origen desconocido recibe el primero de la
+  lista, que no coincide con el suyo, y el navegador lo bloquea. Para los
+  **enlaces de los correos** se usa siempre el primero, que es el canónico.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

@@ -120,7 +120,7 @@ void main() {
     expect(find.byKey(const Key('campo_minutos')), findsOneWidget);
   });
 
-  testWidgets('se pueden anadir y quitar series', (tester) async {
+  testWidgets('se pueden añadir y quitar series', (tester) async {
     await montar(tester);
     await elegir(tester, 'Press banca');
     expect(find.byKey(const Key('campo_reps_1')), findsNothing);
@@ -157,7 +157,7 @@ void main() {
     expect(capturado.descansoSeg, isNull);
   });
 
-  testWidgets('una Fuerza guarda sus series y ningun minuto', (tester) async {
+  testWidgets('una Fuerza guarda sus series y ningún minuto', (tester) async {
     when(() => planning.crearEjercicioPlanificado(any()))
         .thenAnswer((_) async => Success(ejercicioPlanificadoDePrueba()));
     await montar(tester);
@@ -189,13 +189,13 @@ void main() {
     expect(capturado.series.first.rir, 2);
   });
 
-  testWidgets('la biblioteca vacia lo explica y ofrece anadir antes', (
+  testWidgets('la biblioteca vacía lo explica y ofrece añadir antes', (
     tester,
   ) async {
     when(() => biblioteca.listar())
         .thenAnswer((_) async => const Success(<Ejercicio>[]));
     await montar(tester);
 
-    expect(find.textContaining('La biblioteca esta vacia'), findsOneWidget);
+    expect(find.textContaining('La biblioteca esta vacía'), findsOneWidget);
   });
 }

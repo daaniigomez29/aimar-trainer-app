@@ -21,7 +21,7 @@ class Destino {
   final String etiqueta;
 
   /// Version que cabe en la barra inferior de un movil de 375 px. Sin ella,
-  /// "Control semanal" o "Configuracion" se parten o se cortan.
+  /// "Control semanal" o "Configuración" se parten o se cortan.
   final String? etiquetaCorta;
 
   String get etiquetaDeBarra => etiquetaCorta ?? etiqueta;
@@ -58,7 +58,7 @@ const List<Destino> destinosCliente = [
     ruta: Rutas.bibliotecaCliente,
   ),
   Destino(
-    etiqueta: 'Configuracion',
+    etiqueta: 'Configuración',
     etiquetaCorta: 'Ajustes',
     icono: Icons.settings_outlined,
     iconoActivo: Icons.settings,
@@ -69,7 +69,7 @@ const List<Destino> destinosCliente = [
 /// Los cuatro del entrenador.
 const List<Destino> destinosEntrenador = [
   Destino(
-    etiqueta: 'Planificacion',
+    etiqueta: 'Planificación',
     etiquetaCorta: 'Planning',
     icono: Icons.calendar_month_outlined,
     iconoActivo: Icons.calendar_month,

@@ -93,7 +93,7 @@ class PantallaPlanningsCliente extends ConsumerWidget {
                       Icon(Icons.calendar_month_outlined, size: 48),
                       SizedBox(height: 16),
                       Text(
-                        'Este cliente no tiene ningun planning todavia.',
+                        'Este cliente no tiene ningún planning todavía.',
                         textAlign: TextAlign.center,
                       ),
                     ],

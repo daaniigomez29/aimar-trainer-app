@@ -27,7 +27,7 @@ void main() {
   final dia = DateTime(2026, 10, 1);
 
   group('MetricaEjercicio', () {
-    test('el peso maximo se queda con la serie mas pesada del dia', () {
+    test('el peso máximo se queda con la serie mas pesada del día', () {
       final valor = MetricaEjercicio.pesoMaximo.resumir([
         serie(fecha: dia, peso: 60),
         serie(fecha: dia, numeroSerie: 2, peso: 72.5),
@@ -73,7 +73,7 @@ void main() {
       expect(valor, 3);
     });
 
-    test('Fuerza y Cardio no comparten metricas', () {
+    test('Fuerza y Cardio no comparten métricas', () {
       expect(MetricaEjercicio.deTipo(TipoEjercicio.cardio), [
         MetricaEjercicio.minutos,
       ]);
@@ -85,7 +85,7 @@ void main() {
   });
 
   group('serieDeProgreso', () {
-    test('agrupa por dia y devuelve los puntos en orden cronologico', () {
+    test('agrupa por día y devuelve los puntos en orden cronologico', () {
       final puntos = serieDeProgreso(
         registros: [
           serie(fecha: DateTime(2026, 10, 8), peso: 80),
@@ -99,7 +99,7 @@ void main() {
       expect(puntos.first.fecha, DateTime(2026, 10));
     });
 
-    test('un dia sin dato para esa metrica no genera punto', () {
+    test('un día sin dato para esa métrica no genera punto', () {
       final puntos = serieDeProgreso(
         registros: [serie(fecha: dia, peso: null)],
         metrica: MetricaEjercicio.pesoMaximo,
@@ -146,7 +146,7 @@ void main() {
   });
 
   group('RangoFechas', () {
-    test('el de los ultimos meses acaba hoy', () {
+    test('el de los últimos meses acaba hoy', () {
       final rango = RangoFechas.ultimosMeses(3, hoy: DateTime(2026, 10, 3, 18));
 
       expect(rango.hasta, DateTime(2026, 10, 3));

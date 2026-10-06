@@ -60,7 +60,7 @@ void main() {
       expect(datos.validar()?.campo, 'series');
     });
 
-    test('Fuerza rechaza dos series con el mismo numero', () {
+    test('Fuerza rechaza dos series con el mismo número', () {
       const datos = DatosResultadoEjercicio.fuerza(
         ejercicioPlanificadoId: 'ep-1',
         series: [
@@ -157,7 +157,7 @@ void main() {
       expect(checkin(notas: ' Viaje ').aJson()['notas'], 'Viaje');
     });
 
-    test('el error de validacion es un ErrorValidacion con campo', () {
+    test('el error de validación es un ErrorValidacion con campo', () {
       final error = checkin(estres: 0).validar();
 
       expect(error, isA<ErrorValidacion>());

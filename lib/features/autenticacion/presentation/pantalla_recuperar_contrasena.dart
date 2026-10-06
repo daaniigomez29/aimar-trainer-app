@@ -41,7 +41,7 @@ class _EstadoPantallaRecuperarContrasena
             esError: false,
             mensaje:
                 'Si ese correo corresponde a una cuenta, recibiras un enlace '
-                'para restablecer la contrasena.',
+                'para restablecer la contraseña.',
           ),
           const SizedBox(height: 24),
           FilledButton(
@@ -53,8 +53,8 @@ class _EstadoPantallaRecuperarContrasena
     }
 
     return FormularioCentrado(
-      titulo: 'Recuperar contrasena',
-      subtitulo: 'Te enviaremos un enlace para fijar una contrasena nueva.',
+      titulo: 'Recuperar contraseña',
+      subtitulo: 'Te enviaremos un enlace para fijar una contraseña nueva.',
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
           AvisoEnLinea(mensaje: mensaje),

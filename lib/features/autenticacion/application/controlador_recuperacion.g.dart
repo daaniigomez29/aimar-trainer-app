@@ -124,7 +124,7 @@ final class ControladorRestablecerContrasenaProvider
 }
 
 String _$controladorRestablecerContrasenaHash() =>
-    r'6deedd16c33d1133bf986e919f1d1682b053a4b2';
+    r'15ebac603e01baebd4b35caece3f6ae75cc09dd8';
 
 /// CU-24, segunda mitad: fijar la contrasena nueva sobre la sesion de
 /// recuperacion que abre el enlace del correo.

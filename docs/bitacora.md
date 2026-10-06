@@ -1193,3 +1193,129 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   es que el runtime de Vercel traiga `xz` para `tar -xJ`; si fallara ahi, la
   alternativa es clonar el SDK con git, que seguro esta disponible.
 
+### 2026-10-06
+
+**Corregido:**
+
+- **Ortografía de todos los textos que ve el usuario.** Estaban escritos sin
+  tildes y con `n` en lugar de `ñ`: "Anadir", "Dia 1", "sesion", "contrasena",
+  "Configuracion", "video"… Corregidos **169 literales** en `lib/` y 111 en los
+  tests, que buscaban esos mismos textos y habrían empezado a fallar.
+- Se corrigió solo el **interior de los literales**, nunca identificadores: las
+  claves de widget (`Key('anadir_bloque_…')`), los nombres de columna y los
+  `viewType` siguen igual, porque cambiarlos rompería claves de test y consultas.
+  La regla: un literal sin espacios y en minúscula se deja tal cual.
+- **Dos trampas del arreglo automático**, vistas al revisar el primer intento (se
+  revirtió entero y se rehízo):
+  - `'$titulo'` dentro de un literal es una **interpolación**, no texto: al
+    "corregirla" pasaba a `$título`, una variable que no existe. Ahora las
+    interpolaciones se protegen antes de tocar nada.
+  - `'video-ejemplo-${url.hashCode}'` es el identificador de una vista de
+    plataforma, no una etiqueta: también quedaba fuera.
+- Las palabras ambiguas se revisaron **a mano**, una por una: "La biblioteca
+  esta vacía" → "está"; "Como se ejecuta" y "Como te avisamos" → "Cómo" (son
+  interrogativas indirectas). En cambio "Como máximo", "esta semana" y "mayor
+  que cero" estaban bien y se dejaron.
+- **Los correos** (invitación, semana nueva y control semanal) también se
+  corrigieron: los lee el cliente igual que la pantalla.
+- **La PWA seguía con los valores por defecto de Flutter**: el `manifest.json` y
+  el `index.html` decían `aimar_trainer_app` y "A new Flutter project", que es lo
+  que se ve en la pestaña del navegador y al instalar la aplicación. Ahora es
+  "Aimar Trainer" con su descripción, y los colores del tema en vez del azul de
+  la plantilla.
+
+**Pendiente / notas:**
+
+- Verificado en la app compilada: acceso ("Contraseña"), planificación
+  ("Planificación", "Día 1 · Empuje", "Añadir ejercicio") y biblioteca
+  ("17 ejercicios · 1 con vídeo de ejemplo"). `dart analyze --fatal-infos`
+  limpio y `flutter test` **353** en verde.
+- **Los comentarios del código y la documentación siguen sin tildes**. No se han
+  tocado a propósito: es un cambio enorme y ruidoso que conviene decidir aparte,
+  no mezclado con el de la interfaz.
+
+**Corregido (CORS al dar de baja en produccion):**
+
+- El sintoma era `preflight ... does not have HTTP ok status` desde el dominio de
+  Vercel. **La causa no era el CORS**: `crear-cliente` y `dar-de-baja-cliente`
+  **no estan desplegadas** en la nube (comprobado con `supabase functions list`:
+  solo esta `enviar-recordatorios`). El preflight recibe un 404 y el navegador lo
+  cuenta como fallo de CORS.
+- Aun asi, en cuanto se desplieguen se habrian encontrado con el **segundo**
+  problema: `verify_jwt` estaba activo para esas dos funciones, y el preflight no
+  lleva `Authorization`, asi que la plataforma lo rechaza con 401 antes de llegar
+  al codigo. Añadido `verify_jwt = false` en `config.toml` para ambas. No abre
+  nada: `autorizarGestorDeClientes` valida el JWT y el rol, que es mas de lo que
+  comprueba la plataforma.
+- **CORS con varios origenes**, como se pidio: `APP_BASE_URL` acepta una lista
+  separada por comas (Vercel y `aimartrainer.com`). `Access-Control-Allow-Origin`
+  solo admite un valor, nunca una lista, asi que se mira el `Origin` de cada
+  peticion y se devuelve ese, con `Vary: Origin` para que ninguna cache sirva a un
+  dominio la respuesta del otro.
+- Las cabeceras se ponen ahora en **un solo sitio**, `servirConCors`, que envuelve
+  el manejador de las tres funciones. Antes cada respuesta las llevaba pegadas, y
+  el origen permitido depende de cada peticion: con treinta llamadas a
+  `respuestaJson`/`respuestaError` habria sido pasarles el `Request` a todas.
+- **Efecto colateral cazado a tiempo**: `APP_BASE_URL` tambien es el enlace de los
+  correos de invitacion y de recordatorio. Con una lista separada por comas esos
+  enlaces habrian quedado rotos, asi que ahora salen de `urlBaseApp()`, que
+  devuelve el primero. Comprobado en Mailpit: los correos llevan
+  `http://127.0.0.1:54330/#/cliente`, no la lista.
+
+**Pendiente / notas:**
+
+- Verificado sirviendo las funciones de verdad: el preflight responde **204** y
+  cada origen permitido recibe el suyo; uno desconocido recibe otro distinto y el
+  navegador lo bloquearia. `./scripts/probar_local.sh` **176/177** (el que falla
+  es el salto de pg_cron por Kong, porque el contenedor del edge runtime volvio a
+  no arrancar: trampa 23).
+- **Lo que falta para que funcione en produccion** no es codigo: desplegar las dos
+  funciones y poner `APP_BASE_URL` con los dos dominios.
+
+**Corregido (tres bugs vistos en producción):**
+
+- **El "Deshacer" del aviso de baja no hacía nada.** Desde el listado sí
+  funcionaba; desde la ficha del ejercicio no, y esa es la diferencia: la ficha
+  hace `pop` al dar de baja, así que cuando el usuario pulsaba, el
+  `BuildContext` con el que se había lanzado el aviso ya estaba muerto y la
+  reactivación salía por un `if (!context.mounted) return` **sin decir nada**.
+  - Arreglado capturando, con la pantalla aún viva, el `ScaffoldMessengerState`
+    (vive en el `MaterialApp`) y el `ProviderContainer` (vive con la aplicación).
+    El botón ya no depende del `context` ni del `ref` de quien lo lanzó.
+  - Test nuevo que reproduce justo eso: lanza la baja desde una pantalla que se
+    cierra a continuación y comprueba que el botón sigue reactivando.
+- **Los avisos tardaban cuatro segundos** (el valor por defecto de Flutter) y uno
+  llegaba a ocho. Ahora **tres**, desde `Avisos.duracion`, en los 30 `SnackBar`
+  de la aplicación. El tema no sirve para esto: `SnackBarThemeData` no tiene
+  duración, de ahí la clase nueva en `core/presentacion/widgets/avisos.dart`.
+  - Los que ofrecen **Deshacer** duran seis: en tres segundos no da tiempo a leer
+    y decidir, y al irse el aviso se va la única forma de echar atrás.
+- **El filtro "Dados de baja" mostraba todo.** Se llamaba `incluirEliminados` y
+  hacía exactamente eso, incluirlos **además** de los activos. Pasa a
+  `soloEliminados` (y `soloBajas` en clientes): con el chip puesto se ven las
+  bajas y nada más; sin él, solo los activos. Mismo arreglo en las dos pantallas.
+
+**Hecho (segunda pasada de ortografía):**
+
+- Repasando la aplicación aparecieron más faltas que la primera pasada no cubría:
+  futuros (`se dara`, `podra`, `seguira`, `conservaran`), infinitivos con
+  pronombre (`anadirse`), `todavia`, `ningun`, `busqueda`, `cuadriceps` y los
+  `esta` que son el verbo `está`.
+- Para las terminaciones se añadió una **regla general**: toda palabra acabada en
+  `-cion`/`-sion` lleva tilde (`acción`, `dirección`, `versión`), y en plural no
+  (`acciones`), que es lo que cubre los casos que queden sin enumerar.
+- Los `esta` se revisaron **uno a uno**: "esta semana" es demostrativo y no lleva
+  tilde, "la biblioteca está vacía" sí. Un reemplazo automático se habría
+  equivocado en la mitad.
+
+**Pendiente / notas:**
+
+- Verificado en la aplicación compilada: el filtro de bajas deja **1 ejercicio**
+  (solo el dado de baja) y **ningún** cliente cuando no hay bajas; el "Deshacer"
+  reactiva y la lista se actualiza. `flutter test` **355**, `dart analyze
+  --fatal-infos` limpio.
+- Al arreglar la duración, un primer script automático destrozó once ficheros
+  (duplicó cada `SnackBar` y metió `duration:` en `showSnackBar`). Se revirtieron
+  y se rehízo con un reemplazo simple; conviene recordar que `showSnackBar(`
+  contiene `SnackBar(` como subcadena, que fue justo el fallo.
+

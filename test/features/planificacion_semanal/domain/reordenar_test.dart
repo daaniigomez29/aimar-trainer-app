@@ -13,15 +13,15 @@ void main() {
       expect(reordenarLista(lista, 0, 3), ['b', 'c', 'd', 'a']);
     });
 
-    test('mover el ultimo al principio', () {
+    test('mover el último al principio', () {
       expect(reordenarLista(lista, 3, 0), ['d', 'a', 'b', 'c']);
     });
 
-    test('bajar una sola posicion mueve de verdad', () {
+    test('bajar una sola posición mueve de verdad', () {
       expect(reordenarLista(lista, 0, 1), ['b', 'a', 'c', 'd']);
     });
 
-    test('subir una sola posicion', () {
+    test('subir una sola posición', () {
       expect(reordenarLista(lista, 2, 1), ['a', 'c', 'b', 'd']);
     });
 
@@ -34,7 +34,7 @@ void main() {
       expect(lista, ['a', 'b', 'c', 'd']);
     });
 
-    test('un indice imposible se ignora en vez de reventar', () {
+    test('un índice imposible se ignora en vez de reventar', () {
       expect(reordenarLista(lista, 9, 0), lista);
       expect(reordenarLista(lista, 0, 99), ['b', 'c', 'd', 'a']);
     });

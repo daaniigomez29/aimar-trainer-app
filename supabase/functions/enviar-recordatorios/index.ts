@@ -23,7 +23,8 @@ import {
   clienteAdministrativo,
   respuestaError,
   respuestaJson,
-  respuestaPreflight,
+  servirConCors,
+  urlBaseApp,
 } from "../_shared/autorizacion.ts";
 import {
   correoDeControlSemanal,
@@ -76,10 +77,9 @@ interface Aviso {
   readonly motivo?: string;
 }
 
-Deno.serve(async (req) => {
-  const preflight = respuestaPreflight(req);
-  if (preflight) return preflight;
+Deno.serve((req) => servirConCors(req, () => manejar(req)));
 
+async function manejar(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return respuestaError(405, "metodo_no_permitido", "Usa POST.");
   }
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
   const supabase = clienteAdministrativo();
   const hoy = fechaEnZona(new Date(), 0);
   const diaDeControl = DIAS[diaSemanaEnZona(new Date())];
-  const urlApp = Deno.env.get("APP_BASE_URL") ?? "";
+  const urlApp = urlBaseApp();
 
   const avisos: Aviso[] = [];
 
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     resumen: resumir(avisos),
     avisos,
   });
-});
+}
 
 /**
  * Manda los dos canales a un cliente y devuelve lo anotado.

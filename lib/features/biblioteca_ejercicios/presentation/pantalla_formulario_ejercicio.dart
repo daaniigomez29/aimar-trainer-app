@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
@@ -87,10 +89,11 @@ class _EstadoPantallaFormularioEjercicio
     Navigator.of(context).pop(guardado);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: Avisos.duracion,
         content: Text(
           widget.esEdicion
               ? 'Ejercicio actualizado.'
-              : 'Ejercicio anadido a la biblioteca.',
+              : 'Ejercicio añadido a la biblioteca.',
         ),
       ),
     );
@@ -102,8 +105,9 @@ class _EstadoPantallaFormularioEjercicio
 
     switch (elegida) {
       case Failure(:final error):
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.mensaje)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(duration: Avisos.duracion, content: Text(error.mensaje)),
+        );
       case Success(:final valor):
         // `null` es que cerro el selector sin elegir nada.
         if (valor == null) return;
@@ -178,8 +182,8 @@ class _EstadoPantallaFormularioEjercicio
           textCapitalization: TextCapitalization.sentences,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Descripcion *',
-            helperText: 'Tecnica de ejecucion. La ve el cliente.',
+            labelText: 'Descripción *',
+            helperText: 'Tecnica de ejecución. La ve el cliente.',
             errorText: estado.errorDelCampo('descripcion'),
             alignLabelWithHint: true,
           ),
@@ -192,7 +196,7 @@ class _EstadoPantallaFormularioEjercicio
           keyboardType: TextInputType.url,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Video de ejemplo',
+            labelText: 'Vídeo de ejemplo',
             helperText: 'Opcional. Enlace http(s).',
             errorText: estado.errorDelCampo('videoEjemploUrl'),
           ),
@@ -218,7 +222,7 @@ class _EstadoPantallaFormularioEjercicio
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(widget.esEdicion ? 'Guardar cambios' : 'Anadir ejercicio'),
+              : Text(widget.esEdicion ? 'Guardar cambios' : 'Añadir ejercicio'),
         ),
         const SizedBox(height: 8),
         TextButton(
@@ -310,8 +314,8 @@ class _Imagen extends ConsumerWidget {
         Text('Imagen del ejercicio', style: textos.titleSmall),
         const SizedBox(height: 4),
         Text(
-          'Opcional. Una ilustracion o foto que muestre la ejecucion; la ve el '
-          'cliente junto a la descripcion.',
+          'Opcional. Una ilustración o foto que muestre la ejecución; la ve el '
+          'cliente junto a la descripción.',
           style: textos.bodySmall,
         ),
         const SizedBox(height: 8),

@@ -164,7 +164,7 @@ class ControladorControlSemanal extends _$ControladorControlSemanal {
     required DateTime fecha,
   }) async {
     if (state.enCurso) {
-      return const Failure(ErrorValidacion('Ya hay una operacion en curso.'));
+      return const Failure(ErrorValidacion('Ya hay una operación en curso.'));
     }
     state = const EstadoAccion.enCurso();
     final resultado = await operacion();

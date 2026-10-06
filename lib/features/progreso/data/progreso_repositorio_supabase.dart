@@ -365,7 +365,7 @@ class ProgresoRepositorioSupabase implements ProgresoRepositorio {
         // Indices unicos: un registro de medidas o un check-in por dia, una serie
         // por numero, una ruta por foto.
         '23505' => const ErrorValidacion(
-          'Ya hay un registro de ese dia. Recarga la pantalla antes de guardar.',
+          'Ya hay un registro de ese día. Recarga la pantalla antes de guardar.',
         ),
         '42501' => const ErrorNoAutorizado(),
         'PGRST116' => const ErrorNoEncontrado('Ese registro ya no existe.'),
@@ -378,7 +378,7 @@ class ProgresoRepositorioSupabase implements ProgresoRepositorio {
           'Falta algo de lo que esto depende, o ya se ha eliminado.',
         ),
         '22003' => const ErrorValidacion(
-          'Algun numero esta fuera del rango admitido.',
+          'Algún número esta fuera del rango admitido.',
         ),
         _ => Registro.inesperado(
           error,

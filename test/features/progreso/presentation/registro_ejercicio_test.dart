@@ -114,7 +114,7 @@ void main() {
     expect(enviado.minutos, isNull);
   });
 
-  testWidgets('la segunda confirmacion reenvia tambien la primera serie', (
+  testWidgets('la segunda confirmación reenvia también la primera serie', (
     tester,
   ) async {
     await montar(tester, deFuerza());
@@ -127,7 +127,7 @@ void main() {
     expect(ultimoEnviado().series.map((s) => s.numeroSerie).toList(), [1, 2]);
   });
 
-  testWidgets('se puede anadir y registrar una serie de mas', (tester) async {
+  testWidgets('se puede añadir y registrar una serie de mas', (tester) async {
     await montar(tester, deFuerza());
 
     await tester.tap(find.byKey(const Key('boton_serie_extra')));

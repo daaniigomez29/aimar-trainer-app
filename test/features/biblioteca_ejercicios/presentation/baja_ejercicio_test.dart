@@ -100,7 +100,7 @@ void main() {
     expect(
       find.text('Dar de baja el ejercicio'),
       findsOneWidget,
-      reason: 'deberia abrirse el dialogo de confirmacion',
+      reason: 'deberia abrirse el dialogo de confirmación',
     );
 
     await tester.tap(find.byKey(const Key('boton_confirmar_baja')));
@@ -121,7 +121,7 @@ void main() {
     verifyNever(() => ejercicios.darDeBaja(any()));
   });
 
-  testWidgets('CU-04: si esta en uso pide una confirmacion adicional', (
+  testWidgets('CU-04: si esta en uso pide una confirmación adicional', (
     tester,
   ) async {
     when(() => ejercicios.contarUsosEnPlanningsActivos(any()))
@@ -133,7 +133,7 @@ void main() {
     await tester.tap(find.byKey(const Key('boton_confirmar_baja')));
     await tester.pumpAndSettle();
 
-    expect(find.text('El ejercicio esta en uso'), findsOneWidget);
+    expect(find.text('El ejercicio está en uso'), findsOneWidget);
     verifyNever(() => ejercicios.darDeBaja(any()));
 
     await tester.tap(find.byKey(const Key('boton_confirmar_aviso')));

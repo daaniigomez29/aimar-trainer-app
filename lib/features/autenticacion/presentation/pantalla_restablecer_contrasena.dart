@@ -57,13 +57,13 @@ class _EstadoPantallaRestablecerContrasena
     // perfil y el enrutador lleva a la pantalla principal del rol.
     if (estado.completada) {
       return FormularioCentrado(
-        titulo: esPrimeraVez ? 'Cuenta activada' : 'Contrasena actualizada',
+        titulo: esPrimeraVez ? 'Cuenta activada' : 'Contraseña actualizada',
         hijos: [
           AvisoEnLinea(
             esError: false,
             mensaje: esPrimeraVez
                 ? 'Ya tienes acceso. Entrando...'
-                : 'Ya puedes usar tu contrasena nueva.',
+                : 'Ya puedes usar tu contraseña nueva.',
           ),
           const SizedBox(height: 24),
           const Center(child: CircularProgressIndicator()),
@@ -72,9 +72,9 @@ class _EstadoPantallaRestablecerContrasena
     }
 
     return FormularioCentrado(
-      titulo: esPrimeraVez ? 'Elige tu contrasena' : 'Nueva contrasena',
+      titulo: esPrimeraVez ? 'Elige tu contraseña' : 'Nueva contraseña',
       subtitulo: esPrimeraVez
-          ? 'Tu entrenador te ha dado de alta. Elige una contrasena para '
+          ? 'Tu entrenador te ha dado de alta. Elige una contraseña para '
                 'entrar: debe tener al menos '
                 '${Credenciales.longitudMinimaContrasena} caracteres.'
           : 'Debe tener al menos '
@@ -93,7 +93,7 @@ class _EstadoPantallaRestablecerContrasena
           textInputAction: TextInputAction.next,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Contrasena',
+            labelText: 'Contraseña',
             errorText: estado.errorDelCampo('contrasena'),
           ),
         ),
@@ -108,7 +108,7 @@ class _EstadoPantallaRestablecerContrasena
           onChanged: (_) => controlador.limpiarError(),
           onSubmitted: (_) => _enviar(),
           decoration: InputDecoration(
-            labelText: 'Repite la contrasena',
+            labelText: 'Repite la contraseña',
             errorText: estado.errorDelCampo('repeticion'),
           ),
         ),
@@ -122,7 +122,7 @@ class _EstadoPantallaRestablecerContrasena
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(esPrimeraVez ? 'Activar mi cuenta' : 'Guardar contrasena'),
+              : Text(esPrimeraVez ? 'Activar mi cuenta' : 'Guardar contraseña'),
         ),
         const SizedBox(height: 8),
         // En el flujo de invitacion no se ofrece salir: sin contrasena fijada, el

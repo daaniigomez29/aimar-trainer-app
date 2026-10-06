@@ -51,7 +51,7 @@ class GraficaProgreso extends StatelessWidget {
               Text(_comoFecha(puntos.first.fecha), style: textos.bodySmall),
               const SizedBox(height: 8),
               Text(
-                'Con un solo registro todavia no hay evolucion que dibujar.',
+                'Con un solo registro todavía no hay evolución que dibujar.',
                 style: textos.bodySmall,
                 textAlign: TextAlign.center,
               ),

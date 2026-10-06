@@ -123,6 +123,22 @@ port = 54324
 [functions.enviar-recordatorios]
 verify_jwt = false
 
+# Las dos de clientes tambien con `verify_jwt = false`, y NO es que no se
+# compruebe el token: lo comprueba la propia funcion con
+# `autorizarGestorDeClientes`, que valida el JWT y ademas exige rol entrenador o
+# administrador (el rol la plataforma no lo mira).
+#
+# El motivo es el preflight: el navegador manda un OPTIONS **sin** cabecera
+# `Authorization`, asi que con la verificacion de la plataforma activada ese
+# OPTIONS se rechaza antes de llegar al codigo. El navegador lo reporta como un
+# error de CORS ("preflight ... does not have HTTP ok status") aunque el problema
+# no sea el CORS.
+[functions.crear-cliente]
+verify_jwt = false
+
+[functions.dar-de-baja-cliente]
+verify_jwt = false
+
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").

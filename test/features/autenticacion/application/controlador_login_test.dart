@@ -40,7 +40,7 @@ void main() {
   ControladorLogin controlador() =>
       contenedor.read(controladorLoginProvider.notifier);
 
-  test('parte de un estado inicial vacio', () {
+  test('parte de un estado inicial vacío', () {
     final estado = contenedor.read(controladorLoginProvider);
 
     expect(estado.enCurso, isFalse);
@@ -61,7 +61,7 @@ void main() {
     );
   });
 
-  test('no llama al repositorio si falta la contrasena', () async {
+  test('no llama al repositorio si falta la contraseña', () async {
     await controlador().iniciarSesion(
       correo: 'aimar@ejemplo.com',
       contrasena: '',
@@ -80,7 +80,7 @@ void main() {
   });
 
   test(
-    'envia el correo normalizado y marca la accion como completada',
+    'envía el correo normalizado y marca la accion como completada',
     () async {
       when(
         () => repositorio.iniciarSesion(

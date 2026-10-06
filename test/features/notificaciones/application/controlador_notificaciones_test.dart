@@ -69,7 +69,7 @@ void main() {
     return container;
   }
 
-  test('activar guarda la suscripcion y marca la preferencia', () async {
+  test('activar guarda la suscripción y marca la preferencia', () async {
     when(() => push.suscribir(any()))
         .thenAnswer((_) async => const Success(_suscripcion));
     final container = contenedor();
@@ -188,7 +188,7 @@ void main() {
     );
   });
 
-  test('un fallo al guardar la suscripcion no marca la preferencia', () async {
+  test('un fallo al guardar la suscripción no marca la preferencia', () async {
     when(() => push.suscribir(any()))
         .thenAnswer((_) async => const Success(_suscripcion));
     when(

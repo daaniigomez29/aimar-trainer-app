@@ -80,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('pide los plannings de la cuenta con la sesion abierta', (
+  testWidgets('pide los plannings de la cuenta con la sesión abierta', (
     tester,
   ) async {
     await montar(tester, lista: const []);
@@ -88,15 +88,15 @@ void main() {
     verify(() => plannings.listarDeCliente('id-usuario')).called(1);
   });
 
-  testWidgets('sin plannings, lo dice en lugar de dejar la pantalla vacia', (
+  testWidgets('sin plannings, lo dice en lugar de dejar la pantalla vacía', (
     tester,
   ) async {
     await montar(tester, lista: const []);
 
-    expect(find.textContaining('todavia no te ha preparado'), findsOneWidget);
+    expect(find.textContaining('todavía no te ha preparado'), findsOneWidget);
   });
 
-  testWidgets('la semana en curso muestra la sesion de hoy', (tester) async {
+  testWidgets('la semana en curso muestra la sesión de hoy', (tester) async {
     final semana = planningDePrueba(
       clienteId: 'id-usuario',
       fechaInicio: diaDeHoy.subtract(const Duration(days: 1)),
@@ -118,7 +118,7 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('Te toca el dia 1: Empuje'), findsOneWidget);
+    expect(find.textContaining('Te toca el día 1: Empuje'), findsOneWidget);
     expect(find.text('Fuerza general'), findsOneWidget);
   });
 
