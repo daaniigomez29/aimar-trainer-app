@@ -1170,3 +1170,26 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   Functions) y en las *Redirect URLs* de Auth, o los enlaces de invitacion y de
   recuperacion de contrasena no volveran a la app.
 
+**Corregido (Vercel rechazaba el despliegue):**
+
+- `The vercel.json schema validation failed: buildCommand should NOT be longer
+  than 256 characters`. El comando de compilar, con las comprobaciones y los
+  cuatro `--dart-define`, se iba a 399 caracteres.
+  - Movido a `scripts/vercel_build.sh` (y de paso el de instalar a
+    `scripts/vercel_install.sh`, que con una linea mas tambien se habria pasado).
+    En `vercel.json` quedan dos ordenes de menos de 30 caracteres.
+- El script de instalacion anade `git config --global --add safe.directory` sobre
+  la carpeta del SDK: el SDK es un repositorio git y lo usa para saber su
+  version, asi que si el dueno de la carpeta no coincide con el usuario del build,
+  git responde "detected dubious ownership" y `flutter` no arranca. Salio al
+  reproducirlo en Docker.
+
+**Pendiente / notas:**
+
+- **Reproducido el despliegue entero en un contenedor Debian limpio**, que es lo
+  mas parecido al runner de Vercel que se puede montar aqui: descarga del SDK,
+  `pub get`, el fallo con mensaje legible cuando faltan las variables, y el build
+  completo generando `build/web`. Lo unico que no se puede comprobar desde fuera
+  es que el runtime de Vercel traiga `xz` para `tar -xJ`; si fallara ahi, la
+  alternativa es clonar el SDK con git, que seguro esta disponible.
+
