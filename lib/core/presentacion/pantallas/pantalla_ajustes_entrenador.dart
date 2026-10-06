@@ -32,7 +32,7 @@ class PantallaAjustesEntrenador extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Cerrar sesion', style: textos.titleMedium),
+                    Text('Cerrar sesión', style: textos.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       'Volveras a la pantalla de acceso.',
@@ -43,7 +43,7 @@ class PantallaAjustesEntrenador extends ConsumerWidget {
               ),
               IconButton(
                 key: const Key('boton_cerrar_sesion'),
-                tooltip: 'Cerrar sesion',
+                tooltip: 'Cerrar sesión',
                 icon: const Icon(Icons.logout),
                 onPressed: () =>
                     ref.read(controladorSesionProvider.notifier).cerrarSesion(),
@@ -53,7 +53,7 @@ class PantallaAjustesEntrenador extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'La gestion de cuentas y la configuracion tecnica se hacen desde el '
+          'La gestion de cuentas y la configuración tecnica se hacen desde el '
           'panel de Supabase: no son casos de uso de la app.',
           style: textos.bodySmall,
         ),

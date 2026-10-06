@@ -66,7 +66,7 @@ Ejercicio ejercicioDePrueba({
 }) => Ejercicio(
   id: id,
   nombre: nombre,
-  descripcion: 'Descripcion.',
+  descripcion: 'Descripción.',
   tipo: tipo,
   estado: EstadoEjercicio.activo,
   creadoEn: DateTime.utc(2026),

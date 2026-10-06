@@ -144,6 +144,6 @@ abstract final class Registro {
 Future<void> ejecutarConRegistro(Future<void> Function() arranque) async {
   Registro.instalarManejadoresGlobales();
   await runZonedGuarded(arranque, (error, traza) {
-    Registro.fallo(error, traza, contexto: 'la zona raiz de la aplicacion');
+    Registro.fallo(error, traza, contexto: 'la zona raiz de la aplicación');
   });
 }

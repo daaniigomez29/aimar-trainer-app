@@ -208,13 +208,13 @@ export function correoDeSemanaNueva({
   sesiones: number;
   enlace: string;
 }): { asunto: string; html: string; texto: string } {
-  const cuantas = sesiones === 1 ? "1 sesion" : `${sesiones} sesiones`;
+  const cuantas = sesiones === 1 ? "1 sesión" : `${sesiones} sesiones`;
   const asunto = "Tu nueva semana de entrenamiento";
   const texto = [
     `Hola ${nombre}:`,
     "",
     `Tu entrenador te ha preparado ${cuantas} para esta semana.`,
-    "Hazlas en el orden que marcan, los dias que mejor te vengan.",
+    "Hazlas en el orden que marcan, los días que mejor te vengan.",
     "",
     enlace,
   ].join("\n");
@@ -223,7 +223,7 @@ export function correoDeSemanaNueva({
     saludo: `Hola ${escaparHtml(nombre)}:`,
     cuerpo:
       `<p>Tu entrenador te ha preparado <strong>${cuantas}</strong> para esta ` +
-      "semana. Hazlas en el orden que marcan, los dias que mejor te vengan.</p>",
+      "semana. Hazlas en el orden que marcan, los días que mejor te vengan.</p>",
     textoBoton: "Ver mi semana",
     enlace,
   });
@@ -243,8 +243,8 @@ export function correoDeControlSemanal({
   const texto = [
     `Hola ${nombre}:`,
     "",
-    "Hoy es tu dia de control: anota tus medidas y rellena el check-in de",
-    "recuperacion para que tu entrenador vea como ha ido la semana.",
+    "Hoy es tu día de control: anota tus medidas y rellena el check-in de",
+    "recuperación para que tu entrenador vea cómo ha ido la semana.",
     "",
     enlace,
   ].join("\n");
@@ -252,8 +252,8 @@ export function correoDeControlSemanal({
   const html = _plantilla({
     saludo: `Hola ${escaparHtml(nombre)}:`,
     cuerpo:
-      "<p>Hoy es tu <strong>dia de control</strong>: anota tus medidas y " +
-      "rellena el check-in de recuperacion para que tu entrenador vea como ha " +
+      "<p>Hoy es tu <strong>día de control</strong>: anota tus medidas y " +
+      "rellena el check-in de recuperación para que tu entrenador vea cómo ha " +
       "ido la semana.</p>",
     textoBoton: "Abrir mi control",
     enlace,

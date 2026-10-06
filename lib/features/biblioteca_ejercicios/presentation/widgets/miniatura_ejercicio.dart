@@ -20,7 +20,6 @@ class MiniaturaEjercicio extends ConsumerWidget {
     required this.ejercicio,
     this.lado = 40,
     this.radio = 8,
-    this.iconoDeVideo = false,
     super.key,
   });
 
@@ -30,21 +29,17 @@ class MiniaturaEjercicio extends ConsumerWidget {
   final double lado;
   final double radio;
 
-  /// Superpone el triangulo de reproducir cuando el ejercicio tiene video. Solo
-  /// lo pide el listado de la biblioteca; en una fila de 34 px no cabe.
-  final bool iconoDeVideo;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ruta = ejercicio?.imagenRuta;
     final esFuerza = ejercicio?.tipo.esFuerza ?? true;
     final color = esFuerza ? Tokens.acento : Tokens.secundario;
-    final tieneVideo = iconoDeVideo && ejercicio?.videoEjemploUrl != null;
+    final tieneMiniatura = ejercicio?.imagenRuta != null;
 
     // Con el triangulo de video encima, el icono del tipo sobra: se pisarian.
     Widget hueco() => ColoredBox(
       color: color.withValues(alpha: 0.22),
-      child: tieneVideo
+      child: tieneMiniatura
           ? null
           : Center(
               child: Icon(
@@ -72,14 +67,6 @@ class MiniaturaEjercicio extends ConsumerWidget {
                 // Una imagen que no carga no debe dejar un roto: se cae al
                 // mismo hueco que cuando no hay ninguna.
                 errorBuilder: (_, _, _) => hueco(),
-              ),
-            if (tieneVideo)
-              Center(
-                child: Icon(
-                  Icons.play_arrow,
-                  color: ruta == null ? color : Colors.white,
-                  size: lado * 0.4,
-                ),
               ),
           ],
         ),

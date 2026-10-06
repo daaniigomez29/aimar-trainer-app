@@ -69,7 +69,7 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
       initialDate: _fechaInicio,
       firstDate: DateTime(DateTime.now().year - 2),
       lastDate: DateTime(DateTime.now().year + 2),
-      helpText: 'Primer dia de la semana',
+      helpText: 'Primer día de la semana',
       cancelText: 'Cancelar',
       confirmText: 'Aceptar',
     );
@@ -235,7 +235,7 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
     final controlador = ref.read(controladorPlanificacionProvider.notifier);
 
     return AlertDialog(
-      title: Text(widget.sesion == null ? 'Nueva sesion' : 'Editar sesion'),
+      title: Text(widget.sesion == null ? 'Nueva sesión' : 'Editar sesión'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -252,13 +252,13 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Dia $_orden',
+              'Día $_orden',
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Las sesiones van numeradas, no atadas a un dia de la semana: el '
+            'Las sesiones van numeradas, no atadas a un día de la semana: el '
             'cliente la hace cuando puede.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -408,7 +408,7 @@ class _EstadoDialogoBloque extends ConsumerState<_DialogoBloque> {
             key: const Key('selector_orden_bloque'),
             initialValue: _orden <= posiciones ? _orden : posiciones,
             decoration: InputDecoration(
-              labelText: 'Posicion en la sesion',
+              labelText: 'Posición en la sesión',
               errorText: estado.errorDelCampo('orden'),
             ),
             items: [

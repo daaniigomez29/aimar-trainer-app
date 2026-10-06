@@ -21,27 +21,26 @@ Future<List<Cliente>> listaClientes(Ref ref) async {
   };
 }
 
-/// Filtro del listado: texto y si se incluyen los dados de baja.
+/// Filtro del listado: texto y si se ven SOLO los dados de baja.
 @riverpod
 class FiltroClientes extends _$FiltroClientes {
   @override
-  ({String texto, bool incluirBajas}) build() =>
-      (texto: '', incluirBajas: false);
+  ({String texto, bool soloBajas}) build() => (texto: '', soloBajas: false);
 
   void cambiarTexto(String texto) =>
-      state = (texto: texto, incluirBajas: state.incluirBajas);
+      state = (texto: texto, soloBajas: state.soloBajas);
 
-  void alternarBajas({required bool incluir}) =>
-      state = (texto: state.texto, incluirBajas: incluir);
+  void alternarBajas({required bool solo}) =>
+      state = (texto: state.texto, soloBajas: solo);
 
-  void limpiar() => state = (texto: '', incluirBajas: false);
+  void limpiar() => state = (texto: '', soloBajas: false);
 }
 
 /// `true` si no hay ningun criterio aplicado. Fuera del Notifier porque su API
 /// publica debe ser solo `state` y sus metodos (riverpod_lint:
 /// avoid_public_notifier_properties).
-bool filtroClientesVacio(({String texto, bool incluirBajas}) filtro) =>
-    filtro.texto.trim().isEmpty && !filtro.incluirBajas;
+bool filtroClientesVacio(({String texto, bool soloBajas}) filtro) =>
+    filtro.texto.trim().isEmpty && !filtro.soloBajas;
 
 /// Listado ya filtrado. Se filtra en memoria: con un solo entrenador, el numero
 /// de clientes no justifica paginacion ni una consulta por cada tecla.
@@ -52,7 +51,8 @@ Future<List<Cliente>> clientesFiltrados(Ref ref) async {
   final texto = filtro.texto.trim().toLowerCase();
 
   return todos.where((cliente) {
-    if (!filtro.incluirBajas && !cliente.estado.esActivo) return false;
+    // Excluyente: con el chip puesto se ven las bajas y nada mas.
+    if (filtro.soloBajas != !cliente.estado.esActivo) return false;
     if (texto.isEmpty) return true;
     return cliente.nombre.toLowerCase().contains(texto) ||
         cliente.correo.toLowerCase().contains(texto);

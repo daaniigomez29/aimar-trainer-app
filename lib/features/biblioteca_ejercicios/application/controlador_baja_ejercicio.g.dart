@@ -60,7 +60,7 @@ final class ControladorBajaEjercicioProvider
 }
 
 String _$controladorBajaEjercicioHash() =>
-    r'bb2d03cf675f5e8907bfd94a02af3ab0986ee3eb';
+    r'de45d1f9c303c0c8b3e5b5c43cd6a60368fda8e4';
 
 /// CU-04: baja logica de un ejercicio, con el aviso previo de si esta en uso.
 ///

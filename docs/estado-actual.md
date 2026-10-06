@@ -262,6 +262,43 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   compartido por la biblioteca, la planificación y el registro del cliente.
   Antes cada pantalla tenía su copia del hueco gris, y por eso la planificación
   se quedó sin imagen cuando se añadió a la entidad.
+- **Las Edge Functions van con `verify_jwt = false`** (2026-10-06), y no es que
+  no se compruebe el token: lo valida la propia función, que además exige el rol
+  (el rol la plataforma no lo mira). El motivo es el preflight: el navegador manda
+  un `OPTIONS` **sin** `Authorization`, así que con la verificación de la
+  plataforma activada ese preflight se rechaza antes de llegar al código y el
+  navegador lo reporta como un error de CORS que no lo es.
+- **`APP_BASE_URL` admite varios orígenes separados por comas** (2026-10-06):
+  la app vive en el dominio de Vercel y en el propio. `Access-Control-Allow-Origin`
+  no admite listas, así que la función mira el `Origin` de cada petición y
+  devuelve ese, con `Vary: Origin`. Un origen desconocido recibe el primero de la
+  lista, que no coincide con el suyo, y el navegador lo bloquea. Para los
+  **enlaces de los correos** se usa siempre el primero, que es el canónico.
+- **Toda la navegación va por rutas de go_router** (2026-10-06): no queda ni un
+  `Navigator.push` imperativo. El motivo fue un fallo real: en web ese `push` no
+  deja entrada en el historial, así que el botón atrás del navegador (y el gesto
+  atrás del móvil) retrocedía a la última ruta visitada —la planificación o los
+  ajustes— en vez de a la pantalla anterior.
+- **Se navega con `context.go`, no con `context.push`.** `push` apila sin tocar
+  la URL del navegador, así que mantiene el mismo fallo; se comprobó en la app ya
+  convertida, donde la URL seguía sin cambiar. Con `go` la URL refleja dónde
+  estás, el atrás funciona y se puede **recargar sin perder el sitio**. Que la
+  flecha de la cabecera siga volviendo donde toca lo da la **jerarquía**: cada
+  pantalla se declara como ruta hija de aquella desde la que se abre.
+- **Lo que no cabe en una URL se resuelve desde el planning**: el bloque, la
+  sesión y el ejercicio planificado llegan como `id` y los busca
+  `ResolverDelPlanning`, que carga el planning completo (lo que la pantalla iba a
+  hacer igualmente) y avisa si eso ya no existe.
+- **Añadir y editar un ejercicio del bloque son rutas hermanas**, no una dentro
+  de otra: anidadas, al guardar la edición (o al pulsar atrás) el entrenador
+  acababa en un formulario de "Añadir ejercicio" vacío en lugar de volver al
+  planning.
+- **Las series se añaden y se quitan en el formulario del ejercicio**, no en la
+  cuadrícula de la planificación, que solo edita los valores de las series que ya
+  existen. Por eso cada ejercicio tiene botón de editar junto a la X. La
+  cuadrícula se rehace (`didUpdateWidget`) cuando las series cambian por detrás y
+  olvida lo que tuviera sin guardar de ese ejercicio: si no, "Guardar cambios"
+  escribiría lo viejo encima de lo que se acaba de guardar en el formulario.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

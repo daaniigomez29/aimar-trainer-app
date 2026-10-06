@@ -15,13 +15,13 @@ sealed class ErrorApp {
 /// Credenciales incorrectas en el inicio de sesion (CU-01).
 class ErrorCredencialesInvalidas extends ErrorApp {
   const ErrorCredencialesInvalidas()
-    : super('Correo o contrasena incorrectos.');
+    : super('Correo o contraseña incorrectos.');
 }
 
 /// Cuenta dada de baja o bloqueada en Auth (CU-01, excepcion).
 class ErrorCuentaNoDisponible extends ErrorApp {
   const ErrorCuentaNoDisponible()
-    : super('Esta cuenta no esta disponible. Contacta con tu entrenador.');
+    : super('Esta cuenta no está disponible. Contacta con tu entrenador.');
 }
 
 /// La invitacion por correo sigue pendiente de aceptar: el usuario existe en
@@ -29,7 +29,7 @@ class ErrorCuentaNoDisponible extends ErrorApp {
 class ErrorCuentaSinActivar extends ErrorApp {
   const ErrorCuentaSinActivar()
     : super(
-        'Tu cuenta esta pendiente de activar. Revisa el correo de invitacion.',
+        'Tu cuenta está pendiente de activar. Revisa el correo de invitación.',
       );
 }
 
@@ -43,7 +43,7 @@ class ErrorPerfilSinRol extends ErrorApp {
 /// RLS o la Edge Function han rechazado la operacion por rol insuficiente.
 class ErrorNoAutorizado extends ErrorApp {
   const ErrorNoAutorizado()
-    : super('No tienes permisos para realizar esta accion.');
+    : super('No tienes permisos para realizar esta acción.');
 }
 
 class ErrorNoEncontrado extends ErrorApp {
@@ -75,7 +75,7 @@ class ErrorServicioNoDisponible extends ErrorApp {
   const ErrorServicioNoDisponible([String? servicio])
     : super(
         servicio == null
-            ? 'El servicio no esta disponible ahora mismo. Vuelve a intentarlo.'
+            ? 'El servicio no está disponible ahora mismo. Vuelve a intentarlo.'
             : 'El servicio de $servicio no esta disponible ahora mismo. '
                   'Vuelve a intentarlo.',
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
@@ -9,8 +10,6 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_clie
 import 'package:aimar_trainer_app/features/clientes/application/controlador_ficha_cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/dialogos_cliente.dart';
-import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_detalle_cliente.dart';
-import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_formulario_cliente.dart';
 
 /// Gestion de clientes (CU-17, CU-18, CU-19).
 ///
@@ -124,10 +123,8 @@ Future<void> abrirFormularioCliente(
   Cliente? cliente,
 }) async {
   ref.read(controladorFichaClienteProvider.notifier).reiniciar();
-  await Navigator.of(context).push<bool>(
-    MaterialPageRoute(
-      builder: (_) => PantallaFormularioCliente(cliente: cliente),
-    ),
+  context.go(
+    cliente == null ? Rutas.nuevoCliente() : Rutas.editarCliente(cliente.id),
   );
 }
 
@@ -175,11 +172,7 @@ class _Listado extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PantallaDetalleCliente(idCliente: cliente.id),
-              ),
-            ),
+            onTap: () => context.go(Rutas.fichaDeCliente(cliente.id)),
             trailing: puedeGestionar && !deBaja
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
@@ -238,9 +231,8 @@ class _Filtros extends ConsumerWidget {
             alignment: Alignment.centerLeft,
             child: FilterChip(
               label: const Text('Ver dados de baja'),
-              selected: filtro.incluirBajas,
-              onSelected: (incluir) =>
-                  controlador.alternarBajas(incluir: incluir),
+              selected: filtro.soloBajas,
+              onSelected: (solo) => controlador.alternarBajas(solo: solo),
             ),
           ),
         ],
@@ -266,7 +258,7 @@ class _SinResultados extends ConsumerWidget {
     if (!filtroClientesVacio(filtro)) {
       return _Mensaje(
         icono: Icons.search_off,
-        texto: 'Ningun cliente coincide con la busqueda.',
+        texto: 'Ningún cliente coincide con la búsqueda.',
         accion: TextButton(
           onPressed: ref.read(filtroClientesProvider.notifier).limpiar,
           child: const Text('Quitar filtros'),
@@ -275,7 +267,7 @@ class _SinResultados extends ConsumerWidget {
     }
     return const _Mensaje(
       icono: Icons.people_outline,
-      texto: 'Todavia no hay clientes. Da de alta al primero.',
+      texto: 'Todavía no hay clientes. Da de alta al primero.',
     );
   }
 }

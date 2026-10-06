@@ -70,7 +70,7 @@ void main() {
     expect(find.byIcon(Icons.fitness_center), findsOneWidget);
   });
 
-  testWidgets('la sesion planificada pinta la foto de cada ejercicio', (
+  testWidgets('la sesión planificada pinta la foto de cada ejercicio', (
     tester,
   ) async {
     final sesion = sesionDePrueba(

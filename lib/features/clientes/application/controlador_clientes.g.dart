@@ -64,16 +64,16 @@ final class ListaClientesProvider
 
 String _$listaClientesHash() => r'03bd7a2b7ccda8ecdea171dbcff71128546ad042';
 
-/// Filtro del listado: texto y si se incluyen los dados de baja.
+/// Filtro del listado: texto y si se ven SOLO los dados de baja.
 
 @ProviderFor(FiltroClientes)
 final filtroClientesProvider = FiltroClientesProvider._();
 
-/// Filtro del listado: texto y si se incluyen los dados de baja.
+/// Filtro del listado: texto y si se ven SOLO los dados de baja.
 final class FiltroClientesProvider
     extends
-        $NotifierProvider<FiltroClientes, ({bool incluirBajas, String texto})> {
-  /// Filtro del listado: texto y si se incluyen los dados de baja.
+        $NotifierProvider<FiltroClientes, ({bool soloBajas, String texto})> {
+  /// Filtro del listado: texto y si se ven SOLO los dados de baja.
   FiltroClientesProvider._()
     : super(
         from: null,
@@ -93,40 +93,40 @@ final class FiltroClientesProvider
   FiltroClientes create() => FiltroClientes();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(({bool incluirBajas, String texto}) value) {
+  Override overrideWithValue(({bool soloBajas, String texto}) value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<({bool incluirBajas, String texto})>(
+      providerOverride: $SyncValueProvider<({bool soloBajas, String texto})>(
         value,
       ),
     );
   }
 }
 
-String _$filtroClientesHash() => r'47fca54051dfdecb3865193609f4d8f79ab68bd0';
+String _$filtroClientesHash() => r'29fe5de66922ba1cbfe4ad7ec4b73e7e8051b2e6';
 
-/// Filtro del listado: texto y si se incluyen los dados de baja.
+/// Filtro del listado: texto y si se ven SOLO los dados de baja.
 
 abstract class _$FiltroClientes
-    extends $Notifier<({bool incluirBajas, String texto})> {
-  ({bool incluirBajas, String texto}) build();
+    extends $Notifier<({bool soloBajas, String texto})> {
+  ({bool soloBajas, String texto}) build();
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
     final ref =
         this.ref
             as $Ref<
-              ({bool incluirBajas, String texto}),
-              ({bool incluirBajas, String texto})
+              ({bool soloBajas, String texto}),
+              ({bool soloBajas, String texto})
             >;
     final element =
         ref.element
             as $ClassProviderElement<
               AnyNotifier<
-                ({bool incluirBajas, String texto}),
-                ({bool incluirBajas, String texto})
+                ({bool soloBajas, String texto}),
+                ({bool soloBajas, String texto})
               >,
-              ({bool incluirBajas, String texto}),
+              ({bool soloBajas, String texto}),
               Object?,
               Object?
             >;
@@ -179,7 +179,7 @@ final class ClientesFiltradosProvider
   }
 }
 
-String _$clientesFiltradosHash() => r'd00c9383a030d5104df78dceefae3c6231aaa6ff';
+String _$clientesFiltradosHash() => r'8ac74b1204f89e9b6bf3dd083684c1f6dcff189e';
 
 /// Una ficha concreta, para el detalle. Se resuelve desde la lista ya cargada
 /// cuando esta disponible, para no repetir la consulta.

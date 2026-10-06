@@ -37,7 +37,7 @@ class Credenciales {
   static ErrorValidacion? validarContrasenaDeAcceso(String contrasena) {
     if (contrasena.isEmpty) {
       return const ErrorValidacion(
-        'Introduce tu contrasena.',
+        'Introduce tu contraseña.',
         campo: 'contrasena',
       );
     }
@@ -48,13 +48,13 @@ class Credenciales {
   static ErrorValidacion? validarContrasenaNueva(String contrasena) {
     if (contrasena.isEmpty) {
       return const ErrorValidacion(
-        'Introduce una contrasena.',
+        'Introduce una contraseña.',
         campo: 'contrasena',
       );
     }
     if (contrasena.length < longitudMinimaContrasena) {
       return const ErrorValidacion(
-        'La contrasena debe tener al menos '
+        'La contraseña debe tener al menos '
         '$longitudMinimaContrasena caracteres.',
         campo: 'contrasena',
       );

@@ -20,7 +20,7 @@ class PantallaConfiguracionInvalida extends StatelessWidget {
                 Icon(Icons.settings_outlined, size: 48),
                 SizedBox(height: 16),
                 Text(
-                  'Configuracion incompleta',
+                  'Configuración incompleta',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),

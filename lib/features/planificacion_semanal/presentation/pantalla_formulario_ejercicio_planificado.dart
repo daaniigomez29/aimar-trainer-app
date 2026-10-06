@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -142,8 +144,9 @@ class _EstadoFormularioEjercicioPlanificado
     Navigator.of(context).pop(true);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: Avisos.duracion,
         content: Text(
-          widget.esEdicion ? 'Ejercicio actualizado.' : 'Ejercicio anadido.',
+          widget.esEdicion ? 'Ejercicio actualizado.' : 'Ejercicio añadido.',
         ),
       ),
     );
@@ -157,7 +160,7 @@ class _EstadoFormularioEjercicioPlanificado
     final ejercicio = _ejercicio;
 
     return FormularioCentrado(
-      titulo: widget.esEdicion ? 'Editar ejercicio' : 'Anadir ejercicio',
+      titulo: widget.esEdicion ? 'Editar ejercicio' : 'Añadir ejercicio',
       subtitulo: 'Bloque de ${widget.bloque.tipo.etiqueta}',
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
@@ -174,7 +177,7 @@ class _EstadoFormularioEjercicioPlanificado
               // CU-08, excepcion: biblioteca vacia.
               return const AvisoEnLinea(
                 mensaje:
-                    'La biblioteca esta vacia. Anade primero algun ejercicio '
+                    'La biblioteca esta vacía. Añade primero algún ejercicio '
                     'para poder planificarlo.',
               );
             }
@@ -219,7 +222,7 @@ class _EstadoFormularioEjercicioPlanificado
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Posicion en el bloque',
+            labelText: 'Posición en el bloque',
             errorText: estado.errorDelCampo('orden'),
           ),
         ),
@@ -262,7 +265,7 @@ class _EstadoFormularioEjercicioPlanificado
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(widget.esEdicion ? 'Guardar cambios' : 'Anadir'),
+              : Text(widget.esEdicion ? 'Guardar cambios' : 'Añadir'),
         ),
         const SizedBox(height: 8),
         TextButton(
@@ -377,7 +380,7 @@ class _CamposFuerza extends StatelessWidget {
               key: const Key('boton_anadir_serie'),
               onPressed: habilitado ? onAnadirSerie : null,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Anadir serie'),
+              label: const Text('Añadir serie'),
             ),
           ],
         ),
@@ -401,22 +404,6 @@ class _CamposFuerza extends StatelessWidget {
                 ),
                 Expanded(
                   child: TextField(
-                    key: Key('campo_reps_$i'),
-                    controller: series[i].repeticiones,
-                    enabled: habilitado,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => onCambio(),
-                    decoration: InputDecoration(
-                      labelText: 'Reps *',
-                      isDense: true,
-                      errorText: i == 0 ? errorRepeticiones : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
                     key: Key('campo_peso_$i'),
                     controller: series[i].peso,
                     enabled: habilitado,
@@ -431,6 +418,22 @@ class _CamposFuerza extends StatelessWidget {
                       labelText: 'Peso',
                       isDense: true,
                       errorText: i == 0 ? errorPeso : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    key: Key('campo_reps_$i'),
+                    controller: series[i].repeticiones,
+                    enabled: habilitado,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (_) => onCambio(),
+                    decoration: InputDecoration(
+                      labelText: 'Reps *',
+                      isDense: true,
+                      errorText: i == 0 ? errorRepeticiones : null,
                     ),
                   ),
                 ),
@@ -452,6 +455,7 @@ class _CamposFuerza extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  key: Key('quitar_serie_$i'),
                   tooltip: 'Quitar serie',
                   icon: const Icon(Icons.remove_circle_outline, size: 20),
                   // Siempre debe quedar al menos una serie.

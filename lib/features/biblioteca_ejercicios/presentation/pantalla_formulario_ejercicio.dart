@@ -1,32 +1,68 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes_flutter.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
-/// CU-02 (anadir) y CU-03 (editar) ejercicio.
+/// CU-02 (añadir) y CU-03 (editar) ejercicio.
 ///
-/// Con `ejercicio` a `null` crea uno nuevo; con un ejercicio, precarga sus datos.
-class PantallaFormularioEjercicio extends ConsumerStatefulWidget {
-  const PantallaFormularioEjercicio({this.ejercicio, super.key});
+/// Admite las dos entradas: con `ejercicio` cuando quien navega ya lo tiene
+/// cargado, y con `idEjercicio` cuando se llega **por la URL**, que es lo que
+/// permite recargar la página sin perder el sitio.
+class PantallaFormularioEjercicio extends ConsumerWidget {
+  const PantallaFormularioEjercicio({
+    this.ejercicio,
+    this.idEjercicio,
+    super.key,
+  });
+
+  final Ejercicio? ejercicio;
+  final String? idEjercicio;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Alta, o edición con el ejercicio ya en la mano.
+    if (idEjercicio == null || ejercicio != null) {
+      return _FormularioEjercicio(ejercicio: ejercicio);
+    }
+
+    return ref
+        .watch(ejercicioPorIdProvider(idEjercicio!))
+        .when(
+          data: (e) => _FormularioEjercicio(ejercicio: e),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text(mensajeDeError(error))),
+          ),
+        );
+  }
+}
+
+class _FormularioEjercicio extends ConsumerStatefulWidget {
+  const _FormularioEjercicio({this.ejercicio});
 
   final Ejercicio? ejercicio;
 
   bool get esEdicion => ejercicio != null;
 
   @override
-  ConsumerState<PantallaFormularioEjercicio> createState() =>
+  ConsumerState<_FormularioEjercicio> createState() =>
       _EstadoPantallaFormularioEjercicio();
 }
 
 class _EstadoPantallaFormularioEjercicio
-    extends ConsumerState<PantallaFormularioEjercicio> {
+    extends ConsumerState<_FormularioEjercicio> {
   late final TextEditingController _nombre;
   late final TextEditingController _grupoMuscular;
   late final TextEditingController _equipamiento;
@@ -87,10 +123,11 @@ class _EstadoPantallaFormularioEjercicio
     Navigator.of(context).pop(guardado);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: Avisos.duracion,
         content: Text(
           widget.esEdicion
               ? 'Ejercicio actualizado.'
-              : 'Ejercicio anadido a la biblioteca.',
+              : 'Ejercicio añadido a la biblioteca.',
         ),
       ),
     );
@@ -102,8 +139,9 @@ class _EstadoPantallaFormularioEjercicio
 
     switch (elegida) {
       case Failure(:final error):
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.mensaje)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(duration: Avisos.duracion, content: Text(error.mensaje)),
+        );
       case Success(:final valor):
         // `null` es que cerro el selector sin elegir nada.
         if (valor == null) return;
@@ -178,8 +216,8 @@ class _EstadoPantallaFormularioEjercicio
           textCapitalization: TextCapitalization.sentences,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Descripcion *',
-            helperText: 'Tecnica de ejecucion. La ve el cliente.',
+            labelText: 'Descripción *',
+            helperText: 'Tecnica de ejecución. La ve el cliente.',
             errorText: estado.errorDelCampo('descripcion'),
             alignLabelWithHint: true,
           ),
@@ -192,7 +230,7 @@ class _EstadoPantallaFormularioEjercicio
           keyboardType: TextInputType.url,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Video de ejemplo',
+            labelText: 'Vídeo de ejemplo',
             helperText: 'Opcional. Enlace http(s).',
             errorText: estado.errorDelCampo('videoEjemploUrl'),
           ),
@@ -218,7 +256,7 @@ class _EstadoPantallaFormularioEjercicio
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(widget.esEdicion ? 'Guardar cambios' : 'Anadir ejercicio'),
+              : Text(widget.esEdicion ? 'Guardar cambios' : 'Añadir ejercicio'),
         ),
         const SizedBox(height: 8),
         TextButton(
@@ -310,8 +348,8 @@ class _Imagen extends ConsumerWidget {
         Text('Imagen del ejercicio', style: textos.titleSmall),
         const SizedBox(height: 4),
         Text(
-          'Opcional. Una ilustracion o foto que muestre la ejecucion; la ve el '
-          'cliente junto a la descripcion.',
+          'Opcional. Una ilustración o foto que muestre la ejecución; la ve el '
+          'cliente junto a la descripción.',
           style: textos.bodySmall,
         ),
         const SizedBox(height: 8),

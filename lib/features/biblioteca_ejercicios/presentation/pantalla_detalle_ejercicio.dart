@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
@@ -11,7 +16,6 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/video_ejemplo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 
 /// Ficha de un ejercicio. La ven los dos roles; el entrenador ademas puede
 /// editar y dar de baja desde aqui.
@@ -40,13 +44,7 @@ class PantallaDetalleEjercicio extends ConsumerWidget {
                 ref
                     .read(controladorFormularioEjercicioProvider.notifier)
                     .reiniciar();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PantallaFormularioEjercicio(
-                      ejercicio: ejercicio.requireValue,
-                    ),
-                  ),
-                );
+                context.go(Rutas.editarEjercicio(idEjercicio));
               },
             ),
         ],
@@ -124,12 +122,12 @@ class _Contenido extends ConsumerWidget {
         if (ejercicio.equipamiento case final equipo?)
           _Dato(etiqueta: 'Equipamiento', valor: equipo),
         const SizedBox(height: 8),
-        Text('Como se ejecuta', style: textos.titleMedium),
+        Text('Cómo se ejecuta', style: textos.titleMedium),
         const SizedBox(height: 8),
         Text(ejercicio.descripcion),
         if (ejercicio.videoEjemploUrl case final url?) ...[
           const Divider(height: 32),
-          Text('Video de ejemplo', style: textos.titleMedium),
+          Text('Vídeo de ejemplo', style: textos.titleMedium),
           const SizedBox(height: 8),
           _Video(url: url),
         ],
@@ -249,8 +247,12 @@ class _EnlaceVideo extends StatelessWidget {
         onPressed: () async {
           await Clipboard.setData(ClipboardData(text: url));
           if (!context.mounted) return;
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('Enlace copiado.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: Avisos.duracion,
+              content: Text('Enlace copiado.'),
+            ),
+          );
         },
       ),
     ],

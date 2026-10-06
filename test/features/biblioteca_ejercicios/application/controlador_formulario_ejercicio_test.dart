@@ -59,7 +59,7 @@ void main() {
   ControladorFormularioEjercicio controlador() =>
       contenedor.read(controladorFormularioEjercicioProvider.notifier);
 
-  group('CU-02 anadir ejercicio', () {
+  group('CU-02 añadir ejercicio', () {
     test('no llama al repositorio si falta el nombre', () async {
       final guardado = await controlador().guardar(
         datos: const DatosEjercicio(
@@ -79,7 +79,7 @@ void main() {
       verifyNever(() => repositorio.crear(any()));
     });
 
-    test('no llama al repositorio si falta la descripcion', () async {
+    test('no llama al repositorio si falta la descripción', () async {
       await controlador().guardar(
         datos: const DatosEjercicio(
           nombre: 'Sentadilla',

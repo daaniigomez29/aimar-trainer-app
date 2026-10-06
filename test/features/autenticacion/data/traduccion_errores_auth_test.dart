@@ -35,11 +35,11 @@ void main() {
       );
     });
 
-    test('enlace de recuperacion caducado', () {
+    test('enlace de recuperación caducado', () {
       expect(_traducir(code: 'otp_expired'), isA<ErrorEnlaceCaducado>());
     });
 
-    test('limite de peticiones', () {
+    test('límite de peticiones', () {
       expect(
         _traducir(code: 'over_request_rate_limit'),
         isA<ErrorDemasiadasPeticiones>(),
@@ -47,7 +47,7 @@ void main() {
       expect(_traducir(statusCode: '429'), isA<ErrorDemasiadasPeticiones>());
     });
 
-    test('sin codigo, cae al statusCode', () {
+    test('sin código, cae al statusCode', () {
       expect(_traducir(), isA<ErrorCredencialesInvalidas>());
       expect(_traducir(statusCode: '403'), isA<ErrorCuentaNoDisponible>());
     });

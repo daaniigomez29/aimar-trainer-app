@@ -74,14 +74,14 @@ class TarjetaSesion extends StatelessWidget {
                   ),
                 if (puedeEditar) ...[
                   IconButton(
-                    tooltip: 'Editar sesion',
+                    tooltip: 'Editar sesión',
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     onPressed: onEditarSesion,
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
                     key: Key('eliminar_sesion_${sesion.id}'),
-                    tooltip: 'Eliminar sesion',
+                    tooltip: 'Eliminar sesión',
                     icon: const Icon(Icons.delete_outline, size: 20),
                     onPressed: onEliminarSesion,
                     visualDensity: VisualDensity.compact,
@@ -94,8 +94,8 @@ class TarjetaSesion extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   puedeEditar
-                      ? 'Sin bloques todavia.'
-                      : 'Esta sesion aun no tiene contenido.',
+                      ? 'Sin bloques todavía.'
+                      : 'Esta sesión aun no tiene contenido.',
                   style: textos.bodySmall,
                 ),
               )
@@ -147,7 +147,7 @@ class TarjetaSesion extends StatelessWidget {
                   key: Key('anadir_bloque_${sesion.id}'),
                   onPressed: onAnadirBloque,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Anadir bloque'),
+                  label: const Text('Añadir bloque'),
                 ),
               ),
           ],
@@ -256,7 +256,7 @@ class _Bloque extends StatelessWidget {
                 key: Key('anadir_ejercicio_${bloque.id}'),
                 onPressed: onAnadirEjercicio,
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Anadir ejercicio'),
+                label: const Text('Añadir ejercicio'),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                 ),

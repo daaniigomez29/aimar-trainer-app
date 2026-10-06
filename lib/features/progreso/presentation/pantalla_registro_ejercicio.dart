@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
@@ -155,14 +160,15 @@ class _PantallaRegistroEjercicioState
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => PantallaRegistroEjercicio(
-          ejercicio: lista[indice + 1],
-          planningId: widget.planningId,
-          clienteId: widget.clienteId,
-          sesion: widget.sesion,
-        ),
+    // `pushReplacement` y no `push`: encadenar ejercicios no debe llenar el
+    // historial, para que el atrás vuelva a la sesión y no al ejercicio previo.
+    final sesion = widget.sesion;
+    if (sesion == null) return;
+    context.go(
+      Rutas.registroDeEjercicio(
+        widget.planningId,
+        sesion.id,
+        lista[indice + 1].id,
       ),
     );
   }
@@ -187,14 +193,14 @@ class _PantallaRegistroEjercicioState
       .map((b) => b.notas)
       .firstOrNull;
 
-  void _avisar(String mensaje) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(mensaje)));
+  void _avisar(String mensaje) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(duration: Avisos.duracion, content: Text(mensaje)));
 
   void _verVideo(String url) {
     final incrustada = VideoEjemplo.urlIncrustada(url);
     if (incrustada == null || !ReproductorVideo.estaSoportado) {
-      _avisar('Ese video no se puede reproducir aqui: $url');
+      _avisar('Ese vídeo no se puede reproducir aquí: $url');
       return;
     }
     showModalBottomSheet<void>(
@@ -276,7 +282,7 @@ class _PantallaRegistroEjercicioState
                 key: const Key('boton_serie_extra'),
                 onPressed: estado.enCurso ? null : _anadirSerieExtra,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Anadir una serie de mas'),
+                label: const Text('Añadir una serie de mas'),
               ),
               if (widget.ejercicio.descansoPlanificadoSeg case final descanso?)
                 _Descanso(segundos: descanso),
@@ -459,7 +465,7 @@ class _Encabezado extends ConsumerWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Ver video de ejemplo',
+                        'Ver vídeo de ejemplo',
                         style: textos.bodyMedium?.copyWith(
                           color: Tokens.acento,
                         ),

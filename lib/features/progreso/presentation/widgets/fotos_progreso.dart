@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
@@ -36,7 +38,7 @@ class FotosProgreso extends ConsumerWidget {
         const SizedBox(height: 6),
         if (actual == null)
           Text(
-            'Guarda las medidas de este dia para poder anadirle fotos.',
+            'Guarda las medidas de este día para poder añadirle fotos.',
             style: textos.bodySmall,
           )
         else ...[
@@ -77,7 +79,10 @@ class FotosProgreso extends ConsumerWidget {
                             if (!context.mounted) return;
                             if (resultado.errorONulo case final error?) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error.mensaje)),
+                                SnackBar(
+                                  duration: Avisos.duracion,
+                                  content: Text(error.mensaje),
+                                ),
                               );
                             }
                           },
@@ -86,7 +91,7 @@ class FotosProgreso extends ConsumerWidget {
                       children: [
                         Icon(Icons.add_a_photo_outlined),
                         SizedBox(height: 6),
-                        Text('Anadir foto', textAlign: TextAlign.center),
+                        Text('Añadir foto', textAlign: TextAlign.center),
                       ],
                     ),
                   ),

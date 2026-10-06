@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -36,7 +38,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
 
     return PantallaCliente(
       rutaActual: Rutas.avisosCliente,
-      appBar: AppBar(title: const Text('Configuracion')),
+      appBar: AppBar(title: const Text('Configuración')),
       cuerpo: preferencias.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
@@ -58,7 +60,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
             24,
           ),
           children: [
-            Text('Como te avisamos', style: textos.titleSmall),
+            Text('Cómo te avisamos', style: textos.titleSmall),
             const SizedBox(height: 12),
             FilaInterruptor(
               clave: const Key('interruptor_push'),
@@ -78,9 +80,12 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
                           : await controlador.desactivar(clienteId);
                       if (!context.mounted) return;
                       if (resultado.errorONulo case final error?) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(error.mensaje)));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            duration: Avisos.duracion,
+                            content: Text(error.mensaje),
+                          ),
+                        );
                       }
                     },
             ),
@@ -123,7 +128,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Te avisamos la tarde de antes de cada sesion y el dia que te '
+              'Te avisamos la tarde de antes de cada sesión y el día que te '
               'toca el control de medidas.',
               style: textos.bodySmall,
             ),
@@ -141,7 +146,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Cerrar sesion', style: textos.titleMedium),
+                        Text('Cerrar sesión', style: textos.titleMedium),
                         const SizedBox(height: 4),
                         Text(
                           'Volveras a la pantalla de acceso.',
@@ -152,7 +157,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
                   ),
                   IconButton(
                     key: const Key('boton_cerrar_sesion'),
-                    tooltip: 'Cerrar sesion',
+                    tooltip: 'Cerrar sesión',
                     icon: const Icon(Icons.logout),
                     onPressed: () => ref
                         .read(controladorSesionProvider.notifier)
@@ -181,12 +186,12 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
     required bool configurado,
   }) {
     if (!configurado) {
-      return 'Esta instalacion no tiene configurado el push. Avisa a tu '
+      return 'Esta instalación no tiene configurado el push. Avisa a tu '
           'entrenador.';
     }
     if (!soportado) {
       return 'Tu navegador no admite notificaciones. En iPhone funcionan si '
-          'anades la app a la pantalla de inicio.';
+          'añades la app a la pantalla de inicio.';
     }
     if (permiso == EstadoPermisoPush.denegado) {
       return 'Las has bloqueado en el navegador. Para recibirlas, permitelas '
@@ -194,7 +199,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
     }
     return activado
         ? 'Activadas en este dispositivo.'
-        : 'Recibe un aviso en el movil o en el ordenador.';
+        : 'Recibe un aviso en el móvil o en el ordenador.';
   }
 }
 
@@ -212,7 +217,7 @@ class _Dispositivos extends ConsumerWidget {
 
     return Text(
       cuantos == 0
-          ? 'No hay ningun dispositivo registrado. Vuelve a activarlas desde '
+          ? 'No hay ningún dispositivo registrado. Vuelve a activarlas desde '
                 'el dispositivo en el que quieras recibirlas.'
           : '$cuantos ${cuantos == 1 ? "dispositivo registrado" : "dispositivos registrados"}.',
       style: Theme.of(context).textTheme.bodySmall,

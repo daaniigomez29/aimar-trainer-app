@@ -62,13 +62,13 @@ class ServicioPushWeb implements ServicioPush {
     if (clavePublicaVapid.isEmpty) {
       return const Failure(
         ErrorValidacion(
-          'Esta instalacion no tiene configurada la clave de notificaciones.',
+          'Esta instalación no tiene configurada la clave de notificaciones.',
         ),
       );
     }
     return _pedirSuscripcion(
       () => _suscribir(clavePublicaVapid),
-      contexto: 'la suscripcion al push',
+      contexto: 'la suscripción al push',
     );
   }
 
@@ -78,7 +78,7 @@ class ServicioPushWeb implements ServicioPush {
       // de JavaScript, y el build web (no `dart analyze`) es quien lo detecta.
       _pedirSuscripcion(
         () => _suscripcionActual(),
-        contexto: 'la suscripcion actual',
+        contexto: 'la suscripción actual',
       );
 
   @override

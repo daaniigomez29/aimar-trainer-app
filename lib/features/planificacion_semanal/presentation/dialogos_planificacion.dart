@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
@@ -27,7 +29,7 @@ Future<bool> confirmarEliminarPlanning({
     context: context,
     titulo: 'Eliminar el planning',
     mensaje: sesiones == 0
-        ? 'Este planning esta vacio. Se eliminara definitivamente.'
+        ? 'Este planning esta vacío. Se eliminara definitivamente.'
         : 'Se eliminara el planning completo: $sesiones '
               '${sesiones == 1 ? "sesion" : "sesiones"} y $ejercicios '
               '${ejercicios == 1 ? "ejercicio" : "ejercicios"} planificados.\n\n'
@@ -62,9 +64,9 @@ Future<bool> confirmarEliminarSesion({
 
   final confirmado = await _confirmar(
     context: context,
-    titulo: 'Eliminar la sesion',
+    titulo: 'Eliminar la sesión',
     mensaje: sesion.bloques.isEmpty
-        ? 'Se eliminara la sesion "${sesion.nombre}".'
+        ? 'Se eliminara la sesión "${sesion.nombre}".'
         : 'Se eliminara "${sesion.nombre}" con sus '
               '${sesion.bloques.length} '
               '${sesion.bloques.length == 1 ? "bloque" : "bloques"} y '
@@ -81,8 +83,8 @@ Future<bool> confirmarEliminarSesion({
   _avisar(
     context,
     resultado,
-    exito: 'Sesion eliminada.',
-    fallo: 'No se ha podido eliminar la sesion.',
+    exito: 'Sesión eliminada.',
+    fallo: 'No se ha podido eliminar la sesión.',
   );
   return resultado.esExito;
 }
@@ -134,7 +136,7 @@ Future<bool> confirmarEliminarEjercicio({
     titulo: 'Quitar el ejercicio',
     mensaje:
         'Se quitara "$nombre" de este bloque, con sus series planificadas.\n\n'
-        'El ejercicio sigue en la biblioteca: esto solo lo saca de aqui.',
+        'El ejercicio sigue en la biblioteca: esto solo lo saca de aquí.',
     textoBoton: 'Quitar',
   );
   if (!confirmado || !context.mounted) return false;
@@ -168,7 +170,7 @@ Future<void> alternarArchivadoPlanning({
       titulo: 'Archivar el planning',
       mensaje:
           'Un planning archivado se conserva completo para consulta, pero deja '
-          'de admitir cambios y el cliente no podra registrar resultados en el.',
+          'de admitir cambios y el cliente no podrá registrar resultados en el.',
       textoBoton: 'Archivar',
     );
     if (!confirmado || !context.mounted) return;
@@ -291,6 +293,7 @@ void _avisar(
 }) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
+      duration: Avisos.duracion,
       content: Text(
         resultado.esExito ? exito : (resultado.errorONulo?.mensaje ?? fallo),
       ),

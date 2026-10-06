@@ -69,7 +69,7 @@ final class ControladorRegistroSesionProvider
 }
 
 String _$controladorRegistroSesionHash() =>
-    r'a3bc5e7b186e969c9e84ba7b8702bdefe1184a05';
+    r'dbed5136bc5eb19a6d6b6246889b00397bab0979';
 
 /// Registro del resultado de una sesion (CU-20).
 ///

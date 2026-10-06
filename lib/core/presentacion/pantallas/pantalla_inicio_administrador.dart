@@ -22,11 +22,11 @@ class PantallaInicioAdministrador extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Administracion'),
+        title: const Text('Administración'),
         actions: [
           IconButton(
             key: const Key('boton_cerrar_sesion'),
-            tooltip: 'Cerrar sesion',
+            tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
             onPressed: () =>
                 ref.read(controladorSesionProvider.notifier).cerrarSesion(),

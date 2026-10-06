@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../ayudas/app_con_rutas.dart';
+
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
@@ -84,7 +90,37 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: contenedor,
-        child: const MaterialApp(home: PantallaBiblioteca()),
+        // Con las rutas anidadas igual que en la aplicación: el formulario
+        // cuelga de la biblioteca, así que al cerrarlo queda pantalla debajo.
+        child: appConRutas(
+          rutaInicial: Rutas.bibliotecaEntrenador,
+          rutas: [
+            GoRoute(
+              path: Rutas.bibliotecaEntrenador,
+              builder: (_, _) => const PantallaBiblioteca(),
+              routes: [
+                GoRoute(
+                  path: Rutas.nuevo,
+                  builder: (_, _) => const PantallaFormularioEjercicio(),
+                ),
+                GoRoute(
+                  path: Rutas.detalleEjercicio,
+                  builder: (_, estado) => PantallaFormularioEjercicio(
+                    idEjercicio: estado.pathParameters['idEjercicio'],
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: Rutas.editar,
+                      builder: (_, estado) => PantallaFormularioEjercicio(
+                        idEjercicio: estado.pathParameters['idEjercicio'],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -100,7 +136,7 @@ void main() {
     expect(
       find.text('Dar de baja el ejercicio'),
       findsOneWidget,
-      reason: 'deberia abrirse el dialogo de confirmacion',
+      reason: 'deberia abrirse el dialogo de confirmación',
     );
 
     await tester.tap(find.byKey(const Key('boton_confirmar_baja')));
@@ -108,6 +144,9 @@ void main() {
 
     verify(() => ejercicios.darDeBaja('id-1')).called(1);
     expect(find.text('Dar de baja el ejercicio'), findsNothing);
+    // El aviso con "Deshacer" se cierra con un temporizador propio: hay que
+    // dejarlo expirar o el test termina con un Timer pendiente.
+    await tester.pump(const Duration(seconds: 7));
   });
 
   testWidgets('CU-04: cancelar no da de baja', (tester) async {
@@ -121,7 +160,7 @@ void main() {
     verifyNever(() => ejercicios.darDeBaja(any()));
   });
 
-  testWidgets('CU-04: si esta en uso pide una confirmacion adicional', (
+  testWidgets('CU-04: si esta en uso pide una confirmación adicional', (
     tester,
   ) async {
     when(() => ejercicios.contarUsosEnPlanningsActivos(any()))
@@ -133,13 +172,16 @@ void main() {
     await tester.tap(find.byKey(const Key('boton_confirmar_baja')));
     await tester.pumpAndSettle();
 
-    expect(find.text('El ejercicio esta en uso'), findsOneWidget);
+    expect(find.text('El ejercicio está en uso'), findsOneWidget);
     verifyNever(() => ejercicios.darDeBaja(any()));
 
     await tester.tap(find.byKey(const Key('boton_confirmar_aviso')));
     await tester.pumpAndSettle();
 
     verify(() => ejercicios.darDeBaja('id-1')).called(1);
+    // El aviso con "Deshacer" se cierra con un temporizador propio: hay que
+    // dejarlo expirar o el test termina con un Timer pendiente.
+    await tester.pump(const Duration(seconds: 7));
   });
 
   testWidgets('el alta desde el listado llega al repositorio (CU-02)', (

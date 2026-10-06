@@ -57,7 +57,7 @@ final class ControladorFichaClienteProvider
 }
 
 String _$controladorFichaClienteHash() =>
-    r'0e6601b1dbe4fb89af5a3a8c18b29d8b7c4ca290';
+    r'81d992b30bd871bf49dd55f72ec473044bf1dafe';
 
 /// CU-17 (alta) y CU-19 (editar ficha).
 ///

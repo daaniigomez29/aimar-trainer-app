@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
 
 /// Los ejercicios previstos de una sesion, con lo que falta por registrar (CU-20).
 ///
@@ -30,7 +32,7 @@ class PantallaRegistroSesion extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Registrar sesion'),
+        title: const Text('Registrar sesión'),
         actions: [
           IconButton(
             tooltip: 'Recargar',
@@ -59,7 +61,7 @@ class PantallaRegistroSesion extends ConsumerWidget {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Esa sesion ya no existe.'),
+                child: Text('Esa sesión ya no existe.'),
               ),
             );
           }
@@ -102,8 +104,8 @@ class _Sesion extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           sesion.fechaRealizada == null
-              ? 'Dia ${sesion.orden}'
-              : 'Dia ${sesion.orden} · hecha el '
+              ? 'Día ${sesion.orden}'
+              : 'Día ${sesion.orden} · hecha el '
                     '${_comoFecha(sesion.fechaRealizada!)}',
           style: textos.bodyMedium,
         ),
@@ -122,7 +124,7 @@ class _Sesion extends StatelessWidget {
         else
           Text(
             pendientes == 0
-                ? 'Has registrado todos los ejercicios de esta sesion.'
+                ? 'Has registrado todos los ejercicios de esta sesión.'
                 : 'Te quedan $pendientes '
                       '${pendientes == 1 ? "ejercicio" : "ejercicios"} por '
                       'registrar.',
@@ -130,7 +132,7 @@ class _Sesion extends StatelessWidget {
           ),
         const Divider(height: 32),
         if (ejercicios.isEmpty)
-          const Text('Esta sesion no tiene ejercicios.')
+          const Text('Esta sesión no tiene ejercicios.')
         else
           for (final (bloque, ejercicio) in ejercicios)
             _FilaEjercicio(
@@ -185,15 +187,8 @@ class _FilaEjercicio extends StatelessWidget {
         trailing: habilitado ? const Icon(Icons.chevron_right) : null,
         enabled: habilitado,
         onTap: habilitado
-            ? () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PantallaRegistroEjercicio(
-                    ejercicio: ejercicio,
-                    planningId: planningId,
-                    clienteId: clienteId,
-                    sesion: sesion,
-                  ),
-                ),
+            ? () => context.go(
+                Rutas.registroDeEjercicio(planningId, sesion.id, ejercicio.id),
               )
             : null,
       ),

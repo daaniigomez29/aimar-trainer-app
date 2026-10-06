@@ -65,7 +65,7 @@ class ControladorRestablecerContrasena
     }
     if (contrasena != repeticion) {
       state = const EstadoAccion.conError(
-        ErrorValidacion('Las contrasenas no coinciden.', campo: 'repeticion'),
+        ErrorValidacion('Las contraseñas no coinciden.', campo: 'repeticion'),
       );
       return;
     }

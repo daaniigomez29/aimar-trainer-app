@@ -88,7 +88,7 @@ void main() {
       verifyNever(() => repositorio.darDeAlta(any()));
     });
 
-    test('devuelve el resultado del alta con la invitacion enviada', () async {
+    test('devuelve el resultado del alta con la invitación enviada', () async {
       when(() => repositorio.darDeAlta(any())).thenAnswer(
         (_) async => const Success(
           ResultadoAlta(clienteId: 'id-1', invitacionEnviada: true),
@@ -105,7 +105,7 @@ void main() {
       );
     });
 
-    test('el alta vale aunque la invitacion no haya salido', () async {
+    test('el alta vale aunque la invitación no haya salido', () async {
       // La ficha ya existe: fallar aqui obligaria a volver a darlo de alta.
       when(() => repositorio.darDeAlta(any())).thenAnswer(
         (_) async => const Success(

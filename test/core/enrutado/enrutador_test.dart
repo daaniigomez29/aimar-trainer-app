@@ -10,7 +10,7 @@ Perfil _perfil(RolUsuario rol) =>
     Perfil(id: 'id-1', rol: rol, creadoEn: DateTime.utc(2026));
 
 void main() {
-  group('destinoDeLaRedireccion · sesion sin resolver', () {
+  group('destinoDeLaRedireccion · sesión sin resolver', () {
     test('espera en la pantalla de carga', () {
       expect(
         destinoDeLaRedireccion(const SesionDesconocida(), Rutas.login),
@@ -29,7 +29,7 @@ void main() {
     });
   });
 
-  group('destinoDeLaRedireccion · sin sesion', () {
+  group('destinoDeLaRedireccion · sin sesión', () {
     test('deja pasar a las rutas publicas', () {
       for (final ruta in Rutas.publicas) {
         expect(destinoDeLaRedireccion(const SesionCerrada(), ruta), isNull);
@@ -48,8 +48,8 @@ void main() {
     });
   });
 
-  group('destinoDeLaRedireccion · invitacion aceptada (CU-17)', () {
-    test('fuerza la pantalla de fijar contrasena', () {
+  group('destinoDeLaRedireccion · invitación aceptada (CU-17)', () {
+    test('fuerza la pantalla de fijar contraseña', () {
       expect(
         destinoDeLaRedireccion(
           const SesionDebeFijarContrasena(),
@@ -59,7 +59,7 @@ void main() {
       );
     });
 
-    test('no la saca de ahi: sin contrasena no podria volver a entrar', () {
+    test('no la saca de ahi: sin contraseña no podria volver a entrar', () {
       expect(
         destinoDeLaRedireccion(const SesionDebeFijarContrasena(), Rutas.login),
         Rutas.restablecerContrasena,
@@ -74,7 +74,7 @@ void main() {
     });
   });
 
-  group('destinoDeLaRedireccion · recuperacion de contrasena (CU-24)', () {
+  group('destinoDeLaRedireccion · recuperación de contraseña (CU-24)', () {
     test('fuerza la pantalla de restablecer desde cualquier otra ruta', () {
       expect(
         destinoDeLaRedireccion(
@@ -96,7 +96,7 @@ void main() {
     });
   });
 
-  group('destinoDeLaRedireccion · sesion activa (CU-01, paso 6)', () {
+  group('destinoDeLaRedireccion · sesión activa (CU-01, paso 6)', () {
     test('lleva a cada rol a su pantalla principal', () {
       final esperado = {
         RolUsuario.entrenador: Rutas.inicioEntrenador,

@@ -89,7 +89,7 @@ void main() {
     });
   });
 
-  group('CU-06 crear sesion', () {
+  group('CU-06 crear sesión', () {
     final planning = planningDePrueba(fechaInicio: DateTime(2026, 10, 5));
 
     test('no llama al repositorio si falta el nombre', () async {
@@ -102,7 +102,7 @@ void main() {
       verifyNever(() => repositorio.crearSesion(any()));
     });
 
-    test('no llama al repositorio si ese dia ya existe', () async {
+    test('no llama al repositorio si ese día ya existe', () async {
       // Dos sesiones no pueden ocupar el mismo numero dentro del planning.
       final ocupado = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
@@ -118,7 +118,7 @@ void main() {
       verifyNever(() => repositorio.crearSesion(any()));
     });
 
-    test('crea con el siguiente numero libre', () async {
+    test('crea con el siguiente número libre', () async {
       when(() => repositorio.crearSesion(any()))
           .thenAnswer((_) async => Success(sesionDePrueba()));
 
@@ -132,7 +132,7 @@ void main() {
     });
   });
 
-  group('CU-08 anadir ejercicio: la exclusion se corta antes de la red', () {
+  group('CU-08 añadir ejercicio: la exclusion se corta antes de la red', () {
     final bloque = bloqueDePrueba();
 
     test('un Cardio sin minutos no llega al repositorio', () async {
@@ -180,7 +180,7 @@ void main() {
   });
 
   group('CU-13 a CU-16 eliminar', () {
-    test('elimina planning, sesion, bloque y ejercicio', () async {
+    test('elimina planning, sesión, bloque y ejercicio', () async {
       when(() => repositorio.eliminarPlanning(any()))
           .thenAnswer((_) async => const Success(null));
       when(() => repositorio.eliminarSesion(any()))
@@ -335,7 +335,7 @@ void main() {
     });
   });
 
-  test('una segunda operacion simultanea se rechaza', () async {
+  test('una segunda operación simultanea se rechaza', () async {
     when(() => repositorio.crearPlanning(any()))
         .thenAnswer((_) async => Success(planningDePrueba()));
     final datos = DatosPlanning(

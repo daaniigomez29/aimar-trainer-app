@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
@@ -11,8 +13,6 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_detalle_ejercicio.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/tarjeta_ejercicio.dart';
 
 /// Biblioteca de ejercicios (`docs/ui-design.md`, 6.4).
@@ -39,7 +39,8 @@ class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
 
   @override
   Widget build(BuildContext context) {
-    final esEntrenador = ref.watch(rolActualProvider)?.esEntrenador ?? false;
+    final rol = ref.watch(rolActualProvider);
+    final esEntrenador = rol?.esEntrenador ?? false;
     final ejercicios = ref.watch(ejerciciosFiltradosProvider);
     // Se observa, aunque no se use su valor aqui, para que el provider siga vivo
     // mientras esta pantalla lo esta: el flujo de baja de CU-04 pasa por dos
@@ -103,11 +104,10 @@ class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, indice) => TarjetaEjercicio(
                       ejercicio: lista[indice],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => PantallaDetalleEjercicio(
-                            idEjercicio: lista[indice].id,
-                          ),
+                      onTap: () => context.go(
+                        Rutas.ejercicioDeLaBiblioteca(
+                          rol ?? RolUsuario.cliente,
+                          lista[indice].id,
                         ),
                       ),
                       onEditar: esEntrenador
@@ -167,14 +167,14 @@ Future<void> abrirFormularioEjercicio(
   Ejercicio? ejercicio,
 }) async {
   ref.read(controladorFormularioEjercicioProvider.notifier).reiniciar();
-  await Navigator.of(context).push<Ejercicio>(
-    MaterialPageRoute(
-      builder: (_) => PantallaFormularioEjercicio(ejercicio: ejercicio),
-    ),
+  context.go(
+    ejercicio == null
+        ? Rutas.nuevoEjercicio()
+        : Rutas.editarEjercicio(ejercicio.id),
   );
 }
 
-/// "13 ejercicios · 4 con video de ejemplo", contando lo que hay de verdad.
+/// "13 ejercicios · 4 con vídeo de ejemplo", contando lo que hay de verdad.
 class _Resumen extends StatelessWidget {
   const _Resumen({required this.ejercicios});
 
@@ -189,7 +189,7 @@ class _Resumen extends StatelessWidget {
     return Text(
       [
         '${lista.length} ${lista.length == 1 ? "ejercicio" : "ejercicios"}',
-        if (conVideo > 0) '$conVideo con video de ejemplo',
+        if (conVideo > 0) '$conVideo con vídeo de ejemplo',
       ].join(' · '),
       style: Theme.of(context).textTheme.bodySmall,
     );
@@ -235,10 +235,9 @@ class _ChipsDeGrupo extends ConsumerWidget {
             const SizedBox(width: 8),
             ChipFiltro(
               etiqueta: 'Dados de baja',
-              activo: filtro.incluirEliminados,
-              onPulsar: () => notificador.alternarEliminados(
-                incluir: !filtro.incluirEliminados,
-              ),
+              activo: filtro.soloEliminados,
+              onPulsar: () =>
+                  notificador.alternarEliminados(solo: !filtro.soloEliminados),
             ),
           ],
           const SizedBox(width: Tokens.margenPantalla),
@@ -261,10 +260,10 @@ class _SinResultados extends ConsumerWidget {
     return _Mensaje(
       icono: Icons.search_off,
       texto: conFiltro
-          ? 'Ningun ejercicio coincide con la busqueda.'
+          ? 'Ningún ejercicio coincide con la búsqueda.'
           : esEntrenador
-          ? 'La biblioteca esta vacia. Anade el primer ejercicio.'
-          : 'Tu entrenador todavia no ha anadido ejercicios.',
+          ? 'La biblioteca está vacía. Añade el primer ejercicio.'
+          : 'Tu entrenador todavía no ha añadido ejercicios.',
       accion: conFiltro
           ? TextButton(
               onPressed: () =>

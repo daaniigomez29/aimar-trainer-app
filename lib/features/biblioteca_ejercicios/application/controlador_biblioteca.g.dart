@@ -101,7 +101,7 @@ final class FiltroBibliotecaProvider
   }
 }
 
-String _$filtroBibliotecaHash() => r'c1702076c59621e4887d64d9f0b11a144c422ce9';
+String _$filtroBibliotecaHash() => r'86bdf065da7450e5f3eab265c1304214e6940c3e';
 
 /// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
 

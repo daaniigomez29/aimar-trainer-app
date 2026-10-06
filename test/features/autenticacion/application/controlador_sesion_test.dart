@@ -46,14 +46,14 @@ void main() {
   /// Deja que el evento recorra el stream y que se resuelva el perfil.
   Future<void> procesarEventos() => Future<void>.delayed(Duration.zero);
 
-  test('arranca sin saber si hay sesion', () {
+  test('arranca sin saber si hay sesión', () {
     expect(
       contenedor.read(controladorSesionProvider),
       isA<SesionDesconocida>(),
     );
   });
 
-  test('resuelve el perfil al iniciarse la sesion', () async {
+  test('resuelve el perfil al iniciarse la sesión', () async {
     when(() => repositorio.idUsuarioActual).thenReturn('id-cliente');
     when(() => repositorio.perfilDeLaSesion())
         .thenAnswer((_) async => Success(_perfilCliente));
@@ -82,7 +82,7 @@ void main() {
     expect(contenedor.read(rolActualProvider), isNull);
   });
 
-  test('el cierre de sesion deja el estado en SesionCerrada', () async {
+  test('el cierre de sesión deja el estado en SesionCerrada', () async {
     contenedor.listen(controladorSesionProvider, (_, _) {});
 
     eventos.add(EventoAutenticacion.sesionCerrada);
@@ -93,7 +93,7 @@ void main() {
   });
 
   test(
-    'el enlace de recuperacion abre el estado de recuperacion (CU-24)',
+    'el enlace de recuperación abre el estado de recuperación (CU-24)',
     () async {
       contenedor.listen(controladorSesionProvider, (_, _) {});
 
@@ -125,7 +125,7 @@ void main() {
   });
 
   test(
-    'renovar el token no vuelve a pedir el perfil si ya hay sesion',
+    'renovar el token no vuelve a pedir el perfil si ya hay sesión',
     () async {
       when(() => repositorio.idUsuarioActual).thenReturn('id-cliente');
       when(() => repositorio.perfilDeLaSesion())
@@ -163,7 +163,7 @@ void main() {
   });
 
   group('CU-17: cliente recien invitado', () {
-    test('no entra en la app: va a fijar contrasena', () async {
+    test('no entra en la app: va a fijar contraseña', () async {
       // GoTrue emite `signedIn` para un enlace de invitacion, igual que para un
       // login normal. Sin distinguirlo, el cliente entraria sin contrasena y
       // despues no podria volver a entrar nunca.
@@ -182,7 +182,7 @@ void main() {
       verifyNever(() => repositorio.perfilDeLaSesion());
     });
 
-    test('tras fijar la contrasena ya entra con normalidad', () async {
+    test('tras fijar la contraseña ya entra con normalidad', () async {
       when(() => repositorio.idUsuarioActual).thenReturn('id-invitado');
       when(() => repositorio.debeFijarContrasena).thenReturn(true);
       when(() => repositorio.perfilDeLaSesion())

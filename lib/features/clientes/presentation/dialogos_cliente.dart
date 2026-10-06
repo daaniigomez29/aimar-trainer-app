@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/features/clientes/application/controlador_ficha_cliente.dart';
@@ -19,10 +21,10 @@ Future<void> confirmarBajaCliente({
     builder: (contexto) => AlertDialog(
       title: const Text('Dar de baja al cliente'),
       content: Text(
-        'Se dara de baja a ${cliente.nombre}.\n\n'
+        'Se dará de baja a ${cliente.nombre}.\n\n'
         'No se borra nada: su historico se conserva completo y seguiras '
         'pudiendo consultarlo. Lo que ocurre es que pierde el acceso a la '
-        'aplicacion y no recibira plannings nuevos.',
+        'aplicación y no recibira plannings nuevos.',
       ),
       actions: [
         TextButton(
@@ -58,11 +60,11 @@ Future<void> confirmarBajaCliente({
         ),
         content: Text(
           plannings == null
-              ? 'No se ha podido comprobar si ${cliente.nombre} tiene algun '
+              ? 'No se ha podido comprobar si ${cliente.nombre} tiene algún '
                     'planning activo. Puedes continuar de todas formas.'
               : '${cliente.nombre} tiene $plannings '
                     '${plannings == 1 ? "planning activo" : "plannings activos"} '
-                    'en curso. Al darle de baja perdera el acceso y no podra '
+                    'en curso. Al darle de baja perderá el acceso y no podrá '
                     'registrar los resultados que falten.',
         ),
         actions: [
@@ -88,9 +90,10 @@ Future<void> confirmarBajaCliente({
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
+      duration: Avisos.duracion,
       content: Text(
         resultado.esExito
-            ? '${cliente.nombre} esta de baja y ya no puede acceder.'
+            ? '${cliente.nombre} está de baja y ya no puede acceder.'
             : resultado.errorONulo?.mensaje ?? 'No se ha podido dar de baja.',
       ),
     ),

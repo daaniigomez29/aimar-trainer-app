@@ -46,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('muestra los campos de acceso y el enlace de recuperacion', (
+  testWidgets('muestra los campos de acceso y el enlace de recuperación', (
     tester,
   ) async {
     await montar(tester);
@@ -54,7 +54,7 @@ void main() {
     expect(find.byKey(const Key('campo_correo')), findsOneWidget);
     expect(find.byKey(const Key('campo_contrasena')), findsOneWidget);
     expect(find.text('Acceder'), findsOneWidget);
-    expect(find.text('He olvidado mi contrasena'), findsOneWidget);
+    expect(find.text('He olvidado mi contraseña'), findsOneWidget);
   });
 
   testWidgets('valida el correo sin llamar al repositorio', (tester) async {
@@ -118,7 +118,7 @@ void main() {
     expect(find.text(const ErrorCuentaNoDisponible().mensaje), findsOneWidget);
   });
 
-  testWidgets('envia las credenciales al repositorio', (tester) async {
+  testWidgets('envía las credenciales al repositorio', (tester) async {
     when(
       () => repositorio.iniciarSesion(
         correo: any(named: 'correo'),
@@ -149,14 +149,14 @@ void main() {
     ).called(1);
   });
 
-  testWidgets('la contrasena se oculta y se puede revelar', (tester) async {
+  testWidgets('la contraseña se oculta y se puede revelar', (tester) async {
     await montar(tester);
 
     TextField campo() =>
         tester.widget<TextField>(find.byKey(const Key('campo_contrasena')));
     expect(campo().obscureText, isTrue);
 
-    await tester.tap(find.byTooltip('Mostrar contrasena'));
+    await tester.tap(find.byTooltip('Mostrar contraseña'));
     await tester.pump();
 
     expect(campo().obscureText, isFalse);

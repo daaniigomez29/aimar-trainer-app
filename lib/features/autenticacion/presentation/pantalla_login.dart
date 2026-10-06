@@ -67,7 +67,7 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
           onChanged: (_) => controlador.limpiarError(),
           onSubmitted: (_) => _enviar(),
           decoration: InputDecoration(
-            labelText: 'Contrasena',
+            labelText: 'Contraseña',
             errorText: estado.errorDelCampo('contrasena'),
             suffixIcon: IconButton(
               onPressed: () => setState(() {
@@ -77,8 +77,8 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
                 _contrasenaVisible ? Icons.visibility_off : Icons.visibility,
               ),
               tooltip: _contrasenaVisible
-                  ? 'Ocultar contrasena'
-                  : 'Mostrar contrasena',
+                  ? 'Ocultar contraseña'
+                  : 'Mostrar contraseña',
             ),
           ),
         ),
@@ -98,8 +98,8 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
         TextButton(
           onPressed: estado.enCurso
               ? null
-              : () => context.push(Rutas.recuperarContrasena),
-          child: const Text('He olvidado mi contrasena'),
+              : () => context.go(Rutas.recuperarContrasena),
+          child: const Text('He olvidado mi contraseña'),
         ),
       ],
     );

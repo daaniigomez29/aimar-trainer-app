@@ -113,7 +113,7 @@ void main() {
       ],
     );
 
-    test('devuelve las series ordenadas y con la fecha de aquel dia', () {
+    test('devuelve las series ordenadas y con la fecha de aquel día', () {
       final referencias = referenciasDelDia(anterior: semanaPasada(), orden: 1);
 
       final press = referencias['ej-press']!;
@@ -124,7 +124,7 @@ void main() {
       expect(press.esSemanaAnterior, isTrue);
     });
 
-    test('se cruza por ejercicio, no por posicion', () {
+    test('se cruza por ejercicio, no por posición', () {
       // El mismo ejercicio, movido a otro bloque y a otro orden.
       final movido = planningDePrueba(
         id: 'p-ant',
@@ -204,7 +204,7 @@ void main() {
       expect(cinta?.tieneAlgo, isTrue);
     });
 
-    test('si aquella semana no tenia ese Dia N, no hay nada', () {
+    test('si aquella semana no tenia ese Día N, no hay nada', () {
       expect(referenciasDelDia(anterior: semanaPasada(), orden: 3), isEmpty);
     });
   });

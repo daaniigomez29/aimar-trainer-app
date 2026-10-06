@@ -335,7 +335,7 @@ final class ControladorNotificacionesProvider
 }
 
 String _$controladorNotificacionesHash() =>
-    r'd7441440db5ff22a32e3556619cf1f73a5e0a471';
+    r'636470970d5cedc14c41b073a4888fd67ce75a48';
 
 /// Activar y desactivar el push del cliente (CU-22).
 ///

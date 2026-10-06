@@ -53,7 +53,7 @@ class ControladorFichaCliente extends _$ControladorFichaCliente {
     required DatosCliente datos,
   }) async {
     if (state.enCurso) {
-      return const Failure(ErrorValidacion('Ya hay una edicion en curso.'));
+      return const Failure(ErrorValidacion('Ya hay una edición en curso.'));
     }
     final errorValidacion = datos.validar();
     if (errorValidacion != null) {

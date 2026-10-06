@@ -97,13 +97,13 @@ class DatosEjercicio {
     final valor = descripcion.trim();
     if (valor.isEmpty) {
       return const ErrorValidacion(
-        'La descripcion es obligatoria: explica como se ejecuta.',
+        'La descripción es obligatoria: explica como se ejecuta.',
         campo: 'descripcion',
       );
     }
     if (valor.length > longitudMaximaDescripcion) {
       return const ErrorValidacion(
-        'La descripcion no puede pasar de '
+        'La descripción no puede pasar de '
         '$longitudMaximaDescripcion caracteres.',
         campo: 'descripcion',
       );
@@ -125,7 +125,7 @@ class DatosEjercicio {
         (uri.host.isNotEmpty);
     if (!esValida) {
       return const ErrorValidacion(
-        'El enlace del video debe empezar por http:// o https://.',
+        'El enlace del vídeo debe empezar por http:// o https://.',
         campo: 'videoEjemploUrl',
       );
     }

@@ -95,7 +95,7 @@ void main() {
   });
 
   group('DatosEjercicioPlanificado: series', () {
-    test('rechaza dos series con el mismo numero', () {
+    test('rechaza dos series con el mismo número', () {
       final datos = datosEjercicio(
         tipo: TipoEjercicio.fuerza,
         series: [
@@ -167,7 +167,7 @@ void main() {
     });
   });
 
-  group('DatosSesion: la sesion se numera dentro del planning', () {
+  group('DatosSesion: la sesión se numera dentro del planning', () {
     final planning = planningDePrueba(fechaInicio: DateTime(2026, 10, 5));
 
     test('el nombre es obligatorio', () {
@@ -181,14 +181,14 @@ void main() {
       );
     });
 
-    test('el numero de dia empieza en 1', () {
+    test('el número de día empieza en 1', () {
       expect(
         DatosSesion.validarOrdenLibre(orden: 0, planning: planning)?.campo,
         'orden',
       );
     });
 
-    test('rechaza un numero que ya tiene otra sesion', () {
+    test('rechaza un número que ya tiene otra sesión', () {
       final conSesion = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
         sesiones: [sesionDePrueba(id: 's-1', orden: 2)],
@@ -200,7 +200,7 @@ void main() {
       );
     });
 
-    test('al editar, su propio numero no cuenta como ocupado', () {
+    test('al editar, su propio número no cuenta como ocupado', () {
       final conSesion = planningDePrueba(
         fechaInicio: DateTime(2026, 10, 5),
         sesiones: [sesionDePrueba(id: 's-1', orden: 2)],
@@ -216,7 +216,7 @@ void main() {
       );
     });
 
-    test('siguienteOrden propone el numero que toca', () {
+    test('siguienteOrden propone el número que toca', () {
       final conDos = planningDePrueba(
         sesiones: [
           sesionDePrueba(id: 's-1', orden: 1),
@@ -233,7 +233,7 @@ void main() {
     });
   });
 
-  group('DatosBloque: orden dentro de la sesion', () {
+  group('DatosBloque: orden dentro de la sesión', () {
     test('rechaza un orden ya ocupado', () {
       final sesion = sesionDePrueba(
         bloques: [bloqueDePrueba(id: 'b-1', orden: 1)],
@@ -259,7 +259,7 @@ void main() {
   group('SemanaDelPlanning', () {
     final planning = planningDePrueba(fechaInicio: DateTime(2026, 10, 5));
 
-    test('son siete dias, del inicio al inicio + 6', () {
+    test('son siete días, del inicio al inicio + 6', () {
       expect(planning.dias, hasLength(7));
       expect(planning.dias.first, DateTime(2026, 10, 5));
       expect(planning.dias.last, DateTime(2026, 10, 11));
@@ -274,7 +274,7 @@ void main() {
       expect(enMiercoles.contiene(DateTime(2026, 10, 13)), isTrue);
     });
 
-    test('sesionNumero encuentra la sesion por su dia', () {
+    test('sesionNumero encuentra la sesión por su día', () {
       final conSesion = planningDePrueba(
         sesiones: [sesionDePrueba(id: 's-1', orden: 3)],
       );

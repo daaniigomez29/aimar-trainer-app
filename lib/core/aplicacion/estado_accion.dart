@@ -55,5 +55,5 @@ class EstadoAccion {
 
   @override
   String toString() =>
-      'EstadoAccion(enCurso: $enCurso, completada: $completada, error: $error)';
+      'Estadoacción(enCurso: $enCurso, completada: $completada, error: $error)';
 }

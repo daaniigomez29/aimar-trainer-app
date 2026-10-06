@@ -105,7 +105,7 @@ class DatosCliente {
     final valor = correo.trim();
     if (valor.isEmpty) {
       return const ErrorValidacion(
-        'El correo es obligatorio: por ahi se envia la invitacion.',
+        'El correo es obligatorio: por ahi se envía la invitación.',
         campo: 'correo',
       );
     }

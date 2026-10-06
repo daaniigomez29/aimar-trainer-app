@@ -63,7 +63,7 @@ class ControladorNotificaciones extends _$ControladorNotificaciones {
 
   Future<Result<bool>> activar(String clienteId) async {
     if (state.enCurso) {
-      return const Failure(ErrorValidacion('Ya hay una operacion en curso.'));
+      return const Failure(ErrorValidacion('Ya hay una operación en curso.'));
     }
 
     final servicio = ref.read(servicioPushProvider);
@@ -118,7 +118,7 @@ class ControladorNotificaciones extends _$ControladorNotificaciones {
 
   Future<Result<bool>> desactivar(String clienteId) async {
     if (state.enCurso) {
-      return const Failure(ErrorValidacion('Ya hay una operacion en curso.'));
+      return const Failure(ErrorValidacion('Ya hay una operación en curso.'));
     }
     state = const EstadoAccion.enCurso();
 

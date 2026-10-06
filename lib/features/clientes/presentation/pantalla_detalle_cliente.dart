@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
@@ -7,9 +10,6 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_fich
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/dialogos_cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_plannings_cliente.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_control_semanal.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_progreso.dart';
 
 /// Ficha completa de un cliente. El entrenador puede editarla y dar de baja.
 class PantallaDetalleCliente extends ConsumerWidget {
@@ -97,14 +97,9 @@ class _Contenido extends ConsumerWidget {
               key: const Key('acceso_plannings'),
               leading: const Icon(Icons.calendar_month),
               title: const Text('Plannings'),
-              subtitle: const Text('Planificacion semanal e historico'),
+              subtitle: const Text('Planificación semanal e historico'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      PantallaPlanningsCliente(clienteId: cliente.id),
-                ),
-              ),
+              onTap: () => context.go(Rutas.planningsDeCliente(cliente.id)),
             ),
           ),
           Card(
@@ -112,15 +107,15 @@ class _Contenido extends ConsumerWidget {
               key: const Key('acceso_progreso'),
               leading: const Icon(Icons.show_chart),
               title: const Text('Progreso'),
-              subtitle: const Text('Evolucion por ejercicio y medidas'),
+              subtitle: const Text('Evolución por ejercicio y medidas'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PantallaProgreso(
-                    clienteId: cliente.id,
-                    titulo: cliente.nombre,
-                  ),
-                ),
+              // El nombre viaja en la consulta para que el título siga saliendo
+              // al entrar por la URL, donde no hay objeto que pasar.
+              onTap: () => context.go(
+                Uri(
+                  path: Rutas.progresoDeCliente(cliente.id),
+                  queryParameters: {'nombre': cliente.nombre},
+                ).toString(),
               ),
             ),
           ),
@@ -135,15 +130,9 @@ class _Contenido extends ConsumerWidget {
                   'Medidas, fotos y check-in (solo consulta)',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PantallaControlSemanal(
-                      clienteId: cliente.id,
-                      // El entrenador consulta; registrar es del cliente.
-                      soloLectura: true,
-                    ),
-                  ),
-                ),
+                // El entrenador consulta; registrar es del cliente (la ruta
+                // entra en modo solo lectura).
+                onTap: () => context.go(Rutas.controlDeCliente(cliente.id)),
               ),
             ),
           ),
@@ -158,7 +147,7 @@ class _Contenido extends ConsumerWidget {
             valor: '${_sinCerosSobrantes(peso)} kg',
           ),
         _Dato(
-          etiqueta: 'Dia de control',
+          etiqueta: 'Día de control',
           valor: cliente.diaControlPreferido.etiqueta,
         ),
         _Dato(etiqueta: 'Alta', valor: _comoFecha(cliente.fechaAlta)),
@@ -191,7 +180,7 @@ class _Contenido extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Este cliente esta de baja: no puede acceder a la aplicacion. '
+                'Este cliente está de baja: no puede acceder a la aplicación. '
                 'Su historico se conserva completo.',
               ),
             ),

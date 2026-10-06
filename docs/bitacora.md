@@ -1193,3 +1193,207 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   es que el runtime de Vercel traiga `xz` para `tar -xJ`; si fallara ahi, la
   alternativa es clonar el SDK con git, que seguro esta disponible.
 
+### 2026-10-06
+
+**Corregido:**
+
+- **Ortografía de todos los textos que ve el usuario.** Estaban escritos sin
+  tildes y con `n` en lugar de `ñ`: "Anadir", "Dia 1", "sesion", "contrasena",
+  "Configuracion", "video"… Corregidos **169 literales** en `lib/` y 111 en los
+  tests, que buscaban esos mismos textos y habrían empezado a fallar.
+- Se corrigió solo el **interior de los literales**, nunca identificadores: las
+  claves de widget (`Key('anadir_bloque_…')`), los nombres de columna y los
+  `viewType` siguen igual, porque cambiarlos rompería claves de test y consultas.
+  La regla: un literal sin espacios y en minúscula se deja tal cual.
+- **Dos trampas del arreglo automático**, vistas al revisar el primer intento (se
+  revirtió entero y se rehízo):
+  - `'$titulo'` dentro de un literal es una **interpolación**, no texto: al
+    "corregirla" pasaba a `$título`, una variable que no existe. Ahora las
+    interpolaciones se protegen antes de tocar nada.
+  - `'video-ejemplo-${url.hashCode}'` es el identificador de una vista de
+    plataforma, no una etiqueta: también quedaba fuera.
+- Las palabras ambiguas se revisaron **a mano**, una por una: "La biblioteca
+  esta vacía" → "está"; "Como se ejecuta" y "Como te avisamos" → "Cómo" (son
+  interrogativas indirectas). En cambio "Como máximo", "esta semana" y "mayor
+  que cero" estaban bien y se dejaron.
+- **Los correos** (invitación, semana nueva y control semanal) también se
+  corrigieron: los lee el cliente igual que la pantalla.
+- **La PWA seguía con los valores por defecto de Flutter**: el `manifest.json` y
+  el `index.html` decían `aimar_trainer_app` y "A new Flutter project", que es lo
+  que se ve en la pestaña del navegador y al instalar la aplicación. Ahora es
+  "Aimar Trainer" con su descripción, y los colores del tema en vez del azul de
+  la plantilla.
+
+**Pendiente / notas:**
+
+- Verificado en la app compilada: acceso ("Contraseña"), planificación
+  ("Planificación", "Día 1 · Empuje", "Añadir ejercicio") y biblioteca
+  ("17 ejercicios · 1 con vídeo de ejemplo"). `dart analyze --fatal-infos`
+  limpio y `flutter test` **353** en verde.
+- **Los comentarios del código y la documentación siguen sin tildes**. No se han
+  tocado a propósito: es un cambio enorme y ruidoso que conviene decidir aparte,
+  no mezclado con el de la interfaz.
+
+**Corregido (CORS al dar de baja en produccion):**
+
+- El sintoma era `preflight ... does not have HTTP ok status` desde el dominio de
+  Vercel. **La causa no era el CORS**: `crear-cliente` y `dar-de-baja-cliente`
+  **no estan desplegadas** en la nube (comprobado con `supabase functions list`:
+  solo esta `enviar-recordatorios`). El preflight recibe un 404 y el navegador lo
+  cuenta como fallo de CORS.
+- Aun asi, en cuanto se desplieguen se habrian encontrado con el **segundo**
+  problema: `verify_jwt` estaba activo para esas dos funciones, y el preflight no
+  lleva `Authorization`, asi que la plataforma lo rechaza con 401 antes de llegar
+  al codigo. Añadido `verify_jwt = false` en `config.toml` para ambas. No abre
+  nada: `autorizarGestorDeClientes` valida el JWT y el rol, que es mas de lo que
+  comprueba la plataforma.
+- **CORS con varios origenes**, como se pidio: `APP_BASE_URL` acepta una lista
+  separada por comas (Vercel y `aimartrainer.com`). `Access-Control-Allow-Origin`
+  solo admite un valor, nunca una lista, asi que se mira el `Origin` de cada
+  peticion y se devuelve ese, con `Vary: Origin` para que ninguna cache sirva a un
+  dominio la respuesta del otro.
+- Las cabeceras se ponen ahora en **un solo sitio**, `servirConCors`, que envuelve
+  el manejador de las tres funciones. Antes cada respuesta las llevaba pegadas, y
+  el origen permitido depende de cada peticion: con treinta llamadas a
+  `respuestaJson`/`respuestaError` habria sido pasarles el `Request` a todas.
+- **Efecto colateral cazado a tiempo**: `APP_BASE_URL` tambien es el enlace de los
+  correos de invitacion y de recordatorio. Con una lista separada por comas esos
+  enlaces habrian quedado rotos, asi que ahora salen de `urlBaseApp()`, que
+  devuelve el primero. Comprobado en Mailpit: los correos llevan
+  `http://127.0.0.1:54330/#/cliente`, no la lista.
+
+**Pendiente / notas:**
+
+- Verificado sirviendo las funciones de verdad: el preflight responde **204** y
+  cada origen permitido recibe el suyo; uno desconocido recibe otro distinto y el
+  navegador lo bloquearia. `./scripts/probar_local.sh` **176/177** (el que falla
+  es el salto de pg_cron por Kong, porque el contenedor del edge runtime volvio a
+  no arrancar: trampa 23).
+- **Lo que falta para que funcione en produccion** no es codigo: desplegar las dos
+  funciones y poner `APP_BASE_URL` con los dos dominios.
+
+**Corregido (tres bugs vistos en producción):**
+
+- **El "Deshacer" del aviso de baja no hacía nada.** Desde el listado sí
+  funcionaba; desde la ficha del ejercicio no, y esa es la diferencia: la ficha
+  hace `pop` al dar de baja, así que cuando el usuario pulsaba, el
+  `BuildContext` con el que se había lanzado el aviso ya estaba muerto y la
+  reactivación salía por un `if (!context.mounted) return` **sin decir nada**.
+  - Arreglado capturando, con la pantalla aún viva, el `ScaffoldMessengerState`
+    (vive en el `MaterialApp`) y el `ProviderContainer` (vive con la aplicación).
+    El botón ya no depende del `context` ni del `ref` de quien lo lanzó.
+  - Test nuevo que reproduce justo eso: lanza la baja desde una pantalla que se
+    cierra a continuación y comprueba que el botón sigue reactivando.
+- **Los avisos tardaban cuatro segundos** (el valor por defecto de Flutter) y uno
+  llegaba a ocho. Ahora **tres**, desde `Avisos.duracion`, en los 30 `SnackBar`
+  de la aplicación. El tema no sirve para esto: `SnackBarThemeData` no tiene
+  duración, de ahí la clase nueva en `core/presentacion/widgets/avisos.dart`.
+  - Los que ofrecen **Deshacer** duran seis: en tres segundos no da tiempo a leer
+    y decidir, y al irse el aviso se va la única forma de echar atrás.
+- **El filtro "Dados de baja" mostraba todo.** Se llamaba `incluirEliminados` y
+  hacía exactamente eso, incluirlos **además** de los activos. Pasa a
+  `soloEliminados` (y `soloBajas` en clientes): con el chip puesto se ven las
+  bajas y nada más; sin él, solo los activos. Mismo arreglo en las dos pantallas.
+
+**Hecho (segunda pasada de ortografía):**
+
+- Repasando la aplicación aparecieron más faltas que la primera pasada no cubría:
+  futuros (`se dara`, `podra`, `seguira`, `conservaran`), infinitivos con
+  pronombre (`anadirse`), `todavia`, `ningun`, `busqueda`, `cuadriceps` y los
+  `esta` que son el verbo `está`.
+- Para las terminaciones se añadió una **regla general**: toda palabra acabada en
+  `-cion`/`-sion` lleva tilde (`acción`, `dirección`, `versión`), y en plural no
+  (`acciones`), que es lo que cubre los casos que queden sin enumerar.
+- Los `esta` se revisaron **uno a uno**: "esta semana" es demostrativo y no lleva
+  tilde, "la biblioteca está vacía" sí. Un reemplazo automático se habría
+  equivocado en la mitad.
+
+**Pendiente / notas:**
+
+- Verificado en la aplicación compilada: el filtro de bajas deja **1 ejercicio**
+  (solo el dado de baja) y **ningún** cliente cuando no hay bajas; el "Deshacer"
+  reactiva y la lista se actualiza. `flutter test` **355**, `dart analyze
+  --fatal-infos` limpio.
+- Al arreglar la duración, un primer script automático destrozó once ficheros
+  (duplicó cada `SnackBar` y metió `duration:` en `showSnackBar`). Se revirtieron
+  y se rehízo con un reemplazo simple; conviene recordar que `showSnackBar(`
+  contiene `SnackBar(` como subcadena, que fue justo el fallo.
+
+**Corregido (el atrás del navegador no volvía donde tocaba):**
+
+- Sintoma: entrar en un ejercicio o en la ficha de un cliente y pulsar atras
+  llevaba a la planificacion o a los ajustes, segun donde hubieras estado antes.
+- Causa: las pantallas de detalle y los formularios se abrian con
+  `Navigator.push` imperativo (21 sitios, 11 ficheros, 4 features). En web eso
+  **no deja entrada en el historial**, asi que el atras del navegador retrocedia
+  a la ultima ruta de go_router. La flecha de la cabecera si funcionaba, por eso
+  solo fallaba el del navegador y el gesto atras del movil.
+- Ahora **todo son rutas**: `/entrenador/ejercicios/:id`,
+  `/entrenador/clientes/:id` y lo que cuelga de la ficha (plannings, progreso,
+  control), el planning del cliente con su registro de sesion y de ejercicio, y
+  el formulario de un ejercicio dentro de un bloque.
+- **Hubo que cambiar `context.push` por `context.go`.** Con `push` la URL del
+  navegador **no cambia**, asi que el refactor no habria arreglado nada: se vio
+  probando la app ya convertida y comprobando `window.location.hash`, que seguia
+  en la ruta anterior. Ninguna de esas llamadas usaba el valor devuelto, asi que
+  el cambio fue directo.
+- Las pantallas que recibian objetos (los dos formularios, el formulario de
+  ejercicio planificado y el registro de ejercicio) ahora los resuelven por `id`:
+  los dos primeros con sus providers, y los otros con `ResolverDelPlanning`, que
+  carga el planning y saca de el el bloque, la sesion o el ejercicio.
+- `pantalla_planning` sirve a los dos roles y el planning cuelga de sitios
+  distintos, asi que construye las rutas de lo que abre a partir de
+  `GoRouterState.of(context).uri.path`, la ruta por la que se ha llegado.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador: desde el detalle de un ejercicio, el atras vuelve a
+  la **Biblioteca**; y entrando directamente por
+  `#/entrenador/clientes/<id>` se pinta la ficha entera, que es lo que antes era
+  imposible (recargar te echaba a la planificacion).
+- Los tests de pantalla que navegan necesitan ahora un router: se anade
+  `test/ayudas/app_con_rutas.dart`. **Las rutas del test deben ir anidadas igual
+  que en la app**: con rutas hermanas, cerrar un formulario vacia la pila y el
+  test falla por algo que no pasa en la aplicacion.
+- `flutter test` **356**, `dart analyze --fatal-infos` limpio, `flutter build
+  web` compila.
+
+
+**Corregido (no se podían añadir ni quitar series a un ejercicio ya añadido):**
+
+- Sintoma: en la pantalla de planificacion del entrenador, la cuadricula de
+  series deja escribir kg, reps y RIR, pero el numero de series queda fijado al
+  anadir el ejercicio. Si al final sobraba una serie, no habia forma de quitarla.
+- Causa: el formulario que si sabe hacerlo (`PantallaFormularioEjercicioPlanificado`,
+  CU-08 y CU-12) ya aceptaba un ejercicio previo y su ruta de edicion existia,
+  pero **a esa pantalla no se llegaba desde la planificacion**: la fila del
+  ejercicio solo tenia la X de quitarlo del bloque. En Cardio era aun mas visible,
+  porque los minutos tampoco se editan en la cuadricula.
+- Ahora cada ejercicio lleva un boton de editar a la izquierda de la X, que abre
+  ese mismo formulario con sus datos (`Rutas.editarEjercicioDelBloque`). No hay
+  logica nueva de guardado: es la de siempre.
+- **Anadir y editar han dejado de estar anidadas**: la ruta de editar colgaba de
+  la de anadir, asi que al guardar (o al pulsar atras) el entrenador aparecia en
+  un formulario de "Anadir ejercicio" vacio en vez de volver al planning. Ahora
+  son rutas hermanas, en los tres sitios donde se declaran.
+- `_EjercicioEditable` recarga sus filas con `didUpdateWidget` cuando las series
+  cambian por detras, y avisa al padre para que **olvide lo pendiente** de ese
+  ejercicio. Sin eso, al volver del formulario la cuadricula seguia enseñando lo
+  de antes y "Guardar cambios" lo habria escrito encima de lo recien guardado.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador contra Supabase local: desde el planning se edita
+  "Sentadilla trasera", se le anade una serie, se guarda (vuelve a `#/entrenador`)
+  y la cuadricula pasa a dos series; al quitarla, vuelve a una.
+- `flutter test` **359** (tres nuevos sobre el formulario en modo edicion),
+  `dart analyze --fatal-infos` limpio.
+
+### 2026-10-07
+
+**Hecho:**
+
+- En el formulario de anadir y editar un ejercicio de un bloque, la fila de cada
+  serie pone **primero el peso y luego las repeticiones**. Es el orden que ya
+  tenian la cuadricula de la planificacion (Kg · Reps · RIR) y el registro del
+  cliente; el formulario era el unico sitio que lo llevaba al reves.

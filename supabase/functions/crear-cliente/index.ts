@@ -17,7 +17,8 @@ import {
   clienteAdministrativo,
   respuestaError,
   respuestaJson,
-  respuestaPreflight,
+  servirConCors,
+  urlBaseApp,
 } from "../_shared/autorizacion.ts";
 import { correoDeInvitacion, enviarCorreo } from "../_shared/correo.ts";
 
@@ -44,10 +45,9 @@ const DIAS_VALIDOS = [
 const FORMATO_CORREO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
-Deno.serve(async (req) => {
-  const preflight = respuestaPreflight(req);
-  if (preflight) return preflight;
+Deno.serve((req) => servirConCors(req, () => manejar(req)));
 
+async function manejar(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return respuestaError(405, "metodo_no_permitido", "Usa POST.");
   }
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
   // `generateLink` con tipo `invite` crea el usuario y devuelve el enlace SIN
   // enviar ningún correo, que es justo lo que interesa: el correo lo manda Resend
   // con plantilla propia.
-  const urlBase = Deno.env.get("APP_BASE_URL");
+  const urlBase = urlBaseApp();
   const { data: datosEnlace, error: errorEnlace } = await admin.auth.admin
     .generateLink({
       type: "invite",
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
     ...(envio.entregadoEnLocal ? { entregadoEnBuzonLocal: true } : {}),
     ...(envio.enviado ? {} : { avisoInvitacion: envio.motivo }),
   });
-});
+}
 
 function validar(cuerpo: PeticionCrearCliente): string | null {
   if (!cuerpo.nombre?.trim()) return "El nombre es obligatorio.";

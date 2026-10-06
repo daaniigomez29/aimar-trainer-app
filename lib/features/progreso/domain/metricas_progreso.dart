@@ -53,7 +53,7 @@ enum MetricaEjercicio {
   minutos;
 
   String get etiqueta => switch (this) {
-    MetricaEjercicio.pesoMaximo => 'Peso maximo',
+    MetricaEjercicio.pesoMaximo => 'Peso máximo',
     MetricaEjercicio.volumenTotal => 'Volumen total',
     MetricaEjercicio.repeticionesTotales => 'Repeticiones totales',
     MetricaEjercicio.rirMedio => 'RIR medio',
@@ -70,14 +70,14 @@ enum MetricaEjercicio {
 
   /// Explicacion corta, para que el cliente sepa que esta mirando.
   String get descripcion => switch (this) {
-    MetricaEjercicio.pesoMaximo => 'La carga mas alta levantada ese dia.',
+    MetricaEjercicio.pesoMaximo => 'La carga mas alta levantada ese día.',
     MetricaEjercicio.volumenTotal =>
       'Suma de peso por repeticiones de todas las series.',
     MetricaEjercicio.repeticionesTotales =>
       'Repeticiones sumadas de todas las series.',
     MetricaEjercicio.rirMedio =>
       'Media del RIR de las series. Mas bajo, mas cerca del fallo.',
-    MetricaEjercicio.minutos => 'Minutos registrados en la sesion.',
+    MetricaEjercicio.minutos => 'Minutos registrados en la sesión.',
   };
 
   /// Las que tienen sentido para un tipo de ejercicio. Fuerza y Cardio no
@@ -153,7 +153,7 @@ enum MetricaCorporal {
     MetricaCorporal.pechoCm => 'Pecho',
     MetricaCorporal.cinturaCm => 'Cintura',
     MetricaCorporal.caderaCm => 'Cadera',
-    MetricaCorporal.cuadricepsCm => 'Cuadriceps',
+    MetricaCorporal.cuadricepsCm => 'Cuádriceps',
     MetricaCorporal.brazosCm => 'Brazos',
   };
 

@@ -10,7 +10,7 @@ import {
   clienteAdministrativo,
   respuestaError,
   respuestaJson,
-  respuestaPreflight,
+  servirConCors,
 } from "../_shared/autorizacion.ts";
 
 interface PeticionDarDeBaja {
@@ -23,10 +23,9 @@ const FORMATO_UUID =
 /** 100 años: el bloqueo es indefinido en la práctica. */
 const DURACION_BLOQUEO = "876000h";
 
-Deno.serve(async (req) => {
-  const preflight = respuestaPreflight(req);
-  if (preflight) return preflight;
+Deno.serve((req) => servirConCors(req, () => manejar(req)));
 
+async function manejar(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return respuestaError(405, "metodo_no_permitido", "Usa POST.");
   }
@@ -119,4 +118,4 @@ Deno.serve(async (req) => {
   }
 
   return respuestaJson(200, { clienteId: cuerpo.clienteId, estado: "baja" });
-});
+}

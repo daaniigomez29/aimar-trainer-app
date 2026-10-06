@@ -3,21 +3,24 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_eje
 
 /// Criterios de busqueda del listado de la biblioteca.
 ///
-/// `incluirEliminados` solo lo usa el entrenador: el cliente nunca ve ejercicios
+/// `soloEliminados` solo lo usa el entrenador: el cliente nunca ve ejercicios
 /// dados de baja en el listado general.
+///
+/// Es "solo", no "incluir": el chip de "Dados de baja" es una pestaña para
+/// revisar las bajas, y mezclarlas con los activos no deja ver cuales son.
 class FiltroEjercicios {
   const FiltroEjercicios({
     this.texto = '',
     this.tipo,
     this.grupoMuscular,
-    this.incluirEliminados = false,
+    this.soloEliminados = false,
   });
 
   /// Busca en nombre, grupo muscular y equipamiento.
   final String texto;
   final TipoEjercicio? tipo;
   final String? grupoMuscular;
-  final bool incluirEliminados;
+  final bool soloEliminados;
 
   String get textoNormalizado => texto.trim().toLowerCase();
 
@@ -25,7 +28,7 @@ class FiltroEjercicios {
       textoNormalizado.isEmpty &&
       tipo == null &&
       grupoMuscular == null &&
-      !incluirEliminados;
+      !soloEliminados;
 
   /// Para quitar el filtro de `tipo` o de `grupoMuscular` no sirve este metodo
   /// (un `null` aqui significa "no cambiar"): se construye el filtro entero, como
@@ -34,12 +37,12 @@ class FiltroEjercicios {
     String? texto,
     TipoEjercicio? tipo,
     String? grupoMuscular,
-    bool? incluirEliminados,
+    bool? soloEliminados,
   }) => FiltroEjercicios(
     texto: texto ?? this.texto,
     tipo: tipo ?? this.tipo,
     grupoMuscular: grupoMuscular ?? this.grupoMuscular,
-    incluirEliminados: incluirEliminados ?? this.incluirEliminados,
+    soloEliminados: soloEliminados ?? this.soloEliminados,
   );
 
   /// Aplica el filtro en memoria.
@@ -49,7 +52,9 @@ class FiltroEjercicios {
   /// servidor por cada tecla), asi que filtrar aqui da respuesta inmediata al
   /// escribir y mantiene el repositorio con una sola consulta.
   bool aceptar(Ejercicio ejercicio) {
-    if (!incluirEliminados && !ejercicio.estado.esActivo) return false;
+    // El filtro de estado es excluyente en los dos sentidos: con el chip puesto
+    // se ven las bajas y nada mas; sin el, solo los activos.
+    if (soloEliminados != !ejercicio.estado.esActivo) return false;
     if (tipo != null && ejercicio.tipo != tipo) return false;
     if (grupoMuscular != null && ejercicio.grupoMuscular != grupoMuscular) {
       return false;
@@ -72,9 +77,8 @@ class FiltroEjercicios {
       other.texto == texto &&
       other.tipo == tipo &&
       other.grupoMuscular == grupoMuscular &&
-      other.incluirEliminados == incluirEliminados;
+      other.soloEliminados == soloEliminados;
 
   @override
-  int get hashCode =>
-      Object.hash(texto, tipo, grupoMuscular, incluirEliminados);
+  int get hashCode => Object.hash(texto, tipo, grupoMuscular, soloEliminados);
 }

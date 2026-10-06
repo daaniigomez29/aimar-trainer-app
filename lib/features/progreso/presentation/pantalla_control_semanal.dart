@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -109,7 +111,7 @@ class _PantallaControlSemanalState
       initialDate: actual,
       firstDate: DateTime(actual.year - 2),
       lastDate: DateTime.now(),
-      helpText: 'Dia del control',
+      helpText: 'Día del control',
     );
     if (elegida != null && mounted) {
       setState(
@@ -154,9 +156,12 @@ class _PantallaControlSemanalState
         .guardarCheckin(datos);
     if (!mounted || resultado.esFallo) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Control semanal guardado.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: Avisos.duracion,
+        content: Text('Control semanal guardado.'),
+      ),
+    );
   }
 
   @override
@@ -284,7 +289,7 @@ class _PantallaControlSemanalState
     ('Pecho (cm)', 'pechoCm', _pecho, 'pecho'),
     ('Cintura (cm)', 'cinturaCm', _cintura, 'cintura'),
     ('Cadera (cm)', 'caderaCm', _cadera, 'cadera'),
-    ('Cuadriceps (cm)', 'cuadricepsCm', _cuadriceps, 'cuadriceps'),
+    ('Cuádriceps (cm)', 'cuadricepsCm', _cuadriceps, 'cuadriceps'),
     ('Brazos (cm)', 'brazosCm', _brazos, 'brazos'),
   ];
 
@@ -330,7 +335,7 @@ class _PasoMedidas extends ConsumerWidget {
                   Text(_comoFecha(fecha), style: textos.headlineMedium),
                   const SizedBox(height: 2),
                   Text(
-                    'Dia de control: $diaDeControl',
+                    'Día de control: $diaDeControl',
                     style: textos.bodySmall,
                   ),
                 ],
@@ -340,7 +345,7 @@ class _PasoMedidas extends ConsumerWidget {
               key: const Key('boton_cambiar_fecha_control'),
               onPressed: onCambiarFecha,
               icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              label: const Text('Cambiar dia'),
+              label: const Text('Cambiar día'),
             ),
           ],
         ),
@@ -418,7 +423,7 @@ class _PasoCheckin extends StatelessWidget {
           children: [
             const Icon(Icons.self_improvement, size: 18, color: Tokens.acento),
             const SizedBox(width: 8),
-            Text('Check-in de recuperacion', style: textos.titleMedium),
+            Text('Check-in de recuperación', style: textos.titleMedium),
           ],
         ),
         const SizedBox(height: 6),
@@ -442,7 +447,7 @@ class _PasoCheckin extends StatelessWidget {
         // RIR, donde el 0 significa fallo muscular.
         SliderConValor(
           key: const Key('escala_estres'),
-          etiqueta: 'Estres',
+          etiqueta: 'Estrés',
           valor: estres.toDouble(),
           minimo: 1,
           maximo: 10,

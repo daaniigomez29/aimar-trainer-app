@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
@@ -20,7 +24,6 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referenc
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
 
 /// Planificacion semanal del entrenador (`docs/ui-design.md`, 6.6 y 6.7).
 ///
@@ -67,19 +70,19 @@ class _PantallaPlanificacionEntrenadorState
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => _Armazon(
-        titulo: const Text('Planificacion'),
+        titulo: const Text('Planificación'),
         cuerpo: Center(child: Text(mensajeDeErrorPlanificacion(error))),
       ),
       data: (lista) {
         final activos = lista.where((c) => c.estado.esActivo).toList();
         if (activos.isEmpty) {
           return _Armazon(
-            titulo: const Text('Planificacion'),
+            titulo: const Text('Planificación'),
             cuerpo: const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Text(
-                  'Todavia no hay clientes activos a los que planificar.',
+                  'Todavía no hay clientes activos a los que planificar.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -127,8 +130,16 @@ class _PantallaPlanificacionEntrenadorState
             sesionElegida: _sesionElegida,
             pendientes: _pendientes,
             onElegirSesion: (orden) => setState(() => _sesionElegida = orden),
-            onCambiarSeries: (ejercicioId, series) =>
-                setState(() => _pendientes[ejercicioId] = series),
+            onCambiarSeries: (ejercicioId, series) => setState(() {
+              // `null` es olvidar lo tecleado: el ejercicio acaba de guardarse
+              // desde su formulario, asi que lo pendiente ya no corresponde con
+              // lo que hay y se escribiria encima de lo recien guardado.
+              if (series == null) {
+                _pendientes.remove(ejercicioId);
+              } else {
+                _pendientes[ejercicioId] = series;
+              }
+            }),
           ),
         );
       },
@@ -202,6 +213,7 @@ class _PantallaPlanificacionEntrenadorState
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: Avisos.duracion,
         content: Text(
           fallos == 0
               ? 'Cambios guardados.'
@@ -462,7 +474,7 @@ class _Semana extends ConsumerWidget {
   final int? sesionElegida;
   final Map<String, List<DatosSerie>> pendientes;
   final ValueChanged<int> onElegirSesion;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -563,7 +575,7 @@ class _Planning extends ConsumerWidget {
   final int? sesionElegida;
   final Map<String, List<DatosSerie>> pendientes;
   final ValueChanged<int> onElegirSesion;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -664,7 +676,7 @@ Future<void> _abrirBibliotecaEnModal(
 
 /// Pestanas de las sesiones del planning, con el boton de anadir otra al final.
 ///
-/// Sustituye a las pestanas de dia: una sesion es "Dia 1", "Dia 2"..., no
+/// Sustituye a las pestanas de dia: una sesion es "Día 1", "Día 2"..., no
 /// "miercoles". El entrenador decide **cuantas** sesiones tiene la semana.
 class _PestanasDeSesion extends ConsumerWidget {
   const _PestanasDeSesion({
@@ -700,13 +712,13 @@ class _PestanasDeSesion extends ConsumerWidget {
                     )
                   : null,
               icon: const Icon(Icons.add, size: 18),
-              label: Text('Dia ${planning.siguienteOrden}'),
+              label: Text('Día ${planning.siguienteOrden}'),
             );
           }
 
           final sesion = sesiones[indice];
           return ChipFiltro(
-            etiqueta: 'Dia ${sesion.orden}',
+            etiqueta: 'Día ${sesion.orden}',
             activo: sesion.orden == elegida,
             onPulsar: () => onElegir(sesion.orden),
           );
@@ -732,7 +744,7 @@ class _SemanaVacia extends ConsumerWidget {
           Text('Semana sin sesiones', style: textos.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Anade la primera sesion para empezar a planificar.',
+            'Añade la primera sesión para empezar a planificar.',
             style: textos.bodySmall,
           ),
           const SizedBox(height: 14),
@@ -746,7 +758,7 @@ class _SemanaVacia extends ConsumerWidget {
                   )
                 : null,
             icon: const Icon(Icons.add, size: 18),
-            label: const Text('Anadir sesion'),
+            label: const Text('Añadir sesión'),
           ),
         ],
       ),
@@ -765,7 +777,7 @@ class _Sesion extends ConsumerWidget {
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final Map<String, List<DatosSerie>> pendientes;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -789,7 +801,7 @@ class _Sesion extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dia ${sesion.orden} · ${sesion.nombre}',
+                    'Día ${sesion.orden} · ${sesion.nombre}',
                     style: textos.headlineSmall,
                   ),
                   const SizedBox(height: 4),
@@ -801,7 +813,7 @@ class _Sesion extends ConsumerWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Editar sesion',
+              tooltip: 'Editar sesión',
               icon: const Icon(Icons.edit_outlined, size: 18),
               onPressed: () => pedirDatosSesion(
                 context: context,
@@ -812,7 +824,7 @@ class _Sesion extends ConsumerWidget {
             ),
             IconButton(
               key: Key('eliminar_sesion_${sesion.id}'),
-              tooltip: 'Eliminar sesion',
+              tooltip: 'Eliminar sesión',
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: () => confirmarEliminarSesion(
                 context: context,
@@ -860,7 +872,7 @@ class _Sesion extends ConsumerWidget {
             planningId: planning.id,
           ),
           icon: const Icon(Icons.add, size: 18),
-          label: const Text('Anadir bloque'),
+          label: const Text('Añadir bloque'),
         ),
       ],
     );
@@ -886,7 +898,7 @@ class _Bloque extends ConsumerWidget {
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
   final Map<String, List<DatosSerie>> pendientes;
-  final void Function(String, List<DatosSerie>) onCambiarSeries;
+  final void Function(String, List<DatosSerie>?) onCambiarSeries;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -963,20 +975,18 @@ class _Bloque extends ConsumerWidget {
             ],
           ),
           if (bloque.ejercicios.isEmpty)
-            Text('Sin ejercicios todavia.', style: textos.bodySmall),
+            Text('Sin ejercicios todavía.', style: textos.bodySmall),
           const SizedBox(height: 8),
           TextButton.icon(
             key: Key('anadir_ejercicio_${bloque.id}'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PantallaFormularioEjercicioPlanificado(
-                  bloque: bloque,
-                  planningId: planning.id,
-                ),
+            onPressed: () => context.go(
+              Rutas.nuevoEjercicioEnBloque(
+                Rutas.planningEnEdicion(planning.id),
+                bloque.id,
               ),
             ),
             icon: const Icon(Icons.add, size: 16),
-            label: const Text('Anadir ejercicio'),
+            label: const Text('Añadir ejercicio'),
           ),
         ],
       ),
@@ -1010,7 +1020,7 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
 
   /// Series pendientes de guardar, si ya se han tocado.
   final List<DatosSerie>? series;
-  final ValueChanged<List<DatosSerie>> onCambiarSeries;
+  final ValueChanged<List<DatosSerie>?> onCambiarSeries;
 
   @override
   ConsumerState<_EjercicioEditable> createState() => _EjercicioEditableState();
@@ -1022,24 +1032,45 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
   @override
   void initState() {
     super.initState();
-    _filas = [
-      for (final serie in widget.ejercicio.series)
-        _FilaSerie(
-          numero: serie.numeroSerie,
-          peso: TextEditingController(
-            text: serie.pesoPlanificado == null
-                ? ''
-                : _numero(serie.pesoPlanificado!),
-          ),
-          reps: TextEditingController(
-            text: '${serie.repeticionesPlanificadas}',
-          ),
-          rir: TextEditingController(
-            text: serie.rirPlanificado == null ? '' : '${serie.rirPlanificado}',
-          ),
-        ),
-    ];
+    _filas = _filasDe(widget.ejercicio.series);
   }
+
+  /// Rehace la cuadricula cuando las series cambian por detras.
+  ///
+  /// POR QUE HACE FALTA: anadir o quitar una serie se hace en el formulario del
+  /// ejercicio, no aqui. Al volver de el, esta pantalla sigue viva y seguiria
+  /// ensenando las filas de antes; peor aun, lo que quedara sin guardar aqui se
+  /// escribiria encima de lo que se acaba de guardar alli.
+  @override
+  void didUpdateWidget(_EjercicioEditable anterior) {
+    super.didUpdateWidget(anterior);
+    if (listEquals(anterior.ejercicio.series, widget.ejercicio.series)) return;
+
+    for (final fila in _filas) {
+      fila.dispose();
+    }
+    setState(() => _filas = _filasDe(widget.ejercicio.series));
+    // El aviso al padre cambia su estado, asi que va despues del fotograma.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onCambiarSeries(null);
+    });
+  }
+
+  static List<_FilaSerie> _filasDe(List<SeriePlanificada> series) => [
+    for (final serie in series)
+      _FilaSerie(
+        numero: serie.numeroSerie,
+        peso: TextEditingController(
+          text: serie.pesoPlanificado == null
+              ? ''
+              : _numero(serie.pesoPlanificado!),
+        ),
+        reps: TextEditingController(text: '${serie.repeticionesPlanificadas}'),
+        rir: TextEditingController(
+          text: serie.rirPlanificado == null ? '' : '${serie.rirPlanificado}',
+        ),
+      ),
+  ];
 
   /// Vuelca lo que el cliente hizo la ultima vez sobre lo planificado.
   ///
@@ -1136,6 +1167,19 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                 ),
               ),
               IconButton(
+                key: Key('editar_ejercicio_${widget.ejercicio.id}'),
+                tooltip: 'Editar ejercicio',
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => context.go(
+                  Rutas.editarEjercicioDelBloque(
+                    Rutas.planningEnEdicion(widget.planning.id),
+                    widget.bloque.id,
+                    widget.ejercicio.id,
+                  ),
+                ),
+              ),
+              IconButton(
                 key: Key('eliminar_ejercicio_${widget.ejercicio.id}'),
                 tooltip: 'Quitar del bloque',
                 icon: const Icon(Icons.close, size: 16),
@@ -1163,8 +1207,8 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                       color: Tokens.secundario,
                     ),
                   ),
-                  // En Cardio no hay boton de copiar: los minutos no se editan
-                  // aqui, se cambian en el formulario del ejercicio.
+                  // En Cardio no hay boton de copiar: los minutos no se
+                  // editan aqui, se cambian con el boton de editar.
                   if (widget.referencia?.minutos case final minutos?) ...[
                     const SizedBox(width: 12),
                     Expanded(
@@ -1349,11 +1393,11 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
 /// de la otra. Por debajo, lo realizado va en una linea aparte.
 const double _anchoParaDosMitades = 560;
 
-/// "Semana pasada" o "Ultima vez", segun de donde salga el dato. La diferencia
+/// "Semana pasada" o "Última vez", segun de donde salga el dato. La diferencia
 /// importa: no es lo mismo planificar sobre lo de hace siete dias que sobre algo
 /// de hace un mes.
 String _tituloReferencia(ReferenciaAnterior referencia) =>
-    referencia.esSemanaAnterior ? 'Semana pasada' : 'Ultima vez';
+    referencia.esSemanaAnterior ? 'Semana pasada' : 'Última vez';
 
 String _conFecha(ReferenciaAnterior referencia) {
   final titulo = _tituloReferencia(referencia);
@@ -1551,7 +1595,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
               Expanded(
                 child: Text(
                   widget.enModal
-                      ? 'Anadir ejercicio'
+                      ? 'Añadir ejercicio'
                       : 'Biblioteca de ejercicios',
                   style: textos.titleMedium,
                 ),
@@ -1598,7 +1642,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
                 final activos = lista.where((e) => e.estado.esActivo).toList();
                 if (activos.isEmpty) {
                   return Text(
-                    'Ningun ejercicio coincide.',
+                    'Ningún ejercicio coincide.',
                     style: textos.bodySmall,
                   );
                 }
@@ -1629,9 +1673,10 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final sesion = widget.sesion!;
     if (sesion.bloques.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
+          duration: Avisos.duracion,
           content: Text(
-            'Anade antes un bloque: el ejercicio va dentro de uno.',
+            'Añade antes un bloque: el ejercicio va dentro de uno.',
           ),
         ),
       );
@@ -1664,8 +1709,9 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
 
     if (!mounted) return;
     if (resultado.errorONulo case final error?) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.mensaje)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(duration: Avisos.duracion, content: Text(error.mensaje)),
+      );
     } else if (widget.enModal) {
       Navigator.of(context).pop();
     }
@@ -1703,7 +1749,7 @@ class _FilaBiblioteca extends StatelessWidget {
           ),
           IconButton.filledTonal(
             key: Key('anadir_biblioteca_${ejercicio.id}'),
-            tooltip: 'Anadir a la sesion',
+            tooltip: 'Añadir a la sesión',
             icon: const Icon(Icons.add, size: 18),
             onPressed: onAnadir,
             // En acento, no en el ambar que trae por defecto: aqui el ambar

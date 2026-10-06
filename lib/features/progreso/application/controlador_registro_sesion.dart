@@ -63,7 +63,7 @@ class ControladorRegistroSesion extends _$ControladorRegistroSesion {
     String planningId,
   ) async {
     if (state.enCurso) {
-      return const Failure(ErrorValidacion('Ya hay una operacion en curso.'));
+      return const Failure(ErrorValidacion('Ya hay una operación en curso.'));
     }
 
     final invalido = datos.validar();

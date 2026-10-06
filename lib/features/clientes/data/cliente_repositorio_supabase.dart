@@ -86,7 +86,7 @@ class ClienteRepositorioSupabase implements ClienteRepositorio {
         ResultadoAlta(
           clienteId: clienteId,
           invitacionEnviada: cuerpo?['invitacionEnviada'] as bool? ?? false,
-          avisoInvitacion: cuerpo?['avisoInvitacion'] as String?,
+          avisoInvitacion: cuerpo?['avisoinvitación'] as String?,
         ),
       );
     } on FunctionException catch (excepcion) {
@@ -204,7 +204,7 @@ class ClienteRepositorioSupabase implements ClienteRepositorio {
     Registro.fallo(
       'Respondio $estado. Cuerpo: ${cuerpo ?? "(vacio)"}.$pista',
       null,
-      contexto: 'la funcion de $servicio',
+      contexto: 'la función de $servicio',
     );
 
     return switch (estado) {
@@ -222,11 +222,11 @@ class ClienteRepositorioSupabase implements ClienteRepositorio {
       // asi que necesita su propio mensaje.
       502 || 503 || 504 => ErrorServicioNoDisponible(servicio),
       501 => ErrorValidacion(
-        mensaje ?? 'Esa operacion todavia no esta implementada.',
+        mensaje ?? 'Esa operación todavía no está implementada.',
       ),
       _ => ErrorInesperado(
         causa:
-            'La funcion de $servicio respondio $estado: '
+            'La función de $servicio respondio $estado: '
             '${mensaje ?? cuerpo ?? "sin cuerpo"}',
       ),
     };

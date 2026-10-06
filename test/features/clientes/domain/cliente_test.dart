@@ -56,7 +56,7 @@ void main() {
       );
     });
 
-    test('rechaza una edad por debajo del minimo', () {
+    test('rechaza una edad por debajo del mínimo', () {
       final casiMinimo = DateTime(
         _hoy.year - DatosCliente.edadMinima,
         _hoy.month,
@@ -69,7 +69,7 @@ void main() {
       );
     });
 
-    test('acepta justo la edad minima', () {
+    test('acepta justo la edad mínima', () {
       final minimo = DateTime(
         _hoy.year - DatosCliente.edadMinima,
         _hoy.month,
@@ -106,7 +106,7 @@ void main() {
       );
     });
 
-    test('corta por encima del maximo, antes de que desborde en Postgres', () {
+    test('corta por encima del máximo, antes de que desborde en Postgres', () {
       // Sin esta validacion, la Edge Function devolveria un 500 con
       // "numeric field overflow" en lugar de un mensaje util.
       expect(
@@ -177,7 +177,7 @@ void main() {
       );
     });
 
-    test('los objetivos vacios se guardan como null, no como cadena vacia', () {
+    test('los objetivos vacios se guardan como null, no como cadena vacía', () {
       expect(_datos(objetivos: '   ').aJsonDeEdicion()['objetivos'], isNull);
       expect(_datos(objetivos: ' Fuerza ').objetivosNormalizados, 'Fuerza');
     });
