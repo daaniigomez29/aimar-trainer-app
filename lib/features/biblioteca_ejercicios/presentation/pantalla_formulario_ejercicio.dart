@@ -7,28 +7,62 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes_flutter.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
-/// CU-02 (anadir) y CU-03 (editar) ejercicio.
+/// CU-02 (añadir) y CU-03 (editar) ejercicio.
 ///
-/// Con `ejercicio` a `null` crea uno nuevo; con un ejercicio, precarga sus datos.
-class PantallaFormularioEjercicio extends ConsumerStatefulWidget {
-  const PantallaFormularioEjercicio({this.ejercicio, super.key});
+/// Admite las dos entradas: con `ejercicio` cuando quien navega ya lo tiene
+/// cargado, y con `idEjercicio` cuando se llega **por la URL**, que es lo que
+/// permite recargar la página sin perder el sitio.
+class PantallaFormularioEjercicio extends ConsumerWidget {
+  const PantallaFormularioEjercicio({
+    this.ejercicio,
+    this.idEjercicio,
+    super.key,
+  });
+
+  final Ejercicio? ejercicio;
+  final String? idEjercicio;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Alta, o edición con el ejercicio ya en la mano.
+    if (idEjercicio == null || ejercicio != null) {
+      return _FormularioEjercicio(ejercicio: ejercicio);
+    }
+
+    return ref
+        .watch(ejercicioPorIdProvider(idEjercicio!))
+        .when(
+          data: (e) => _FormularioEjercicio(ejercicio: e),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text(mensajeDeError(error))),
+          ),
+        );
+  }
+}
+
+class _FormularioEjercicio extends ConsumerStatefulWidget {
+  const _FormularioEjercicio({this.ejercicio});
 
   final Ejercicio? ejercicio;
 
   bool get esEdicion => ejercicio != null;
 
   @override
-  ConsumerState<PantallaFormularioEjercicio> createState() =>
+  ConsumerState<_FormularioEjercicio> createState() =>
       _EstadoPantallaFormularioEjercicio();
 }
 
 class _EstadoPantallaFormularioEjercicio
-    extends ConsumerState<PantallaFormularioEjercicio> {
+    extends ConsumerState<_FormularioEjercicio> {
   late final TextEditingController _nombre;
   late final TextEditingController _grupoMuscular;
   late final TextEditingController _equipamiento;

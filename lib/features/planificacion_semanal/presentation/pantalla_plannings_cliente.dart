@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_planning.dart';
 
 /// Historico de plannings de un cliente (CU-23) y punto de entrada a CU-05.
 class PantallaPlanningsCliente extends ConsumerWidget {
@@ -53,11 +55,7 @@ class PantallaPlanningsCliente extends ConsumerWidget {
           );
           if (creado == null || !context.mounted) return;
           ref.invalidate(planningsDeClienteProvider(clienteId));
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => PantallaPlanning(planningId: creado.id),
-            ),
-          );
+          context.go(Rutas.planningDeClienteConcreto(clienteId, creado.id));
         },
         icon: const Icon(Icons.add),
         label: const Text('Nuevo planning'),
@@ -142,11 +140,8 @@ class _Tarjeta extends ConsumerWidget {
           [?planning.nombreObjetivo, if (archivado) 'Archivado'].join(' · '),
         ),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PantallaPlanning(planningId: planning.id),
-          ),
-        ),
+        onTap: () =>
+            context.go(Rutas.planningDeClienteConcreto(clienteId, planning.id)),
       ),
     );
   }

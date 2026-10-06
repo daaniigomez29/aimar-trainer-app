@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
@@ -22,7 +23,6 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referenc
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
 
 /// Planificacion semanal del entrenador (`docs/ui-design.md`, 6.6 y 6.7).
 ///
@@ -970,12 +970,10 @@ class _Bloque extends ConsumerWidget {
           const SizedBox(height: 8),
           TextButton.icon(
             key: Key('anadir_ejercicio_${bloque.id}'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PantallaFormularioEjercicioPlanificado(
-                  bloque: bloque,
-                  planningId: planning.id,
-                ),
+            onPressed: () => context.go(
+              Rutas.nuevoEjercicioEnBloque(
+                Rutas.planningEnEdicion(planning.id),
+                bloque.id,
               ),
             ),
             icon: const Icon(Icons.add, size: 16),

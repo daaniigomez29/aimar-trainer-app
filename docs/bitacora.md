@@ -1319,3 +1319,42 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   y se rehízo con un reemplazo simple; conviene recordar que `showSnackBar(`
   contiene `SnackBar(` como subcadena, que fue justo el fallo.
 
+**Corregido (el atrás del navegador no volvía donde tocaba):**
+
+- Sintoma: entrar en un ejercicio o en la ficha de un cliente y pulsar atras
+  llevaba a la planificacion o a los ajustes, segun donde hubieras estado antes.
+- Causa: las pantallas de detalle y los formularios se abrian con
+  `Navigator.push` imperativo (21 sitios, 11 ficheros, 4 features). En web eso
+  **no deja entrada en el historial**, asi que el atras del navegador retrocedia
+  a la ultima ruta de go_router. La flecha de la cabecera si funcionaba, por eso
+  solo fallaba el del navegador y el gesto atras del movil.
+- Ahora **todo son rutas**: `/entrenador/ejercicios/:id`,
+  `/entrenador/clientes/:id` y lo que cuelga de la ficha (plannings, progreso,
+  control), el planning del cliente con su registro de sesion y de ejercicio, y
+  el formulario de un ejercicio dentro de un bloque.
+- **Hubo que cambiar `context.push` por `context.go`.** Con `push` la URL del
+  navegador **no cambia**, asi que el refactor no habria arreglado nada: se vio
+  probando la app ya convertida y comprobando `window.location.hash`, que seguia
+  en la ruta anterior. Ninguna de esas llamadas usaba el valor devuelto, asi que
+  el cambio fue directo.
+- Las pantallas que recibian objetos (los dos formularios, el formulario de
+  ejercicio planificado y el registro de ejercicio) ahora los resuelven por `id`:
+  los dos primeros con sus providers, y los otros con `ResolverDelPlanning`, que
+  carga el planning y saca de el el bloque, la sesion o el ejercicio.
+- `pantalla_planning` sirve a los dos roles y el planning cuelga de sitios
+  distintos, asi que construye las rutas de lo que abre a partir de
+  `GoRouterState.of(context).uri.path`, la ruta por la que se ha llegado.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador: desde el detalle de un ejercicio, el atras vuelve a
+  la **Biblioteca**; y entrando directamente por
+  `#/entrenador/clientes/<id>` se pinta la ficha entera, que es lo que antes era
+  imposible (recargar te echaba a la planificacion).
+- Los tests de pantalla que navegan necesitan ahora un router: se anade
+  `test/ayudas/app_con_rutas.dart`. **Las rutas del test deben ir anidadas igual
+  que en la app**: con rutas hermanas, cerrar un formulario vacia la pila y el
+  test falla por algo que no pasa en la aplicacion.
+- `flutter test` **356**, `dart analyze --fatal-infos` limpio, `flutter build
+  web` compila.
+

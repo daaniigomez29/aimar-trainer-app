@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../ayudas/app_con_rutas.dart';
+
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
@@ -68,7 +73,25 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: contenedor,
-        child: MaterialApp(home: PantallaPlanning(planningId: planning.id)),
+        // Con ruta real: la pantalla construye las rutas de lo que abre a
+        // partir de aquella por la que se ha llegado.
+        child: appConRutas(
+          rutaInicial: Rutas.planningDelCliente(planning.id),
+          rutas: [
+            GoRoute(
+              path: Rutas.planningCliente,
+              builder: (_, _) => const SizedBox.shrink(),
+              routes: [
+                GoRoute(
+                  path: Rutas.unPlanning,
+                  builder: (_, estado) => PantallaPlanning(
+                    planningId: estado.pathParameters['planningId']!,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
     await tester.pumpAndSettle();
