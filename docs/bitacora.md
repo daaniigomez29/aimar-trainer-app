@@ -1560,3 +1560,36 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   `initState` y en `dispose`, pero la pantalla se quedo cargando en la ultima
   prueba. Si alguna vez aparece el video ya activo, es ahi donde hay que mirar.
 - `flutter test` **380**, `dart analyze --fatal-infos` limpio.
+
+### 2026-10-08
+
+**Corregido (las Edge Functions no llegaban a produccion):**
+
+- Sintoma: en el proyecto de la nube solo existia `enviar-recordatorios`, con
+  fecha del 4 de octubre. `crear-cliente` y `dar-de-baja-cliente` no es que se
+  hubieran borrado: nunca habian llegado a desplegarse. De rebote, el error de
+  CORS al dar de alta un cliente era en realidad un 404 de una funcion que no
+  estaba.
+- Causa: `supabase functions deploy --use-api` sube **solo los `.ts`** de cada
+  funcion (se ve en el log: `Uploading asset ...index.ts`, `..._shared/*.ts`) y
+  empaqueta en el servidor. `supabase/functions/deno.json` **no viaja**, asi que
+  el bundler se encontraba un `@supabase/supabase-js` a secas que no podia
+  resolver: 400, *Relative import path not prefixed with / or ./ or ../*.
+- Por que no lo cazo el CI: `deno check` recibe la configuracion por
+  `--config supabase/functions/deno.json`, asi que para el los nombres a secas
+  se resuelven perfectamente. El tipo pasaba; el empaquetado del servidor no.
+- Arreglo: `npm:@supabase/supabase-js@2.117.2` y `npm:web-push@3.6.7` completos
+  en el `import`. El import map se queda vacio a proposito, para que nadie
+  vuelva a usar un nombre a secas pensando que se resuelve.
+- Efecto colateral: `deno lint` tiene una regla (`no-import-prefix`) que prohibe
+  exactamente eso. Esta desactivada en `deno.json`, porque su premisa —que el
+  import map llega siempre— no se cumple aqui.
+
+**Pendiente / notas:**
+
+- `deno fmt --check`, `deno lint` y `deno check` pasan los tres en local, que es
+  lo mismo que corre el CI. La prueba definitiva es el despliegue: el
+  empaquetado solo ocurre en el servidor de Supabase.
+- El job `desplegar` solo corre si pasan `flutter` y `edge-functions`. Conviene
+  mirar que la ejecucion de `main` llegue hasta el final, no solo que el entorno
+  tenga los secretos.

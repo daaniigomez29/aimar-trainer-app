@@ -1,7 +1,15 @@
-// Especificador simple resuelto por el import map de `supabase/functions/deno.json`,
-// que el runtime de Supabase Edge Functions respeta. Evita repetir la version
-// `npm:@supabase/supabase-js@2` en cada archivo.
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// Especificador COMPLETO, con `npm:` y version, a proposito.
+//
+// NO vale el nombre a secas con un import map en `deno.json`: al desplegar,
+// `supabase functions deploy --use-api` sube solo los `.ts` de la funcion y
+// empaqueta en el servidor, donde ese fichero no existe. El bundler se queda sin
+// forma de resolver "@supabase/supabase-js" y el despliegue falla con 400
+// ("Relative import path not prefixed with / or ./ or ../"), mientras que en
+// local y en `deno check` funciona porque ahi si se le pasa la configuracion.
+import {
+  createClient,
+  type SupabaseClient,
+} from "npm:@supabase/supabase-js@2.117.2";
 
 /** Roles autorizados a dar de alta y de baja clientes (docs/architecture.md). */
 export const ROLES_GESTORES = ["entrenador", "administrador"] as const;
