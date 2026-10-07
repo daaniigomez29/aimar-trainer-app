@@ -30,7 +30,7 @@ class DatosSerieRealizada {
 
   static ErrorValidacion? validarPeso(double? peso) => peso != null && peso <= 0
       ? const ErrorValidacion(
-          'El peso debe ser mayor que cero. Dejalo vacío si no usaste carga.',
+          'El peso debe ser mayor que cero. Déjalo vacío si no usaste carga.',
           campo: 'peso',
         )
       : null;
@@ -76,7 +76,7 @@ class DatosResultadoEjercicio {
   static ErrorValidacion? validarMinutos(double? minutos) {
     if (minutos == null) {
       return const ErrorValidacion(
-        'Indica cuantos minutos hiciste.',
+        'Indica cuántos minutos hiciste.',
         campo: 'minutos',
       );
     }
@@ -207,14 +207,14 @@ class DatosCheckin {
   static ErrorValidacion? validarHorasSueno(double? horas) {
     if (horas == null) {
       return const ErrorValidacion(
-        'Indica cuantas horas dormiste de media.',
+        'Indica cuántas horas dormiste de media.',
         campo: 'horasSueno',
       );
     }
     // Sin tope superior, por decision del ERS; solo se descarta lo imposible.
     if (horas < 0) {
       return const ErrorValidacion(
-        'Las horas de sueno no pueden ser negativas.',
+        'Las horas de sueño no pueden ser negativas.',
         campo: 'horasSueno',
       );
     }

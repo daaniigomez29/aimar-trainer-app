@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Traducciones de los widgets de Material (calendario, Aceptar/Cancelar...).
+  # Sin esto el DatePicker sale en ingles aunque el resto este en espanol.
+  flutter_localizations:
+    sdk: flutter
   flutter_riverpod: ^3.4.3
   freezed_annotation: ^3.1.0
   go_router: ^18.0.2

@@ -29,12 +29,12 @@ Future<bool> confirmarEliminarPlanning({
     context: context,
     titulo: 'Eliminar el planning',
     mensaje: sesiones == 0
-        ? 'Este planning esta vacío. Se eliminara definitivamente.'
-        : 'Se eliminara el planning completo: $sesiones '
+        ? 'Este planning está vacío. Se eliminará definitivamente.'
+        : 'Se eliminará el planning completo: $sesiones '
               '${sesiones == 1 ? "sesion" : "sesiones"} y $ejercicios '
               '${ejercicios == 1 ? "ejercicio" : "ejercicios"} planificados.\n\n'
               'Esto no se puede deshacer. Si solo quieres conservarlo como '
-              'historico, archivalo en lugar de eliminarlo.',
+              'histórico, archívalo en lugar de eliminarlo.',
     textoBoton: 'Eliminar',
   );
   if (!confirmado || !context.mounted) return false;
@@ -66,8 +66,8 @@ Future<bool> confirmarEliminarSesion({
     context: context,
     titulo: 'Eliminar la sesión',
     mensaje: sesion.bloques.isEmpty
-        ? 'Se eliminara la sesión "${sesion.nombre}".'
-        : 'Se eliminara "${sesion.nombre}" con sus '
+        ? 'Se eliminará la sesión "${sesion.nombre}".'
+        : 'Se eliminará "${sesion.nombre}" con sus '
               '${sesion.bloques.length} '
               '${sesion.bloques.length == 1 ? "bloque" : "bloques"} y '
               '$ejercicios ${ejercicios == 1 ? "ejercicio" : "ejercicios"}.',
@@ -100,8 +100,8 @@ Future<bool> confirmarEliminarBloque({
     context: context,
     titulo: 'Eliminar el bloque',
     mensaje: bloque.ejercicios.isEmpty
-        ? 'Se eliminara el bloque de ${bloque.tipo.etiqueta}.'
-        : 'Se eliminara el bloque de ${bloque.tipo.etiqueta} con sus '
+        ? 'Se eliminará el bloque de ${bloque.tipo.etiqueta}.'
+        : 'Se eliminará el bloque de ${bloque.tipo.etiqueta} con sus '
               '${bloque.ejercicios.length} '
               '${bloque.ejercicios.length == 1 ? "ejercicio" : "ejercicios"}.',
     textoBoton: 'Eliminar',
@@ -135,7 +135,7 @@ Future<bool> confirmarEliminarEjercicio({
     context: context,
     titulo: 'Quitar el ejercicio',
     mensaje:
-        'Se quitara "$nombre" de este bloque, con sus series planificadas.\n\n'
+        'Se quitará "$nombre" de este bloque, con sus series planificadas.\n\n'
         'El ejercicio sigue en la biblioteca: esto solo lo saca de aquí.',
     textoBoton: 'Quitar',
   );
@@ -170,7 +170,7 @@ Future<void> alternarArchivadoPlanning({
       titulo: 'Archivar el planning',
       mensaje:
           'Un planning archivado se conserva completo para consulta, pero deja '
-          'de admitir cambios y el cliente no podrá registrar resultados en el.',
+          'de admitir cambios y el cliente no podrá registrar resultados en él.',
       textoBoton: 'Archivar',
     );
     if (!confirmado || !context.mounted) return;

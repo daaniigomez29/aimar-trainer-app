@@ -1248,7 +1248,7 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   nada: `autorizarGestorDeClientes` valida el JWT y el rol, que es mas de lo que
   comprueba la plataforma.
 - **CORS con varios origenes**, como se pidio: `APP_BASE_URL` acepta una lista
-  separada por comas (Vercel y `aimartrainer.com`). `Access-Control-Allow-Origin`
+  separada por comas (Vercel y `aimartrainer.es`). `Access-Control-Allow-Origin`
   solo admite un valor, nunca una lista, asi que se mira el `Origin` de cada
   peticion y se devuelve ese, con `Vary: Origin` para que ninguna cache sirva a un
   dominio la respuesta del otro.
@@ -1397,3 +1397,166 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   serie pone **primero el peso y luego las repeticiones**. Es el orden que ya
   tenian la cuadricula de la planificacion (Kg · Reps · RIR) y el registro del
   cliente; el formulario era el unico sitio que lo llevaba al reves.
+
+**Hecho (calendario por semanas en la planificación):**
+
+- "Semana del 5-11 oct" es ahora un boton: abre un calendario y **se queda con la
+  semana del dia que se toque**. Pulsar el miercoles 14 lleva a la semana del 12
+  al 18. Evita ir a una semana lejana a base de pulsar la flecha veinte veces.
+- La semana de lunes a domingo pasa a ser un concepto del dominio
+  (`domain/semana.dart`). Estaba repetido en la navegacion y en el formulario,
+  cada uno con su copia del calculo del lunes.
+- La etiqueta distingue las semanas a caballo entre dos meses: "28 sep - 4 oct"
+  en vez de un solo nombre de mes, que con el calendario se ve mucho mas.
+
+**Corregido (crear planning proponia la semana equivocada):**
+
+- Sintoma: navegar a la semana del 19 al 25 para adelantar trabajo y, al pulsar
+  "Crear la semana", encontrarse la del 4 al 11, la de hoy.
+- Causa: el dialogo calculaba el lunes **de hoy** por su cuenta, sin enterarse de
+  por que semana iba la pantalla. Ahora la recibe (`pedirDatosPlanning(semana:)`).
+- Su calendario tambien ajusta a la semana: elegir el jueves 22 deja
+  "Del 19/10 al 25/10".
+
+**Corregido (el cliente seguia viendo un planning borrado):**
+
+- Sintoma: el entrenador eliminaba un planning y el cliente lo seguia viendo
+  hasta cambiar de pestana o pulsar "recargar".
+- Causa: son dos sesiones distintas. La app del cliente tenia la lista cacheada y
+  nada le decia que habia cambiado.
+- Dos vias, porque ninguna cubre sola todos los casos:
+  - **Realtime** sobre `plannings_semanales` (migracion
+    `20261007090000_realtime_plannings.sql`): el aviso llega al momento aunque el
+    cliente este con la pantalla delante.
+  - **Al recuperar el foco** (`AppLifecycleListener`): cubre el socket caido y,
+    ademas, los cambios de **dentro** del planning, que no van por realtime.
+- `replica identity full` no es decoracion: por defecto el WAL de un DELETE solo
+  lleva la clave primaria, asi que Realtime no puede evaluar ni el filtro de la
+  suscripcion ni la RLS del que escucha, y el borrado —justo el caso del fallo—
+  no le llegaria a nadie.
+
+**Pendiente / notas:**
+
+- Verificado contra Supabase local: con la cliente de demo en pantalla, un
+  `delete` en la base de datos hace desaparecer el planning **sin tocar nada**; y
+  simulando que la pestana se oculta y vuelve, se ve la segunda peticion de la
+  lista en la red.
+- Los dos calendarios salen **en ingles** ("Mon, Oct 5", "October 2026"): la app
+  no tiene configurado `flutter_localizations` ni `locale`. Es anterior a este
+  cambio, pero ahora se ve mas. Arreglarlo es anadir esa dependencia del SDK.
+- `.claude/launch.json` tiene una segunda entrada, `aimar-verificacion` (puerto
+  54331), para poder levantar la app sin pisar la sesion de depuracion de VS Code
+  que usa el 54330.
+- `flutter test` **370**, `dart analyze --fatal-infos` limpio.
+
+**Corregido (el histórico del entrenador no se enteraba de los borrados):**
+
+- Sintoma: eliminar el planning de la semana en curso y, al volver al historico
+  del cliente, seguir viendolo hasta pulsar "recargar".
+- Causa: la invalidacion de las listas estaba **en cada pantalla**, y a esta se
+  le habia olvidado. El controlador solo recargaba el planning concreto
+  (`planningCompletoProvider`), que al borrarlo ya no existe.
+- Ahora lo hace el controlador: `_ejecutar(..., recargarListas: true)` en crear,
+  editar, archivar, reactivar y eliminar planning, que son las operaciones que
+  cambian **que plannings hay**. Lo de dentro de un planning (sesiones, bloques,
+  ejercicios) no las toca. Se han quitado las invalidaciones sueltas de las
+  pantallas, que ahora sobran.
+
+**Hecho (interfaz de Material en español):**
+
+- Se anade `flutter_localizations` (SDK) y la `MaterialApp` fija
+  `locale: Locale('es')` con los tres delegados globales. Los `DatePicker`
+  salian en ingles ("Mon, Oct 5", "October 2026") dentro de una interfaz que
+  esta entera en espanol.
+- Efecto secundario que viene bien: en espanol **la semana empieza en lunes**
+  (L M X J V S D), asi que cada fila del calendario es una semana. Justo lo que
+  necesita un selector que elige semanas.
+- No se negocia con el idioma del sistema: la app es solo en espanol.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador: eliminando el planning del 05/10 de Ana Demo, el
+  historico vuelve con solo los dos archivados **sin tocar recargar**; y los dos
+  calendarios salen en espanol.
+- `flutter test` **374**, `dart analyze --fatal-infos` limpio.
+
+**Corregido (la flecha de "semana siguiente" se quedaba clavada):**
+
+- Sintoma: desde la semana del 19-25 de octubre de 2026 la flecha derecha no
+  avanzaba. Eligiendo a mano el 26 se podia seguir sin problema.
+- Causa: **el cambio de hora**. El domingo 25 de octubre de 2026 Espania atrasa
+  el reloj, asi que esa semana dura 169 horas. `lunes.add(Duration(days: 7))`
+  suma 168 horas absolutas, no siete dias: desde el lunes 19 a las 00:00 caia en
+  el **domingo 25 a las 23:00**, que al quedarnos con el dia pertenece a la misma
+  semana. La flecha llamaba a `siguiente` y devolvia la semana en la que ya
+  estabas.
+- El test de regresion encontro ademas el caso simetrico, que no se habia
+  reportado: en el cambio de marzo la flecha de **anterior** se saltaba una
+  semana entera (de la del 30 de marzo se iba a la del 16, no a la del 23).
+- Arreglado con aritmetica de calendario (`DateTime(ano, mes, dia + n)`), que
+  normaliza dias fuera de rango y siempre cae a medianoche de la zona. Se aplica
+  tambien a `Semana.de` y a `domingo`, que tenian la misma trampa latente.
+- El test recorre **dos anios de semanas** comprobando que avanzar y retroceder
+  son siempre siete dias de calendario y que todo lunes queda a medianoche. Asi
+  da igual la zona horaria de quien ejecute los tests: el cambio de hora que
+  tenga su zona cae dentro del recorrido.
+
+**Pendiente / notas:**
+
+- Esto valia para cualquier fecha, no solo para la navegacion: `Semana.de` se usa
+  para emparejar el planning con la semana que se mira, y un lunes a las 23:00 en
+  vez de a medianoche habria hecho que dos semanas iguales no se reconocieran.
+- `flutter test` **375**, `dart analyze --fatal-infos` limpio.
+
+**Hecho (el cliente navega por semanas, como el entrenador):**
+
+- La pantalla de inicio del cliente lleva el mismo navegador de semanas con
+  calendario. Antes solo veia la que tocaba hoy y el historico estaba escondido
+  en otra pantalla.
+- `NavegadorDeSemana` pasa a ser un widget compartido: "ir a una semana" es la
+  misma operacion para los dos roles y no tiene por que comportarse distinto.
+- Una semana sin planning lleva la misma cabecera y el mismo navegador, para que
+  llegar a un hueco no sea un callejon sin salida.
+
+**Hecho (el video del ejercicio deja de estorbar):**
+
+- Fuera el enlace de YouTube en crudo: cuando el video se ve ahi mismo, el enlace
+  no aporta y ensuciaba la ficha. Sigue estando para los videos que no se pueden
+  incrustar, que es cuando si hace falta.
+- **Ahora se puede desplazar la pantalla con el dedo sobre el video.** Un iframe
+  se traga la rueda y el gesto, y Flutter desplaza escuchando esos eventos: si el
+  iframe se los queda, no hay scroll y el usuario no entiende por que. El iframe
+  nace con `pointer-events: none` y se activa al tocarlo.
+- El aviso de "toca para activar" se pinta **en el DOM, no en Flutter**: una
+  vista de plataforma va POR ENCIMA del lienzo, asi que el aviso de Flutter
+  quedaba debajo del video y no se veia. El texto sigue viviendo en Dart y viaja
+  como parametro.
+- Tambien hubo que dejar inerte el `div` contenedor: con el a `auto` era el quien
+  quedaba bajo el puntero en vez del lienzo.
+
+**Corregido (terminar el ultimo ejercicio dejaba al cliente en la lista):**
+
+- Ahora vuelve al planning (`/cliente`). Al acabar, lo que el cliente quiere ver
+  es como queda su semana, no la lista de lo que acaba de completar.
+
+**Corregido (faltas de ortografia en texto visible):**
+
+- Repaso de todos los literales de interfaz, no solo los dos que se habian visto:
+  "aun" por "aún" (tres sitios), "mas" por "más", "cuantas/cuantos" por
+  "cuántas/cuántos", "esta" por "está", "se eliminara" por "se eliminará" (seis
+  sitios), "registro" por "registró", "archivalo", "reactivalo", "dejalo",
+  "permitelas", "volveras", "sueno" por "sueño", "electronico", "gestion",
+  "tecnica", "validos", "anoto", "como" por "cómo" (dos sitios).
+- Dos tests comprobaban el texto con la falta; se han actualizado.
+
+**Pendiente / notas:**
+
+- Verificado en el navegador: el navegador de semanas del cliente salta de la
+  semana en curso a la anterior y pinta su planning; sobre el video, la rueda
+  **mueve la pantalla** (el reproductor pasa de 384 px a 290 px de altura), el
+  aviso se pinta encima del iframe y al tocarlo el reproductor queda interactivo.
+- Lo que NO se ha podido comprobar en el navegador: que al volver a abrir una
+  ficha cuyo video ya se activo el aviso vuelva a salir. El reinicio se hace en
+  `initState` y en `dispose`, pero la pantalla se quedo cargando en la ultima
+  prueba. Si alguna vez aparece el video ya activo, es ahi donde hay que mirar.
+- `flutter test` **380**, `dart analyze --fatal-infos` limpio.

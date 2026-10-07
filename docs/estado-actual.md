@@ -299,6 +299,29 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   cuadrícula se rehace (`didUpdateWidget`) cuando las series cambian por detrás y
   olvida lo que tuviera sin guardar de ese ejercicio: si no, "Guardar cambios"
   escribiría lo viejo encima de lo que se acaba de guardar en el formulario.
+- **El planning es de una semana, no de un día** (`domain/semana.dart`): la
+  navegación, el calendario y el formulario hablan de `Semana`, y cualquier día
+  que se elija en un calendario se resuelve a su semana de lunes a domingo. Antes
+  el cálculo del lunes estaba repetido en dos pantallas.
+- **La vista del cliente se refresca sola por dos vías** y no por una: Realtime
+  sobre `plannings_semanales` para lo que aparece y desaparece (necesita
+  `replica identity full`, o el DELETE no llega: el WAL solo lleva la clave
+  primaria y Realtime no puede comprobar ni el filtro ni la RLS), y una recarga
+  al recuperar el foco para el socket caído y para los cambios de dentro del
+  planning, que no viajan por Realtime.
+- **La app es solo en español, sin negociar con el sistema**: `flutter_localizations`
+  más `locale: Locale('es')` fijo. Además de traducir los `DatePicker`, hace que
+  la semana del calendario empiece en lunes, que es como se planifica aquí.
+- **El vídeo incrustado nace inerte** (`pointer-events: none`) y se activa al
+  tocarlo: un iframe se queda la rueda y el dedo, y como Flutter desplaza
+  escuchando esos eventos, encima del vídeo no había scroll. El aviso de "toca
+  para activar" se pinta en el DOM porque una vista de plataforma va **por
+  encima** del lienzo: lo que pinte Flutter ahí queda debajo del vídeo. El
+  contenedor del iframe también tiene que ser inerte, o es él quien queda bajo
+  el puntero.
+- **Las listas de plannings las recarga el controlador**, no las pantallas:
+  crear, editar, archivar, reactivar y eliminar invalidan la familia entera.
+  Repartido por pantallas siempre se olvidaba alguna.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

@@ -7,6 +7,7 @@ import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/al_dia_con_el_entrenador.dart';
 
 /// Lo que ve el cliente de su planificacion: sus semanas activas y el historico
 /// de las archivadas (CU-23 desde su lado).
@@ -21,38 +22,40 @@ class PantallaMisPlannings extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final plannings = ref.watch(misPlanningsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi planning'),
-        actions: [
-          IconButton(
-            tooltip: 'Recargar',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(misPlanningsProvider),
-          ),
-        ],
-      ),
-      body: plannings.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  mensajeDeErrorPlanificacion(error),
-                  textAlign: TextAlign.center,
-                ),
-                TextButton(
-                  onPressed: () => ref.invalidate(misPlanningsProvider),
-                  child: const Text('Reintentar'),
-                ),
-              ],
+    return AlDiaConElEntrenador(
+      hijo: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mi planning'),
+          actions: [
+            IconButton(
+              tooltip: 'Recargar',
+              icon: const Icon(Icons.refresh),
+              onPressed: () => ref.invalidate(misPlanningsProvider),
+            ),
+          ],
+        ),
+        body: plannings.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    mensajeDeErrorPlanificacion(error),
+                    textAlign: TextAlign.center,
+                  ),
+                  TextButton(
+                    onPressed: () => ref.invalidate(misPlanningsProvider),
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              ),
             ),
           ),
+          data: (lista) => _Listado(plannings: lista),
         ),
-        data: (lista) => _Listado(plannings: lista),
       ),
     );
   }
@@ -197,7 +200,7 @@ class _SemanaActiva extends ConsumerWidget {
     if (completo == null) return 'Esta es tu semana en curso.';
 
     final total = completo.sesiones.length;
-    if (total == 0) return 'Esta semana aun no tiene sesiones.';
+    if (total == 0) return 'Esta semana aún no tiene sesiones.';
 
     final hechas = completo.sesiones.where((s) => s.resultadoRegistrado).length;
     if (hechas == total) return 'Semana completa: $hechas de $total.';

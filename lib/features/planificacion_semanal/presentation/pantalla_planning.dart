@@ -236,7 +236,7 @@ class _Cabecera extends ConsumerWidget {
         if (!planning.esEditable) ...[
           const SizedBox(height: 8),
           Text(
-            'Archivado: solo consulta. Reactivalo para poder modificarlo.',
+            'Archivado: solo consulta. Reactívalo para poder modificarlo.',
             style: textos.bodySmall,
           ),
         ],

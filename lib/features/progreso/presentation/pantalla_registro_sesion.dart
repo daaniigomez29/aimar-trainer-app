@@ -116,7 +116,7 @@ class _Sesion extends StatelessWidget {
             child: const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
-                'Esta semana esta archivada: ya no se pueden registrar '
+                'Esta semana está archivada: ya no se pueden registrar '
                 'resultados nuevos.',
               ),
             ),

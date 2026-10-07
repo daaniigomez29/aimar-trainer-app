@@ -129,7 +129,7 @@ void main() {
     );
     await montar(tester, lista: [semana], completo: semana);
 
-    expect(find.textContaining('aun no tiene sesiones'), findsOneWidget);
+    expect(find.textContaining('aún no tiene sesiones'), findsOneWidget);
   });
 
   testWidgets('las semanas archivadas van aparte, en el historico', (

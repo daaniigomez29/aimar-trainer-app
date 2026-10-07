@@ -202,7 +202,7 @@ class _Video extends StatelessWidget {
 
   /// Ancho maximo del reproductor. Un short es vertical: a pantalla completa en
   /// un portatil quedaria una columna de video absurdamente alta.
-  static const double anchoMaximo = 320;
+  static const double anchoMaximo = 250;
 
   @override
   Widget build(BuildContext context) {
@@ -211,18 +211,18 @@ class _Video extends StatelessWidget {
       return _EnlaceVideo(url: url);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: anchoMaximo),
-          child: ReproductorVideo(url: incrustada),
-        ),
-        const SizedBox(height: 8),
-        // El enlace sigue a mano: hay videos que su dueno no deja incrustar, y
-        // entonces el reproductor muestra un aviso de YouTube y no hay mas.
-        _EnlaceVideo(url: url),
-      ],
+    // Solo el reproductor: el enlace en crudo no aporta nada cuando el video se
+    // ve aqui mismo, y ensuciaba la ficha. Sigue estando [_EnlaceVideo] para
+    // cuando no se puede incrustar, que es el caso en que si hace falta.
+    // El `Align` no es decorativo: el padre da un ancho fijo, y sin el la
+    // restriccion de [anchoMaximo] no se aplicaria y el video saldria a toda la
+    // pantalla.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: anchoMaximo),
+        child: ReproductorVideo(url: incrustada),
+      ),
     );
   }
 }

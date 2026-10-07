@@ -208,7 +208,7 @@ class DatosSerie {
     if (peso == null) return null;
     if (peso <= 0) {
       return const ErrorValidacion(
-        'El peso debe ser mayor que cero. Dejalo vacío si no aplica.',
+        'El peso debe ser mayor que cero. Déjalo vacío si no aplica.',
         campo: 'peso',
       );
     }
@@ -295,7 +295,7 @@ class DatosEjercicioPlanificado {
     if (segundos == null) return null;
     if (segundos <= 0) {
       return const ErrorValidacion(
-        'El descanso debe ser mayor que cero. Dejalo vacío si no aplica.',
+        'El descanso debe ser mayor que cero. Déjalo vacío si no aplica.',
         campo: 'descansoSeg',
       );
     }

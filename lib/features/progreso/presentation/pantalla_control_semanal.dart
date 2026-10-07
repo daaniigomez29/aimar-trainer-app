@@ -428,7 +428,7 @@ class _PasoCheckin extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Como ha ido la semana al margen del entrenamiento.',
+          'Cómo ha ido la semana al margen del entrenamiento.',
           style: textos.bodySmall,
         ),
         const SizedBox(height: 16),

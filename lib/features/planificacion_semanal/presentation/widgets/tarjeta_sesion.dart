@@ -68,7 +68,7 @@ class TarjetaSesion extends StatelessWidget {
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
                     child: Tooltip(
-                      message: 'El cliente ya registro el resultado',
+                      message: 'El cliente ya registró el resultado',
                       child: Icon(Icons.task_alt, size: 20),
                     ),
                   ),
@@ -95,7 +95,7 @@ class TarjetaSesion extends StatelessWidget {
                 child: Text(
                   puedeEditar
                       ? 'Sin bloques todavía.'
-                      : 'Esta sesión aun no tiene contenido.',
+                      : 'Esta sesión aún no tiene contenido.',
                   style: textos.bodySmall,
                 ),
               )

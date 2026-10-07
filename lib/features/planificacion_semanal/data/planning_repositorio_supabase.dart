@@ -133,6 +133,35 @@ sesiones_entrenamiento(
     );
   }
 
+  @override
+  Stream<void> cambiosEnPlanningsDeCliente(String clienteId) {
+    // Un canal por cliente: el nombre lo comparte con nadie mas, y el filtro
+    // hace que el servidor no mande lo que no es suyo. La RLS vuelve a
+    // comprobarlo, pero cuanto menos viaje, mejor.
+    final canal = cliente.channel('plannings:$clienteId');
+    final avisos = StreamController<void>.broadcast();
+
+    canal
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: _plannings,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'cliente_id',
+            value: clienteId,
+          ),
+          callback: (_) => avisos.add(null),
+        )
+        .subscribe();
+
+    avisos.onCancel = () async {
+      await cliente.removeChannel(canal);
+      await avisos.close();
+    };
+    return avisos.stream;
+  }
+
   // --- Planning ---
 
   @override
@@ -451,6 +480,6 @@ sesiones_entrenamiento(
         .replaceFirst(RegExp(r'^.*?:\s*'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-    return limpio.isEmpty ? 'Los datos no son validos.' : limpio;
+    return limpio.isEmpty ? 'Los datos no son válidos.' : limpio;
   }
 }

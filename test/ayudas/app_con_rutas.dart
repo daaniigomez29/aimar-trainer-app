@@ -14,8 +14,10 @@ import 'package:go_router/go_router.dart';
 MaterialApp appConRutas({
   required String rutaInicial,
   required List<RouteBase> rutas,
+  ThemeData? tema,
 }) {
   return MaterialApp.router(
+    theme: tema,
     routerConfig: GoRouter(initialLocation: rutaInicial, routes: rutas),
   );
 }
