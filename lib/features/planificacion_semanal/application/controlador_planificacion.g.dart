@@ -153,6 +153,63 @@ final class MisPlanningsProvider
 
 String _$misPlanningsHash() => r'b28ffabb97a55e99c3487b2177c1dbcb35d92165';
 
+/// Avisa de los cambios que hace el entrenador en los plannings del cliente que
+/// tiene la sesion abierta: uno nuevo, uno editado o uno eliminado.
+///
+/// POR QUE ES UN PROVIDER APARTE y no vive dentro de [misPlannings]: invalidar
+/// la lista desde dentro de ella misma cerraria la suscripcion y la volveria a
+/// abrir en cada cambio. Asi la escucha dura lo que dure la pantalla, y lo
+/// unico que se rehace es la consulta.
+
+@ProviderFor(cambiosEnMisPlannings)
+final cambiosEnMisPlanningsProvider = CambiosEnMisPlanningsProvider._();
+
+/// Avisa de los cambios que hace el entrenador en los plannings del cliente que
+/// tiene la sesion abierta: uno nuevo, uno editado o uno eliminado.
+///
+/// POR QUE ES UN PROVIDER APARTE y no vive dentro de [misPlannings]: invalidar
+/// la lista desde dentro de ella misma cerraria la suscripcion y la volveria a
+/// abrir en cada cambio. Asi la escucha dura lo que dure la pantalla, y lo
+/// unico que se rehace es la consulta.
+
+final class CambiosEnMisPlanningsProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, Stream<void>>
+    with $FutureModifier<void>, $StreamProvider<void> {
+  /// Avisa de los cambios que hace el entrenador en los plannings del cliente que
+  /// tiene la sesion abierta: uno nuevo, uno editado o uno eliminado.
+  ///
+  /// POR QUE ES UN PROVIDER APARTE y no vive dentro de [misPlannings]: invalidar
+  /// la lista desde dentro de ella misma cerraria la suscripcion y la volveria a
+  /// abrir en cada cambio. Asi la escucha dura lo que dure la pantalla, y lo
+  /// unico que se rehace es la consulta.
+  CambiosEnMisPlanningsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cambiosEnMisPlanningsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cambiosEnMisPlanningsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<void> create(Ref ref) {
+    return cambiosEnMisPlannings(ref);
+  }
+}
+
+String _$cambiosEnMisPlanningsHash() =>
+    r'c773bbc92ad13d0e2a928fd0690bdeb134cf2329';
+
 /// Un planning con toda su jerarquia. Es la fuente de la pantalla de edicion.
 
 @ProviderFor(planningCompleto)

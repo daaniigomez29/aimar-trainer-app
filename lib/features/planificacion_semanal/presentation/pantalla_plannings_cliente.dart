@@ -54,7 +54,6 @@ class PantallaPlanningsCliente extends ConsumerWidget {
             clienteId: clienteId,
           );
           if (creado == null || !context.mounted) return;
-          ref.invalidate(planningsDeClienteProvider(clienteId));
           context.go(Rutas.planningDeClienteConcreto(clienteId, creado.id));
         },
         icon: const Icon(Icons.add),

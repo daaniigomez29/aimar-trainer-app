@@ -131,10 +131,26 @@
   -->
   <script>
     window.aimarVideo = {
-      crearIframe: function (url) {
+      // Devuelve un contenedor con el iframe y, encima, el aviso de activacion.
+      //
+      // POR QUE EL AVISO VA AQUI Y NO EN FLUTTER: una vista de plataforma es un
+      // elemento del DOM que el motor coloca SOBRE el lienzo, asi que un aviso
+      // pintado por Flutter quedaba debajo del video y no se veia. El texto
+      // llega desde Dart para no repartir los literales de la interfaz.
+      crearIframe: function (url, aviso) {
+        const caja = document.createElement("div");
+        caja.style.position = "relative";
+        caja.style.width = "100%";
+        caja.style.height = "100%";
+        // Tambien inerte: si el contenedor recibe el puntero, es el quien queda
+        // bajo el dedo y no el lienzo de Flutter.
+        caja.style.pointerEvents = "none";
+
         const marco = document.createElement("iframe");
         marco.src = url;
         marco.style.border = "0";
+        marco.style.position = "absolute";
+        marco.style.inset = "0";
         marco.style.width = "100%";
         marco.style.height = "100%";
         marco.setAttribute("loading", "lazy");
@@ -147,7 +163,56 @@
           "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         );
         marco.allowFullscreen = true;
-        return marco;
+        // Inerte de entrada: un iframe se traga la rueda y el dedo, y el
+        // usuario no entiende por que la pagina no baja cuando el puntero esta
+        // encima del video. Flutter desplaza escuchando esos eventos, asi que
+        // si el iframe se los queda, no hay scroll. Se activa al tocarlo.
+        marco.style.pointerEvents = "none";
+
+        const capa = document.createElement("div");
+        capa.style.position = "absolute";
+        capa.style.inset = "0";
+        capa.style.display = "flex";
+        capa.style.flexDirection = "column";
+        capa.style.alignItems = "center";
+        capa.style.justifyContent = "center";
+        capa.style.gap = "8px";
+        capa.style.background = "rgba(0, 0, 0, 0.45)";
+        capa.style.color = "#fff";
+        capa.style.font = "500 13px/1.3 system-ui, sans-serif";
+        capa.style.textAlign = "center";
+        capa.style.padding = "0 12px";
+        // Tampoco recibe nada: el toque tiene que llegar a Flutter, que es
+        // quien decide activar.
+        capa.style.pointerEvents = "none";
+        capa.innerHTML =
+          '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" ' +
+          'stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
+          '<circle cx="12" cy="12" r="9"></circle>' +
+          '<path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor"></path></svg>';
+        capa.appendChild(document.createTextNode(aviso));
+
+        caja.appendChild(marco);
+        caja.appendChild(capa);
+        return caja;
+      },
+
+      // Devuelve el control al reproductor: a partir de aqui el video responde
+      // a los clics (play, volumen, pantalla completa) y, como cualquier video
+      // incrustado, se queda con la rueda mientras el puntero este encima.
+      permitirInteraccion: function (caja) {
+        caja.style.pointerEvents = "auto";
+        caja.firstChild.style.pointerEvents = "auto";
+        caja.lastChild.style.display = "none";
+      },
+
+      // Lo devuelve a inerte. El contenedor se reutiliza mientras dure la
+      // sesion, asi que sin esto una ficha abierta por segunda vez saldria con
+      // el video ya activo y el scroll volveria a no funcionar encima de el.
+      bloquearInteraccion: function (caja) {
+        caja.style.pointerEvents = "none";
+        caja.firstChild.style.pointerEvents = "none";
+        caja.lastChild.style.display = "flex";
       },
     };
   </script>

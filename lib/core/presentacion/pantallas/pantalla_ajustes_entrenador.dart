@@ -53,7 +53,7 @@ class PantallaAjustesEntrenador extends ConsumerWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          'La gestion de cuentas y la configuración tecnica se hacen desde el '
+          'La gestión de cuentas y la configuración técnica se hacen desde el '
           'panel de Supabase: no son casos de uso de la app.',
           style: textos.bodySmall,
         ),

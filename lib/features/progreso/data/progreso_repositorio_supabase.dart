@@ -378,7 +378,7 @@ class ProgresoRepositorioSupabase implements ProgresoRepositorio {
           'Falta algo de lo que esto depende, o ya se ha eliminado.',
         ),
         '22003' => const ErrorValidacion(
-          'Algún número esta fuera del rango admitido.',
+          'Algún número está fuera del rango admitido.',
         ),
         _ => Registro.inesperado(
           error,

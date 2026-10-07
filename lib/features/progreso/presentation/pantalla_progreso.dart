@@ -116,7 +116,7 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
         const SizedBox(height: 24),
         Text(
           'Las fechas son las de la sesión, no las del momento en que se '
-          'anoto el resultado.',
+          'anotó el resultado.',
           style: textos.bodySmall,
         ),
       ],

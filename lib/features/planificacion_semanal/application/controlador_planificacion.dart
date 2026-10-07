@@ -46,6 +46,23 @@ Future<List<PlanningSemanal>> misPlannings(Ref ref) async {
   };
 }
 
+/// Avisa de los cambios que hace el entrenador en los plannings del cliente que
+/// tiene la sesion abierta: uno nuevo, uno editado o uno eliminado.
+///
+/// POR QUE ES UN PROVIDER APARTE y no vive dentro de [misPlannings]: invalidar
+/// la lista desde dentro de ella misma cerraria la suscripcion y la volveria a
+/// abrir en cada cambio. Asi la escucha dura lo que dure la pantalla, y lo
+/// unico que se rehace es la consulta.
+@riverpod
+Stream<void> cambiosEnMisPlannings(Ref ref) {
+  final idCliente = ref.watch(idUsuarioActualProvider);
+  if (idCliente == null) return const Stream.empty();
+
+  return ref
+      .watch(planningRepositorioProvider)
+      .cambiosEnPlanningsDeCliente(idCliente);
+}
+
 /// Un planning con toda su jerarquia. Es la fuente de la pantalla de edicion.
 @riverpod
 Future<PlanningSemanal> planningCompleto(Ref ref, String planningId) async {
@@ -77,31 +94,38 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
         final error = datos.validar();
         if (error != null) return Failure(error);
         return ref.read(planningRepositorioProvider).crearPlanning(datos);
-      });
+      }, recargarListas: true);
 
   Future<Result<PlanningSemanal>> editarPlanning({
     required String id,
     required DatosPlanning datos,
-  }) => _ejecutar(() async {
-    final error = datos.validar();
-    if (error != null) return Failure(error);
-    return ref
-        .read(planningRepositorioProvider)
-        .editarPlanning(id: id, datos: datos);
-  }, planningARecargar: id);
+  }) => _ejecutar(
+    () async {
+      final error = datos.validar();
+      if (error != null) return Failure(error);
+      return ref
+          .read(planningRepositorioProvider)
+          .editarPlanning(id: id, datos: datos);
+    },
+    planningARecargar: id,
+    recargarListas: true,
+  );
 
   Future<Result<PlanningSemanal>> archivarPlanning(String id) => _ejecutar(
     () => ref.read(planningRepositorioProvider).archivarPlanning(id),
     planningARecargar: id,
+    recargarListas: true,
   );
 
   Future<Result<PlanningSemanal>> reactivarPlanning(String id) => _ejecutar(
     () => ref.read(planningRepositorioProvider).reactivarPlanning(id),
     planningARecargar: id,
+    recargarListas: true,
   );
 
   Future<Result<void>> eliminarPlanning(String id) => _ejecutar(
     () => ref.read(planningRepositorioProvider).eliminarPlanning(id),
+    recargarListas: true,
   );
 
   // --- Sesion (CU-06, CU-10, CU-14) ---
@@ -242,11 +266,18 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
         );
   }, planningARecargar: planningId);
 
-  /// Envoltorio comun: marca el estado, ejecuta, recarga el planning si procede y
+  /// Envoltorio comun: marca el estado, ejecuta, recarga lo que proceda y
   /// devuelve el resultado.
+  ///
+  /// [recargarListas] es para las operaciones que cambian **que plannings hay**
+  /// (crear, editar, archivar, reactivar, eliminar), no el contenido de uno.
+  /// Va aqui y no en cada pantalla porque las listas se ven desde varias y
+  /// siempre acababa olvidandose alguna: al eliminar un planning, el historico
+  /// del cliente seguia enseniandolo hasta pulsar "recargar".
   Future<Result<T>> _ejecutar<T>(
     Future<Result<T>> Function() operacion, {
     String? planningARecargar,
+    bool recargarListas = false,
   }) async {
     if (state.enCurso) {
       return const Failure(ErrorValidacion('Ya hay una operación en curso.'));
@@ -260,8 +291,17 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
         Success() => const EstadoAccion.completada(),
         Failure(:final error) => EstadoAccion.conError(error),
       };
-      if (resultado.esExito && planningARecargar != null) {
-        ref.invalidate(planningCompletoProvider(planningARecargar));
+      if (resultado.esExito) {
+        if (planningARecargar != null) {
+          ref.invalidate(planningCompletoProvider(planningARecargar));
+        }
+        if (recargarListas) {
+          // La familia entera: desde aqui no se sabe que cliente esta mirando
+          // cada pantalla abierta, y son listas cortas.
+          ref
+            ..invalidate(planningsDeClienteProvider)
+            ..invalidate(misPlanningsProvider);
+        }
       }
     }
     return resultado;

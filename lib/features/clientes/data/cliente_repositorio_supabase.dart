@@ -246,7 +246,7 @@ class ClienteRepositorioSupabase implements ClienteRepositorio {
         ),
         // Desbordamiento de numeric(5,2): altura o peso fuera de rango.
         '22003' => const ErrorValidacion(
-          'La altura o el peso estan fuera del rango admitido.',
+          'La altura o el peso están fuera del rango admitido.',
         ),
         _ => Registro.inesperado(
           error,

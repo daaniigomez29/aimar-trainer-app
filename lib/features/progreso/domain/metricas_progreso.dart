@@ -70,13 +70,13 @@ enum MetricaEjercicio {
 
   /// Explicacion corta, para que el cliente sepa que esta mirando.
   String get descripcion => switch (this) {
-    MetricaEjercicio.pesoMaximo => 'La carga mas alta levantada ese día.',
+    MetricaEjercicio.pesoMaximo => 'La carga más alta levantada ese día.',
     MetricaEjercicio.volumenTotal =>
       'Suma de peso por repeticiones de todas las series.',
     MetricaEjercicio.repeticionesTotales =>
       'Repeticiones sumadas de todas las series.',
     MetricaEjercicio.rirMedio =>
-      'Media del RIR de las series. Mas bajo, mas cerca del fallo.',
+      'Media del RIR de las series. Más bajo, más cerca del fallo.',
     MetricaEjercicio.minutos => 'Minutos registrados en la sesión.',
   };
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
@@ -13,6 +15,7 @@ import 'package:aimar_trainer_app/features/progreso/domain/metricas_progreso.dar
 import 'package:aimar_trainer_app/features/progreso/domain/progreso_repositorio.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
 
+import '../../../ayudas/app_con_rutas.dart';
 import '../../planificacion_semanal/ayudas_planificacion.dart';
 
 class ProgresoFalso extends Mock implements ProgresoRepositorio {}
@@ -55,13 +58,26 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [progresoRepositorioProvider.overrideWithValue(repositorio)],
-        child: MaterialApp(
-          theme: TemaApp.oscuro(),
-          home: PantallaRegistroEjercicio(
-            ejercicio: ejercicio,
-            planningId: 'p-1',
-            clienteId: 'cli-1',
-          ),
+        // Con rutas de verdad: al terminar el ultimo ejercicio la pantalla
+        // navega al planning del cliente, y eso necesita un GoRouter.
+        child: appConRutas(
+          rutaInicial: '/registro',
+          tema: TemaApp.oscuro(),
+          rutas: [
+            GoRoute(
+              path: Rutas.inicioCliente,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('mi planning')),
+            ),
+            GoRoute(
+              path: '/registro',
+              builder: (context, state) => PantallaRegistroEjercicio(
+                ejercicio: ejercicio,
+                planningId: 'p-1',
+                clienteId: 'cli-1',
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -196,5 +212,18 @@ void main() {
     expect(enviado.esCardio, isTrue);
     expect(enviado.minutos, 30);
     expect(enviado.series, isEmpty);
+  });
+
+  // Al acabar el ultimo ejercicio el cliente quiere ver como queda su semana,
+  // no volver a la lista de lo que acaba de terminar.
+  testWidgets('terminar el último ejercicio devuelve al planning', (
+    tester,
+  ) async {
+    await montar(tester, deFuerza());
+
+    await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('mi planning'), findsOneWidget);
   });
 }

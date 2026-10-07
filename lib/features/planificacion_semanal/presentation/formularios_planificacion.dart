@@ -5,6 +5,7 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/application/con
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 
 /// Formularios cortos de la planificacion, en dialogo: crear/editar planning,
 /// sesion y bloque. El de ejercicio planificado va en pantalla propia porque su
@@ -12,25 +13,36 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning
 
 /// CU-05 / CU-09: crear o editar un planning.
 ///
+/// [semana] es la que se propone al crear. Quien abre el dialogo desde una
+/// semana concreta debe pasarla: si el entrenador ha navegado al 19-25 para
+/// adelantar trabajo, proponerle la semana de hoy le obliga a corregir la fecha
+/// cada vez.
+///
 /// Devuelve el planning guardado, o `null` si se cancelo o fallo.
 Future<PlanningSemanal?> pedirDatosPlanning({
   required BuildContext context,
   required WidgetRef ref,
   required String clienteId,
   PlanningSemanal? planning,
+  Semana? semana,
 }) async {
   ref.read(controladorPlanificacionProvider.notifier).reiniciar();
   return showDialog<PlanningSemanal>(
     context: context,
-    builder: (_) => _DialogoPlanning(clienteId: clienteId, planning: planning),
+    builder: (_) => _DialogoPlanning(
+      clienteId: clienteId,
+      planning: planning,
+      semana: semana,
+    ),
   );
 }
 
 class _DialogoPlanning extends ConsumerStatefulWidget {
-  const _DialogoPlanning({required this.clienteId, this.planning});
+  const _DialogoPlanning({required this.clienteId, this.planning, this.semana});
 
   final String clienteId;
   final PlanningSemanal? planning;
+  final Semana? semana;
 
   @override
   ConsumerState<_DialogoPlanning> createState() => _EstadoDialogoPlanning();
@@ -38,7 +50,7 @@ class _DialogoPlanning extends ConsumerStatefulWidget {
 
 class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
   late final TextEditingController _objetivo;
-  late DateTime _fechaInicio;
+  late Semana _semana;
 
   @override
   void initState() {
@@ -46,15 +58,12 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
     _objetivo = TextEditingController(
       text: widget.planning?.nombreObjetivo ?? '',
     );
-    _fechaInicio = widget.planning?.fechaInicio ?? _lunesDeEstaSemana();
-  }
-
-  /// Por defecto, el lunes de la semana en curso: es lo que un entrenador espera
-  /// al crear "el planning de esta semana", aunque el dominio no exija lunes.
-  static DateTime _lunesDeEstaSemana() {
-    final hoy = DateTime.now();
-    final dia = DateTime(hoy.year, hoy.month, hoy.day);
-    return dia.subtract(Duration(days: dia.weekday - 1));
+    // Al editar manda la del planning; al crear, la que venga de la pantalla y,
+    // si no viene ninguna, la de hoy.
+    _semana = switch (widget.planning) {
+      final previo? => Semana.de(previo.fechaInicio),
+      null => widget.semana ?? Semana.deHoy(),
+    };
   }
 
   @override
@@ -63,23 +72,26 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
     super.dispose();
   }
 
-  Future<void> _elegirFecha() async {
-    final elegida = await showDatePicker(
+  /// El calendario elige dias, pero el planning es de una semana: se guarda la
+  /// semana del dia elegido. Tocar el jueves 22 deja "del 19 al 25", que es lo
+  /// que el entrenador queria decir.
+  Future<void> _elegirSemana() async {
+    final elegido = await showDatePicker(
       context: context,
-      initialDate: _fechaInicio,
+      initialDate: _semana.lunes,
       firstDate: DateTime(DateTime.now().year - 2),
       lastDate: DateTime(DateTime.now().year + 2),
-      helpText: 'Primer día de la semana',
+      helpText: 'Un día de la semana',
       cancelText: 'Cancelar',
       confirmText: 'Aceptar',
     );
-    if (elegida != null) setState(() => _fechaInicio = elegida);
+    if (elegido != null) setState(() => _semana = Semana.de(elegido));
   }
 
   Future<void> _guardar() async {
     final datos = DatosPlanning(
       clienteId: widget.clienteId,
-      fechaInicio: _fechaInicio,
+      fechaInicio: _semana.lunes,
       nombreObjetivo: _objetivo.text,
     );
     final controlador = ref.read(controladorPlanificacionProvider.notifier);
@@ -96,7 +108,6 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
   @override
   Widget build(BuildContext context) {
     final estado = ref.watch(controladorPlanificacionProvider);
-    final fin = _fechaInicio.add(const Duration(days: 6));
 
     return AlertDialog(
       title: Text(
@@ -115,10 +126,11 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
           ],
           OutlinedButton.icon(
             key: const Key('boton_fecha_inicio'),
-            onPressed: estado.enCurso ? null : _elegirFecha,
+            onPressed: estado.enCurso ? null : _elegirSemana,
             icon: const Icon(Icons.calendar_today, size: 18),
             label: Text(
-              'Del ${_comoFecha(_fechaInicio)} al ${_comoFecha(fin)}',
+              'Del ${_comoFecha(_semana.lunes)} '
+              'al ${_comoFecha(_semana.domingo)}',
             ),
           ),
           if (estado.errorDelCampo('fechaInicio') case final error?)

@@ -12,52 +12,152 @@ import 'package:aimar_trainer_app/features/clientes/application/controlador_clie
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/al_dia_con_el_entrenador.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/navegador_de_semana.dart';
 
 /// Pantalla de entrada del cliente (`docs/ui-design.md`, 6.1).
 ///
 /// Es la misma informacion que ya daba la lista de plannings, pero puesta al
 /// reves: lo primero es lo de hoy, y la semana queda como tira de dias. El
 /// historico de semanas sigue existiendo, a un toque desde la cabecera.
-class PantallaMiPlanning extends ConsumerWidget {
+class PantallaMiPlanning extends ConsumerStatefulWidget {
   const PantallaMiPlanning({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PantallaMiPlanning> createState() => _EstadoMiPlanning();
+}
+
+class _EstadoMiPlanning extends ConsumerState<PantallaMiPlanning> {
+  /// Semana que se esta mirando. `null` significa "la que toque hoy", que es
+  /// como se entra siempre: solo deja de serlo si el cliente navega.
+  Semana? _elegida;
+
+  void _irA(Semana semana) => setState(() => _elegida = semana);
+
+  /// Sin semana elegida, la que incluye hoy; si no hay ninguna, la activa mas
+  /// reciente, que es lo que el cliente esperaria ver al entrar.
+  ///
+  /// Con semana elegida manda ella, y vale en cualquier estado: el historico
+  /// tambien se consulta desde aqui.
+  PlanningSemanal? _planningQueTocaVer(List<PlanningSemanal> lista) {
+    if (_elegida case final semana?) {
+      return lista.where((p) => Semana.de(p.fechaInicio) == semana).firstOrNull;
+    }
+    final activos = lista.where((p) => p.estado.esActivo).toList();
+    return activos.where((p) => p.contiene(DateTime.now())).firstOrNull ??
+        activos.firstOrNull;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final idCliente = ref.watch(idUsuarioActualProvider);
     if (idCliente == null) return const PantallaCargando();
 
     final plannings = ref.watch(misPlanningsProvider);
 
-    return PantallaCliente(
-      rutaActual: Rutas.inicioCliente,
-      cuerpo: plannings.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => _Aviso(
-          mensaje: mensajeDeErrorPlanificacion(error),
-          onReintentar: () => ref.invalidate(misPlanningsProvider),
-        ),
-        data: (lista) {
-          // La semana que incluye hoy; si no hay ninguna, la activa mas
-          // reciente, que es lo que el cliente esperaria ver.
-          final hoy = DateTime.now();
-          final activos = lista.where((p) => p.estado.esActivo).toList();
-          final deHoy = activos.where((p) => p.contiene(hoy)).firstOrNull;
-          final planning = deHoy ?? activos.firstOrNull;
+    return AlDiaConElEntrenador(
+      hijo: PantallaCliente(
+        rutaActual: Rutas.inicioCliente,
+        cuerpo: plannings.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _Aviso(
+            mensaje: mensajeDeErrorPlanificacion(error),
+            onReintentar: () => ref.invalidate(misPlanningsProvider),
+          ),
+          data: (lista) {
+            final planning = _planningQueTocaVer(lista);
+            // De que semana se habla: la elegida, la del planning que se
+            // ensena, o la de hoy si no hay ninguno.
+            final semana =
+                _elegida ??
+                (planning == null
+                    ? Semana.deHoy()
+                    : Semana.de(planning.fechaInicio));
 
-          if (planning == null) {
-            return _Aviso(
-              mensaje:
-                  'Tu entrenador todavía no te ha preparado ninguna '
-                  'semana.',
-              onReintentar: () => ref.invalidate(misPlanningsProvider),
+            if (planning == null) {
+              return _SemanaSinPlanning(
+                idCliente: idCliente,
+                semana: semana,
+                onCambiarSemana: _irA,
+                sinNingunPlanning: lista.isEmpty,
+              );
+            }
+            return _Semana(
+              idCliente: idCliente,
+              planningId: planning.id,
+              semana: semana,
+              onCambiarSemana: _irA,
             );
-          }
-          return _Semana(
-            idCliente: idCliente,
-            planningId: planning.id,
-            esLaDeHoy: deHoy != null,
-          );
-        },
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Una semana para la que el entrenador no ha preparado nada.
+///
+/// Lleva la misma cabecera y el mismo navegador que la que si tiene planning:
+/// si no, al llegar a un hueco el cliente se quedaria sin forma de volver.
+class _SemanaSinPlanning extends ConsumerWidget {
+  const _SemanaSinPlanning({
+    required this.idCliente,
+    required this.semana,
+    required this.onCambiarSemana,
+    required this.sinNingunPlanning,
+  });
+
+  final String idCliente;
+  final Semana semana;
+  final ValueChanged<Semana> onCambiarSemana;
+
+  /// El cliente no tiene ningun planning todavia, que no es lo mismo que no
+  /// tenerlo en **esta** semana.
+  final bool sinNingunPlanning;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ficha = ref.watch(clientePorIdProvider(idCliente)).value;
+    final textos = Theme.of(context).textTheme;
+
+    return RefreshIndicator(
+      onRefresh: () async => ref.invalidate(misPlanningsProvider),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          Tokens.margenPantalla,
+          8,
+          Tokens.margenPantalla,
+          24,
+        ),
+        children: [
+          _Cabecera(ficha: ficha),
+          const SizedBox(height: 10),
+          NavegadorDeSemana(semana: semana, onCambio: onCambiarSemana),
+          const SizedBox(height: Tokens.separacionBloques),
+          Tarjeta(
+            hijo: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sinNingunPlanning
+                      ? 'Todavía no tienes ninguna semana'
+                      : 'Semana sin planning',
+                  style: textos.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  sinNingunPlanning
+                      ? 'Tu entrenador todavía no te ha preparado ninguna '
+                            'semana.'
+                      : 'Tu entrenador no te preparó nada para la semana '
+                            'del ${semana.etiqueta}.',
+                  style: textos.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -67,12 +167,14 @@ class _Semana extends ConsumerStatefulWidget {
   const _Semana({
     required this.idCliente,
     required this.planningId,
-    required this.esLaDeHoy,
+    required this.semana,
+    required this.onCambiarSemana,
   });
 
   final String idCliente;
   final String planningId;
-  final bool esLaDeHoy;
+  final Semana semana;
+  final ValueChanged<Semana> onCambiarSemana;
 
   @override
   ConsumerState<_Semana> createState() => _SemanaState();
@@ -115,7 +217,12 @@ class _SemanaState extends ConsumerState<_Semana> {
             ),
             children: [
               _Cabecera(ficha: ficha),
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
+              NavegadorDeSemana(
+                semana: widget.semana,
+                onCambio: widget.onCambiarSemana,
+              ),
+              const SizedBox(height: 14),
               _TiraDeSesiones(
                 planning: planning,
                 elegida: sesion,
@@ -319,7 +426,7 @@ class _SinSesiones extends StatelessWidget {
           Text('Semana sin sesiones', style: textos.titleLarge),
           const SizedBox(height: 4),
           Text(
-            'Tu entrenador aun no ha añadido ninguna sesión a esta semana.',
+            'Tu entrenador aún no ha añadido ninguna sesión a esta semana.',
             style: textos.bodySmall,
           ),
         ],
@@ -401,7 +508,7 @@ class _TarjetaSesion extends StatelessWidget {
           ],
           if (ejercicios.isEmpty)
             Text(
-              'Esta sesión aun no tiene ejercicios.',
+              'Esta sesión aún no tiene ejercicios.',
               style: textos.bodySmall,
             ),
         ],

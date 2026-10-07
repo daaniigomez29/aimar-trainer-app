@@ -177,7 +177,7 @@ class _EstadoFormularioEjercicioPlanificado
               // CU-08, excepcion: biblioteca vacia.
               return const AvisoEnLinea(
                 mensaje:
-                    'La biblioteca esta vacía. Añade primero algún ejercicio '
+                    'La biblioteca está vacía. Añade primero algún ejercicio '
                     'para poder planificarlo.',
               );
             }
@@ -191,7 +191,7 @@ class _EstadoFormularioEjercicioPlanificado
                 labelText: 'Ejercicio *',
                 errorText: estado.errorDelCampo('ejercicioId'),
                 helperText: ejercicio == null
-                    ? 'El tipo del ejercicio decide como se planifica.'
+                    ? 'El tipo del ejercicio decide cómo se planifica.'
                     : ejercicio.tipo.descripcionPlanificacion,
               ),
               items: [

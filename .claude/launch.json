@@ -13,6 +13,19 @@
         "--dart-define-from-file=config/dev.json"
       ],
       "port": 54330
+    },
+    {
+      "name": "aimar-verificacion",
+      "runtimeExecutable": "flutter",
+      "runtimeArgs": [
+        "run",
+        "-d",
+        "web-server",
+        "--web-hostname=127.0.0.1",
+        "--web-port=54331",
+        "--dart-define-from-file=config/dev.json"
+      ],
+      "port": 54331
     }
   ]
 }

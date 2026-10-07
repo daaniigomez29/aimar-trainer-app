@@ -302,6 +302,6 @@ void main() {
         .thenAnswer((_) async => const Success(<Ejercicio>[]));
     await montar(tester);
 
-    expect(find.textContaining('La biblioteca esta vacía'), findsOneWidget);
+    expect(find.textContaining('La biblioteca está vacía'), findsOneWidget);
   });
 }

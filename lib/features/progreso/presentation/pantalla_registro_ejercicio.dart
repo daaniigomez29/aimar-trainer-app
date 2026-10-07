@@ -112,7 +112,7 @@ class _PantallaRegistroEjercicioState
     final campos = _campos[numero]!;
     final repeticiones = int.tryParse(campos.repeticiones.text.trim());
     if (repeticiones == null) {
-      _avisar('Pon cuantas repeticiones hiciste en la serie $numero.');
+      _avisar('Pon cuántas repeticiones hiciste en la serie $numero.');
       return;
     }
 
@@ -151,12 +151,16 @@ class _PantallaRegistroEjercicioState
     _siguiente();
   }
 
-  /// Pasa al siguiente ejercicio de la sesion, o cierra si era el ultimo.
+  /// Pasa al siguiente ejercicio de la sesion.
+  ///
+  /// Si era el ultimo, **vuelve al planning**, no a la pantalla de la sesion:
+  /// el cliente ha terminado y lo que quiere ver es como queda su semana, no la
+  /// lista de ejercicios que acaba de completar.
   void _siguiente() {
     final lista = _ejerciciosDeLaSesion;
     final indice = _indiceActual;
     if (lista == null || indice == null || indice + 1 >= lista.length) {
-      Navigator.of(context).pop();
+      context.go(Rutas.inicioCliente);
       return;
     }
 
@@ -282,7 +286,7 @@ class _PantallaRegistroEjercicioState
                 key: const Key('boton_serie_extra'),
                 onPressed: estado.enCurso ? null : _anadirSerieExtra,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Añadir una serie de mas'),
+                label: const Text('Añadir una serie de más'),
               ),
               if (widget.ejercicio.descansoPlanificadoSeg case final descanso?)
                 _Descanso(segundos: descanso),

@@ -21,9 +21,11 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_pl
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referencia_anterior.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/navegador_de_semana.dart';
 
 /// Planificacion semanal del entrenador (`docs/ui-design.md`, 6.6 y 6.7).
 ///
@@ -47,19 +49,13 @@ class PantallaPlanificacionEntrenador extends ConsumerStatefulWidget {
 class _PantallaPlanificacionEntrenadorState
     extends ConsumerState<PantallaPlanificacionEntrenador> {
   String? _clienteId;
-  DateTime? _inicioSemana;
+  Semana? _semana;
   int? _sesionElegida;
 
   /// Series editadas y aun sin guardar, por ejercicio planificado.
   final Map<String, List<DatosSerie>> _pendientes = {};
 
   bool get _haySinGuardar => _pendientes.isNotEmpty;
-
-  /// Lunes de la semana de una fecha: la navegacion va de lunes a domingo.
-  static DateTime _lunesDe(DateTime fecha) {
-    final dia = DateTime(fecha.year, fecha.month, fecha.day);
-    return dia.subtract(Duration(days: dia.weekday - 1));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +89,7 @@ class _PantallaPlanificacionEntrenadorState
         final cliente =
             activos.where((c) => c.id == _clienteId).firstOrNull ??
             activos.first;
-        final semana = _inicioSemana ?? _lunesDe(DateTime.now());
+        final semana = _semana ?? Semana.deHoy();
 
         final planning = _planningDeLaSemana(ref, cliente.id, semana);
 
@@ -108,10 +104,10 @@ class _PantallaPlanificacionEntrenadorState
             }),
           ),
           acciones: [
-            _NavegadorDeSemana(
-              inicio: semana,
+            NavegadorDeSemana(
+              semana: semana,
               onCambio: (nueva) => setState(() {
-                _inicioSemana = nueva;
+                _semana = nueva;
                 _sesionElegida = null;
                 _pendientes.clear();
               }),
@@ -126,7 +122,7 @@ class _PantallaPlanificacionEntrenadorState
           ),
           cuerpo: _Semana(
             cliente: cliente,
-            inicioSemana: semana,
+            semana: semana,
             sesionElegida: _sesionElegida,
             pendientes: _pendientes,
             onElegirSesion: (orden) => setState(() => _sesionElegida = orden),
@@ -151,16 +147,11 @@ class _PantallaPlanificacionEntrenadorState
   PlanningSemanal? _planningDeLaSemana(
     WidgetRef ref,
     String clienteId,
-    DateTime inicio,
+    Semana semana,
   ) {
     final lista = ref.watch(planningsDeClienteProvider(clienteId)).value;
     final deLaSemana = lista
-        ?.where(
-          (p) =>
-              p.fechaInicio.year == inicio.year &&
-              p.fechaInicio.month == inicio.month &&
-              p.fechaInicio.day == inicio.day,
-        )
+        ?.where((p) => Semana.de(p.fechaInicio) == semana)
         .firstOrNull;
     if (deLaSemana == null) return null;
     return ref.watch(planningCompletoProvider(deLaSemana.id)).value;
@@ -388,38 +379,6 @@ class _SelectorCliente extends StatelessWidget {
   }
 }
 
-class _NavegadorDeSemana extends StatelessWidget {
-  const _NavegadorDeSemana({required this.inicio, required this.onCambio});
-
-  final DateTime inicio;
-  final ValueChanged<DateTime> onCambio;
-
-  @override
-  Widget build(BuildContext context) {
-    final fin = inicio.add(const Duration(days: 6));
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          key: const Key('semana_anterior'),
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => onCambio(inicio.subtract(const Duration(days: 7))),
-        ),
-        Text(
-          'Semana del ${inicio.day}-${fin.day} ${_mes(fin)}',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        IconButton(
-          key: const Key('semana_siguiente'),
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => onCambio(inicio.add(const Duration(days: 7))),
-        ),
-      ],
-    );
-  }
-}
-
 class _BotonGuardar extends ConsumerWidget {
   const _BotonGuardar({
     required this.habilitado,
@@ -462,7 +421,7 @@ class _BotonGuardar extends ConsumerWidget {
 class _Semana extends ConsumerWidget {
   const _Semana({
     required this.cliente,
-    required this.inicioSemana,
+    required this.semana,
     required this.sesionElegida,
     required this.pendientes,
     required this.onElegirSesion,
@@ -470,7 +429,7 @@ class _Semana extends ConsumerWidget {
   });
 
   final Cliente cliente;
-  final DateTime inicioSemana;
+  final Semana semana;
   final int? sesionElegida;
   final Map<String, List<DatosSerie>> pendientes;
   final ValueChanged<int> onElegirSesion;
@@ -486,16 +445,11 @@ class _Semana extends ConsumerWidget {
           Center(child: Text(mensajeDeErrorPlanificacion(error))),
       data: (lista) {
         final deLaSemana = lista
-            .where(
-              (p) =>
-                  p.fechaInicio.year == inicioSemana.year &&
-                  p.fechaInicio.month == inicioSemana.month &&
-                  p.fechaInicio.day == inicioSemana.day,
-            )
+            .where((p) => Semana.de(p.fechaInicio) == semana)
             .firstOrNull;
 
         if (deLaSemana == null) {
-          return _SemanaSinPlanning(cliente: cliente, inicio: inicioSemana);
+          return _SemanaSinPlanning(cliente: cliente, semana: semana);
         }
         return _Planning(
           planningId: deLaSemana.id,
@@ -510,10 +464,10 @@ class _Semana extends ConsumerWidget {
 }
 
 class _SemanaSinPlanning extends ConsumerWidget {
-  const _SemanaSinPlanning({required this.cliente, required this.inicio});
+  const _SemanaSinPlanning({required this.cliente, required this.semana});
 
   final Cliente cliente;
-  final DateTime inicio;
+  final Semana semana;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -532,7 +486,8 @@ class _SemanaSinPlanning extends ConsumerWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              '${cliente.nombre} no tiene planning esta semana.',
+              '${cliente.nombre} no tiene planning en la semana '
+              'del ${semana.etiqueta}.',
               style: textos.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -544,14 +499,15 @@ class _SemanaSinPlanning extends ConsumerWidget {
                 etiqueta: 'Crear la semana',
                 icono: Icons.add,
                 onPulsar: () async {
-                  // El dialogo pide la fecha de inicio; llega con la semana que
-                  // se esta viendo ya elegida en la navegacion de arriba.
+                  // El dialogo llega con **la semana que se esta viendo**, no
+                  // con la de hoy: si el entrenador ha navegado al 19-25 para
+                  // adelantar trabajo, es esa la que quiere crear.
                   await pedirDatosPlanning(
                     context: context,
                     ref: ref,
                     clienteId: cliente.id,
+                    semana: semana,
                   );
-                  ref.invalidate(planningsDeClienteProvider(cliente.id));
                 },
               ),
             ),
@@ -1769,18 +1725,3 @@ class _FilaBiblioteca extends StatelessWidget {
 String _numero(double valor) => valor == valor.roundToDouble()
     ? valor.toStringAsFixed(0)
     : valor.toStringAsFixed(1);
-
-String _mes(DateTime fecha) => const [
-  'ene',
-  'feb',
-  'mar',
-  'abr',
-  'may',
-  'jun',
-  'jul',
-  'ago',
-  'sep',
-  'oct',
-  'nov',
-  'dic',
-][fecha.month - 1];

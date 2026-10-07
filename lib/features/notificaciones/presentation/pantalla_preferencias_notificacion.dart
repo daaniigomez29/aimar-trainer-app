@@ -111,7 +111,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Correo electronico', style: textos.titleMedium),
+                        Text('Correo electrónico', style: textos.titleMedium),
                         const SizedBox(height: 4),
                         Text(
                           'Siempre activo. Es el aviso de respaldo: llega '
@@ -149,7 +149,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
                         Text('Cerrar sesión', style: textos.titleMedium),
                         const SizedBox(height: 4),
                         Text(
-                          'Volveras a la pantalla de acceso.',
+                          'Volverás a la pantalla de acceso.',
                           style: textos.bodySmall,
                         ),
                       ],
@@ -194,7 +194,7 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
           'añades la app a la pantalla de inicio.';
     }
     if (permiso == EstadoPermisoPush.denegado) {
-      return 'Las has bloqueado en el navegador. Para recibirlas, permitelas '
+      return 'Las has bloqueado en el navegador. Para recibirlas, permítelas '
           'en los ajustes de este sitio.';
     }
     return activado

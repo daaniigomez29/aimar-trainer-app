@@ -20,6 +20,15 @@ abstract interface class PlanningRepositorio {
   /// pantalla puede validar ordenes y fechas duplicadas sin ir al servidor.
   Future<Result<PlanningSemanal>> obtenerPlanningCompleto(String planningId);
 
+  /// Avisa cada vez que cambian los plannings de un cliente: uno nuevo, uno
+  /// editado o uno eliminado.
+  ///
+  /// POR QUE ESTA EN EL PUERTO: quien planifica (el entrenador) y quien mira
+  /// (el cliente) son dos sesiones distintas, asi que la app del cliente no se
+  /// entera de nada por su cuenta. No emite datos, solo el aviso: quien escucha
+  /// decide que volver a pedir.
+  Stream<void> cambiosEnPlanningsDeCliente(String clienteId);
+
   // --- Planning (CU-05, CU-09, CU-13) ---
 
   Future<Result<PlanningSemanal>> crearPlanning(DatosPlanning datos);
