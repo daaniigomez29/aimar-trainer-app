@@ -9,9 +9,9 @@
  * Igual que el correo, estas funciones **nunca lanzan**: un push que no sale no
  * puede tumbar el aviso de los demás clientes ni el correo, que es el respaldo.
  */
-// Especificador resuelto por el import map de `supabase/functions/deno.json`,
-// como `@supabase/supabase-js`.
-import webpush from "web-push";
+// Especificador completo, por el mismo motivo que en `autorizacion.ts`: el
+// import map no viaja al empaquetador del servidor.
+import webpush from "npm:web-push@3.6.7";
 
 export interface SuscripcionPush {
   readonly id: string;

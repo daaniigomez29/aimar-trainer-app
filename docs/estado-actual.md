@@ -152,8 +152,15 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     `dart:js_interop` mal usado (por ejemplo, un tear-off de un miembro externo,
     que Dart prohíbe) pasa el análisis y revienta en `flutter build web`. Con
     código de plataforma, el build web es parte de la verificación, no un extra.
-21. **`deno lint` prohíbe el especificador `npm:` en línea**: las dependencias de
-    las Edge Functions van por el import map de `supabase/functions/deno.json`.
+21. **Las dependencias de las Edge Functions van con `npm:` y versión en el
+    propio `import`**, no por el import map. Es justo lo contrario de lo que
+    pide `deno lint`, cuya regla `no-import-prefix` está desactivada en
+    `supabase/functions/deno.json` por eso. El motivo:
+    `supabase functions deploy --use-api` sube **solo los `.ts`** de cada
+    función y empaqueta en el servidor, donde `deno.json` no existe; con un
+    nombre a secas el despliegue falla con un 400 (*Relative import path
+    "@supabase/supabase-js" not prefixed with / or ./ or ../*) mientras
+    `deno check` pasa en verde, porque a él sí se le pasa la configuración.
 22. **pg_cron programa en UTC**, no en la zona del servidor. La hora de la
     expresión y el cálculo de "hoy"/"mañana" son dos cosas distintas: lo segundo
     lo hace la función en `Europe/Madrid`.
