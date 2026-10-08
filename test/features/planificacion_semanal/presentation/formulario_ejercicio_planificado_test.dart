@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
@@ -13,6 +14,8 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_pl
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning_repositorio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_formulario_ejercicio_planificado.dart';
+
+import '../../../ayudas/sesion_falsa.dart';
 
 import '../ayudas_planificacion.dart';
 
@@ -51,12 +54,22 @@ void main() {
     WidgetTester tester, {
     EjercicioPlanificado? previo,
   }) async {
-    await tester.pumpWidget(
-      ProviderScope(
+    final contenedor = await conSesionAbierta(
+      ProviderContainer(
         overrides: [
+          autenticacionRepositorioProvider.overrideWithValue(
+            AutenticacionDeMentira(),
+          ),
           ejercicioRepositorioProvider.overrideWithValue(biblioteca),
           planningRepositorioProvider.overrideWithValue(planning),
         ],
+      ),
+    );
+    addTearDown(contenedor.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: contenedor,
         child: MaterialApp(
           home: PantallaFormularioEjercicioPlanificado(
             bloque: bloqueDePrueba(ejercicios: [?previo]),

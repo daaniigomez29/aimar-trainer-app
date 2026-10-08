@@ -140,6 +140,24 @@ abstract final class Rutas {
   static String planningEnEdicion(String planningId) =>
       '$inicioEntrenador/$plannings/$planningId';
 
+  /// Nombre del parametro que dice **de donde se venia**.
+  static const String paramVolver = 'volver';
+
+  /// Anade a [ruta] el sitio al que debe volver la flecha de atras.
+  ///
+  /// POR QUE HACE FALTA: con rutas anidadas, `context.go` a una ruta profunda
+  /// monta la pila entera, asi que la flecha automatica lleva al **padre**. Si
+  /// el cliente entra a un ejercicio desde su inicio, el padre es la pantalla de
+  /// registrar sesion, por la que no ha pasado nunca.
+  ///
+  /// POR QUE EN LA URL y no en `extra`: asi sobrevive a una recarga, que en web
+  /// pasa constantemente, y el atras sigue funcionando igual.
+  static String conVuelta(String ruta, String? origen) {
+    if (origen == null || origen.isEmpty) return ruta;
+    final separador = ruta.contains('?') ? '&' : '?';
+    return '$ruta$separador$paramVolver=${Uri.encodeComponent(origen)}';
+  }
+
   /// Ajustes del entrenador: cuarto destino de su navegacion.
   static const String ajustes = 'ajustes';
   static const String ajustesEntrenador = '$inicioEntrenador/$ajustes';

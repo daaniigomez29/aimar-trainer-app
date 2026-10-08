@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -24,7 +26,8 @@ class PantallaDetalleCliente extends ConsumerWidget {
     ref.watch(controladorBajaClienteProvider);
     ref.watch(controladorFichaClienteProvider);
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.clientes,
       appBar: AppBar(
         title: const Text('Ficha de cliente'),
         actions: [
@@ -40,7 +43,7 @@ class PantallaDetalleCliente extends ConsumerWidget {
             ),
         ],
       ),
-      body: ficha.when(
+      cuerpo: ficha.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(

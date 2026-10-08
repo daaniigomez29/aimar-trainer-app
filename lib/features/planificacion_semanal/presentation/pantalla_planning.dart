@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -27,7 +29,8 @@ class PantallaPlanning extends ConsumerWidget {
     final planning = ref.watch(planningCompletoProvider(planningId));
     ref.watch(controladorPlanificacionProvider);
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.clientes,
       appBar: AppBar(
         title: const Text('Planning semanal'),
         actions: [
@@ -71,7 +74,7 @@ class PantallaPlanning extends ConsumerWidget {
           ),
         ],
       ),
-      body: planning.when(
+      cuerpo: planning.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(

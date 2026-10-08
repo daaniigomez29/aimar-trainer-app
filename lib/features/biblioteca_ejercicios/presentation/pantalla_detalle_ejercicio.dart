@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -32,7 +34,8 @@ class PantallaDetalleEjercicio extends ConsumerWidget {
     // baja, que pasa por dialogos.
     ref.watch(controladorBajaEjercicioProvider);
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.biblioteca,
       appBar: AppBar(
         title: const Text('Ejercicio'),
         actions: [
@@ -49,7 +52,7 @@ class PantallaDetalleEjercicio extends ConsumerWidget {
             ),
         ],
       ),
-      body: ejercicio.when(
+      cuerpo: ejercicio.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(
@@ -122,9 +125,12 @@ class _Contenido extends ConsumerWidget {
         if (ejercicio.equipamiento case final equipo?)
           _Dato(etiqueta: 'Equipamiento', valor: equipo),
         const SizedBox(height: 8),
-        Text('Cómo se ejecuta', style: textos.titleMedium),
-        const SizedBox(height: 8),
-        Text(ejercicio.descripcion),
+        if (ejercicio.descripcion.trim() case final comoSeEjecuta
+            when comoSeEjecuta.isNotEmpty) ...[
+          Text('Cómo se ejecuta', style: textos.titleMedium),
+          const SizedBox(height: 8),
+          Text(comoSeEjecuta),
+        ],
         if (ejercicio.videoEjemploUrl case final url?) ...[
           const Divider(height: 32),
           Text('Vídeo de ejemplo', style: textos.titleMedium),

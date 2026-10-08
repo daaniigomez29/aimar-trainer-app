@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
@@ -11,6 +12,8 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercici
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
+
+import '../../../ayudas/sesion_falsa.dart';
 
 class RepositorioFalso extends Mock implements EjercicioRepositorio {}
 
@@ -47,11 +50,22 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      ProviderScope(
+    // Con sesion: la pantalla lleva barra de navegacion y necesita el rol.
+    final contenedor = await conSesionAbierta(
+      ProviderContainer(
         overrides: [
+          autenticacionRepositorioProvider.overrideWithValue(
+            AutenticacionDeMentira(),
+          ),
           ejercicioRepositorioProvider.overrideWithValue(repositorio),
         ],
+      ),
+    );
+    addTearDown(contenedor.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: contenedor,
         child: MaterialApp(
           theme: TemaApp.oscuro(),
           home: PantallaFormularioEjercicio(ejercicio: aEditar),

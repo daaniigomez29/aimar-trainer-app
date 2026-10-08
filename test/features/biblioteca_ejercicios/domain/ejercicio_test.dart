@@ -40,8 +40,12 @@ void main() {
   });
 
   group('DatosEjercicio.validarDescripcion', () {
-    test('es obligatoria: la columna es not null', () {
-      expect(DatosEjercicio.validarDescripcion('  ')?.campo, 'descripcion');
+    // Hay ejercicios que se explican solos, y obligar a escribir algo solo
+    // conseguia rellenos. Vacia se guarda como cadena vacia, que la columna
+    // `not null` admite.
+    test('es opcional', () {
+      expect(DatosEjercicio.validarDescripcion(''), isNull);
+      expect(DatosEjercicio.validarDescripcion('  '), isNull);
     });
 
     test('acepta una descripción normal', () {

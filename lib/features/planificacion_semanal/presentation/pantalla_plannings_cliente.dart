@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
@@ -24,7 +26,8 @@ class PantallaPlanningsCliente extends ConsumerWidget {
         ?.nombre;
     ref.watch(controladorPlanificacionProvider);
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.clientes,
       appBar: AppBar(
         title: const Text('Plannings'),
         bottom: nombreCliente == null
@@ -45,7 +48,7 @@ class PantallaPlanningsCliente extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      botonFlotante: FloatingActionButton.extended(
         key: const Key('boton_nuevo_planning'),
         onPressed: () async {
           final creado = await pedirDatosPlanning(
@@ -59,7 +62,7 @@ class PantallaPlanningsCliente extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Nuevo planning'),
       ),
-      body: plannings.when(
+      cuerpo: plannings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(

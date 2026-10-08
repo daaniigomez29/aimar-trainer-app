@@ -93,14 +93,13 @@ class DatosEjercicio {
     return null;
   }
 
+  /// La descripcion es **opcional**: hay ejercicios que se explican solos y
+  /// obligar a escribir algo solo conseguia rellenos del tipo "sentadilla".
+  /// Vacia se guarda como cadena vacia, no como `null`, porque la columna es
+  /// `not null` y no merecia una migracion; la ficha oculta el apartado cuando
+  /// no hay nada que contar.
   static ErrorValidacion? validarDescripcion(String descripcion) {
     final valor = descripcion.trim();
-    if (valor.isEmpty) {
-      return const ErrorValidacion(
-        'La descripción es obligatoria: explica como se ejecuta.',
-        campo: 'descripcion',
-      );
-    }
     if (valor.length > longitudMaximaDescripcion) {
       return const ErrorValidacion(
         'La descripción no puede pasar de '

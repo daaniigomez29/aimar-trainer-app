@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/boton_atras.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
@@ -30,8 +33,10 @@ class PantallaRegistroSesion extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final planning = ref.watch(planningCompletoProvider(planningId));
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.inicio,
       appBar: AppBar(
+        leading: const BotonAtras(alternativa: Rutas.inicioCliente),
         title: const Text('Registrar sesión'),
         actions: [
           IconButton(
@@ -42,7 +47,7 @@ class PantallaRegistroSesion extends ConsumerWidget {
           ),
         ],
       ),
-      body: planning.when(
+      cuerpo: planning.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Padding(
@@ -188,7 +193,14 @@ class _FilaEjercicio extends StatelessWidget {
         enabled: habilitado,
         onTap: habilitado
             ? () => context.go(
-                Rutas.registroDeEjercicio(planningId, sesion.id, ejercicio.id),
+                Rutas.conVuelta(
+                  Rutas.registroDeEjercicio(
+                    planningId,
+                    sesion.id,
+                    ejercicio.id,
+                  ),
+                  GoRouterState.of(context).uri.toString(),
+                ),
               )
             : null,
       ),
