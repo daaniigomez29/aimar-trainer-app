@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
+import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
@@ -14,6 +16,8 @@ import 'package:aimar_trainer_app/features/progreso/domain/datos_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/metricas_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/progreso_repositorio.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
+
+import '../../../ayudas/sesion_falsa.dart';
 
 import '../../../ayudas/app_con_rutas.dart';
 import '../../planificacion_semanal/ayudas_planificacion.dart';
@@ -47,21 +51,35 @@ void main() {
 
   Future<void> montar(
     WidgetTester tester,
-    EjercicioPlanificado ejercicio,
-  ) async {
+    EjercicioPlanificado ejercicio, {
+    String rutaInicial = '/registro',
+  }) async {
     // La pantalla muestra todas las series a la vez: con los 600 px por defecto
     // no caben y los finders no las encontrarian.
     tester.view.physicalSize = const Size(900, 2200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
+    // Con sesion de cliente: la pantalla lleva su barra de navegacion.
+    final contenedor = await conSesionAbierta(
+      ProviderContainer(
+        overrides: [
+          autenticacionRepositorioProvider.overrideWithValue(
+            AutenticacionDeMentira(rol: RolUsuario.cliente),
+          ),
+          progresoRepositorioProvider.overrideWithValue(repositorio),
+        ],
+      ),
+    );
+    addTearDown(contenedor.dispose);
+
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [progresoRepositorioProvider.overrideWithValue(repositorio)],
+      UncontrolledProviderScope(
+        container: contenedor,
         // Con rutas de verdad: al terminar el ultimo ejercicio la pantalla
         // navega al planning del cliente, y eso necesita un GoRouter.
         child: appConRutas(
-          rutaInicial: '/registro',
+          rutaInicial: rutaInicial,
           tema: TemaApp.oscuro(),
           rutas: [
             GoRoute(
@@ -222,6 +240,22 @@ void main() {
     await montar(tester, deFuerza());
 
     await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('mi planning'), findsOneWidget);
+  });
+
+  // El fallo: entrando al ejercicio desde el inicio del cliente, la flecha de
+  // atras llevaba a la pantalla de registrar sesion, que es el padre de la ruta
+  // pero no el sitio del que venia.
+  testWidgets('la flecha de atrás vuelve de donde se vino', (tester) async {
+    await montar(
+      tester,
+      deFuerza(),
+      rutaInicial: '/registro?${Rutas.paramVolver}=${Rutas.inicioCliente}',
+    );
+
+    await tester.tap(find.byKey(const Key('boton_atras')));
     await tester.pumpAndSettle();
 
     expect(find.text('mi planning'), findsOneWidget);

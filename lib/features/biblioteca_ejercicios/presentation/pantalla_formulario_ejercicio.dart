@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
+
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
@@ -160,6 +162,7 @@ class _EstadoPantallaFormularioEjercicio
     );
 
     return FormularioCentrado(
+      seccion: SeccionDeNavegacion.biblioteca,
       titulo: widget.esEdicion ? 'Editar ejercicio' : 'Nuevo ejercicio',
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
@@ -216,8 +219,8 @@ class _EstadoPantallaFormularioEjercicio
           textCapitalization: TextCapitalization.sentences,
           onChanged: (_) => controlador.limpiarError(),
           decoration: InputDecoration(
-            labelText: 'Descripción *',
-            helperText: 'Tecnica de ejecución. La ve el cliente.',
+            labelText: 'Descripción',
+            helperText: 'Opcional. Técnica de ejecución. La ve el cliente.',
             errorText: estado.errorDelCampo('descripcion'),
             alignLabelWithHint: true,
           ),

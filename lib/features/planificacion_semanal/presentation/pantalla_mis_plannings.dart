@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -23,7 +24,8 @@ class PantallaMisPlannings extends ConsumerWidget {
     final plannings = ref.watch(misPlanningsProvider);
 
     return AlDiaConElEntrenador(
-      hijo: Scaffold(
+      hijo: PantallaConNavegacion(
+        seccion: SeccionDeNavegacion.inicio,
         appBar: AppBar(
           title: const Text('Mi planning'),
           actions: [
@@ -34,7 +36,7 @@ class PantallaMisPlannings extends ConsumerWidget {
             ),
           ],
         ),
-        body: plannings.when(
+        cuerpo: plannings.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(
             child: Padding(

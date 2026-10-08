@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/boton_atras.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 
 import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
@@ -164,15 +166,19 @@ class _PantallaRegistroEjercicioState
       return;
     }
 
-    // `pushReplacement` y no `push`: encadenar ejercicios no debe llenar el
-    // historial, para que el atrás vuelva a la sesión y no al ejercicio previo.
+    // Encadenar ejercicios no debe llenar el historial: el atras tiene que
+    // llevar de vuelta a donde se empezo, no al ejercicio anterior. Por eso se
+    // arrastra el origen de ruta en ruta.
     final sesion = widget.sesion;
     if (sesion == null) return;
     context.go(
-      Rutas.registroDeEjercicio(
-        widget.planningId,
-        sesion.id,
-        lista[indice + 1].id,
+      Rutas.conVuelta(
+        Rutas.registroDeEjercicio(
+          widget.planningId,
+          sesion.id,
+          lista[indice + 1].id,
+        ),
+        GoRouterState.of(context).uri.queryParameters[Rutas.paramVolver],
       ),
     );
   }
@@ -232,9 +238,10 @@ class _PantallaRegistroEjercicioState
     final lista = _ejerciciosDeLaSesion;
     final indice = _indiceActual;
 
-    return Scaffold(
+    return PantallaConNavegacion(
+      seccion: SeccionDeNavegacion.inicio,
       appBar: AppBar(
-        leading: const BackButton(),
+        leading: const BotonAtras(alternativa: Rutas.inicioCliente),
         titleSpacing: 0,
         title: Text(
           lista == null || indice == null
@@ -251,7 +258,7 @@ class _PantallaRegistroEjercicioState
             ),
         ],
       ),
-      body: SafeArea(
+      cuerpo: SafeArea(
         bottom: false,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -306,28 +313,19 @@ class _PantallaRegistroEjercicioState
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        color: Tokens.fondo,
-        padding: const EdgeInsets.fromLTRB(
-          Tokens.margenPantalla,
-          12,
-          Tokens.margenPantalla,
-          20,
-        ),
-        child: SafeArea(
-          top: false,
-          child: BotonCta(
-            key: Key(
-              _esCardio ? 'boton_guardar_cardio' : 'boton_siguiente_ejercicio',
-            ),
-            etiqueta: _esCardio
-                ? 'Guardar minutos'
-                : (lista != null && indice != null && indice + 1 < lista.length)
-                ? 'Guardar y siguiente ejercicio'
-                : 'Terminar ejercicio',
-            cargando: estado.enCurso,
-            onPulsar: _esCardio ? _guardarCardio : _siguiente,
+      ctaInferior: SafeArea(
+        top: false,
+        child: BotonCta(
+          key: Key(
+            _esCardio ? 'boton_guardar_cardio' : 'boton_siguiente_ejercicio',
           ),
+          etiqueta: _esCardio
+              ? 'Guardar minutos'
+              : (lista != null && indice != null && indice + 1 < lista.length)
+              ? 'Guardar y siguiente ejercicio'
+              : 'Terminar ejercicio',
+          cargando: estado.enCurso,
+          onPulsar: _esCardio ? _guardarCardio : _siguiente,
         ),
       ),
     );

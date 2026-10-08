@@ -262,10 +262,16 @@ class _SemanaState extends ConsumerState<_Semana> {
     SesionEntrenamiento sesion,
   ) {
     final pendiente = _siguientePendiente(sesion);
+    // Se deja dicho que se viene de aqui: si no, el atras llevaria a la
+    // pantalla de registrar sesion, que es el padre de la ruta pero no el sitio
+    // del que viene el cliente.
     context.go(
-      pendiente == null
-          ? Rutas.registroDeSesion(planning.id, sesion.id)
-          : Rutas.registroDeEjercicio(planning.id, sesion.id, pendiente.id),
+      Rutas.conVuelta(
+        pendiente == null
+            ? Rutas.registroDeSesion(planning.id, sesion.id)
+            : Rutas.registroDeEjercicio(planning.id, sesion.id, pendiente.id),
+        Rutas.inicioCliente,
+      ),
     );
   }
 }
@@ -497,10 +503,13 @@ class _TarjetaSesion extends StatelessWidget {
               esElSiguiente: ejercicio.id == siguiente?.id,
               onTap: planning.estado.esActivo
                   ? () => context.go(
-                      Rutas.registroDeEjercicio(
-                        planning.id,
-                        sesion.id,
-                        ejercicio.id,
+                      Rutas.conVuelta(
+                        Rutas.registroDeEjercicio(
+                          planning.id,
+                          sesion.id,
+                          ejercicio.id,
+                        ),
+                        Rutas.inicioCliente,
                       ),
                     )
                   : null,

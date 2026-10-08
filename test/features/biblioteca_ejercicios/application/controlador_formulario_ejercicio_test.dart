@@ -79,7 +79,11 @@ void main() {
       verifyNever(() => repositorio.crear(any()));
     });
 
-    test('no llama al repositorio si falta la descripción', () async {
+    // La descripcion dejo de ser obligatoria: un ejercicio sin ella se guarda.
+    test('guarda aunque no haya descripción', () async {
+      when(() => repositorio.crear(any()))
+          .thenAnswer((_) async => Success(_ejercicio));
+
       await controlador().guardar(
         datos: const DatosEjercicio(
           nombre: 'Sentadilla',
@@ -92,9 +96,9 @@ void main() {
         contenedor
             .read(controladorFormularioEjercicioProvider)
             .errorDelCampo('descripcion'),
-        isNotNull,
+        isNull,
       );
-      verifyNever(() => repositorio.crear(any()));
+      verify(() => repositorio.crear(any())).called(1);
     });
 
     test('crea el ejercicio y marca la accion como completada', () async {

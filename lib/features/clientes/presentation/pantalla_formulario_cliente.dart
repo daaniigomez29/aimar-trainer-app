@@ -4,6 +4,8 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
+
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_ficha_cliente.dart';
@@ -176,6 +178,7 @@ class _EstadoPantallaFormularioCliente
     final fecha = _fechaNacimiento;
 
     return FormularioCentrado(
+      seccion: SeccionDeNavegacion.clientes,
       titulo: widget.esEdicion ? 'Editar ficha' : 'Nuevo cliente',
       subtitulo: widget.esEdicion
           ? null

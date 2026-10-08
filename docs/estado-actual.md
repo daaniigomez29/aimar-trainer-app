@@ -306,6 +306,17 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   cuadrícula se rehace (`didUpdateWidget`) cuando las series cambian por detrás y
   olvida lo que tuviera sin guardar de ese ejercicio: si no, "Guardar cambios"
   escribiría lo viejo encima de lo que se acaba de guardar en el formulario.
+- **Toda pantalla con sesión lleva su barra de navegación** (`PantallaConNavegacion`):
+  la pantalla declara en qué **sección** está, no la ruta, porque la misma
+  pantalla cuelga de destinos distintos según el rol. Solo las de autenticación
+  se quedan sin barra.
+- **La flecha de atrás respeta de dónde se vino**, no el padre de la ruta: con
+  rutas anidadas, `context.go` monta la pila entera y el padre puede ser una
+  pantalla por la que nadie pasó. Quien navega lo deja dicho con
+  `Rutas.conVuelta`, que viaja como `?volver=` en la URL para sobrevivir a una
+  recarga.
+- **La descripción de un ejercicio es opcional** y se guarda como cadena vacía:
+  la columna sigue siendo `not null` y no merecía una migración.
 - **El planning es de una semana, no de un día** (`domain/semana.dart`): la
   navegación, el calendario y el formulario hablan de `Semana`, y cualquier día
   que se elija en un calendario se resuelve a su semana de lunes a domingo. Antes
@@ -336,15 +347,44 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 
 Decisiones que quedaron sin cerrar:
 
+- **Peso "por lado" vs. total (pedido el 2026-10-09, sin empezar).** El entrenador
+  quiere marcar que el peso de una serie es por lado, para que al cliente le
+  aparezca `Plan: 9 kg por lado × 8`. Propuesta sobre la mesa, a falta de dos
+  decisiones suyas:
+  1. ¿El **cliente** también lo marca al registrar lo que hizo? (Recomendado sí,
+     heredando lo que puso el entrenador: lo planificado y lo realizado son
+     independientes, y hoy no podría decir que lo hizo con otro reparto.)
+  2. ¿Checkbox **por serie** o uno por ejercicio que las marque todas?
+  Lo decidido del diseño: la marca va en `series_planificadas` (y en
+  `series_realizadas` si entra lo del cliente), como `boolean peso_por_lado not
+  null default false`; **es una etiqueta, no una operación** —el peso se guarda
+  tal cual, no se multiplica, o el histórico y las gráficas dejarían de ser
+  comparables con lo ya registrado. Implica migración y toca el dominio, así que
+  no se empieza sin su visto bueno.
+- **Guardas de `dar-de-baja-cliente` (incidente del 2026-10-07, sin aplicar).** La
+  cuenta del entrenador acabó baneada en producción porque **tiene ficha en
+  `clientes`**: `clientes.id` ES el id de Auth, la función banea ese id y solo
+  comprueba que exista y esté activo —no mira el rol—, y la lista de clientes de
+  la app hace `select()` sin filtrar. Así que el entrenador aparecía como un
+  cliente más y darle de baja lo baneó. (El desfase horario del incidente era
+  solo que **Supabase muestra UTC**: 22:50 UTC = 00:50 en España.) Propuesto y
+  pendiente de aprobación: rechazar si el objetivo no tiene `rol = 'cliente'`,
+  rechazar si el objetivo es quien llama, y filtrar la lista por rol. Falta
+  además decidir qué se hace con esa fila de `clientes` del entrenador.
+- **`RESEND_FROM_EMAIL` tiene que ser un buzón del dominio verificado**
+  (`mail.aimartrainer.es`, no `aimartrainer.es`): estaba puesto el dominio a
+  secas y Resend devolvía `validation_error` 422. El valor correcto es del tipo
+  `Aimar Trainer <no-reply@mail.aimartrainer.es>`. No hace falta redesplegar: los
+  secretos se leen en cada ejecución.
 - **Bucket de Storage** de las fotos de progreso: `fotos-progreso` ya está
   declarado en `config.toml` y **creado y verificado en local** (privado, 20 MiB,
   png/jpeg), con sus **políticas ya escritas** (migración
   `20261003090200_politicas_storage_fotos_progreso.sql`) y verificadas. Falta solo
   crearlo en la nube cuando haya proyecto. El detalle está en `architecture.md`,
   sección "Almacenamiento de ficheros".
-- **Resend sin dominio verificado**: `RESEND_API_KEY` y `RESEND_FROM_EMAIL` siguen sin
-  valor real. En local las invitaciones se entregan en Mailpit vía `CORREO_DEV_URL`.
-  Cuando haya dominio, basta rellenar las variables: no hay que tocar código.
+- **Resend ya tiene dominio verificado** (`mail.aimartrainer.es`) y las dos
+  variables puestas en la nube. En local las invitaciones se siguen entregando en
+  Mailpit vía `CORREO_DEV_URL`.
 - **Reactivar un cliente dado de baja**: hoy no se puede volver a darlo de alta con el
   mismo correo (Auth no admite duplicados, aunque el índice de `clientes` sí lo
   permita entre bajas). Devuelve 409 con un mensaje que lo explica. No es un caso de

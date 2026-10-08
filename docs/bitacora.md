@@ -1593,3 +1593,61 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 - El job `desplegar` solo corre si pasan `flutter` y `edge-functions`. Conviene
   mirar que la ejecucion de `main` llegue hasta el final, no solo que el entorno
   tenga los secretos.
+
+**Hecho (la barra de navegacion ya no desaparece):**
+
+- Pantallas de detalle, formularios y registro montaban un `Scaffold` pelado, asi
+  que entrar en un ejercicio, en una ficha o en el registro de una sesion dejaba
+  al usuario sin navegacion: solo podia salir con la flecha de atras.
+- Nuevo andamio `PantallaConNavegacion`, que elige barra de cliente o de
+  entrenador segun `rolActualProvider`. La pantalla solo dice **en que seccion
+  esta** (`SeccionDeNavegacion`), no la ruta: una misma pantalla cuelga de
+  destinos distintos segun quien mire (el planning de un cliente es "Mi planning"
+  para el y "Clientes" para el entrenador).
+- Se quedan sin barra solo las de autenticacion: sin sesion no hay a donde
+  navegar.
+- El CTA del registro de ejercicio pasa al hueco `ctaInferior` del andamio. Si se
+  dejaba como `bottomNavigationBar` habria dos barras.
+
+**Corregido (el atras no volvia de donde se venia):**
+
+- Sintoma: desde el inicio del cliente se abre el ejercicio del dia y, al pulsar
+  atras, aparecia la pantalla de **registrar sesion**, por la que no se habia
+  pasado.
+- Causa: con rutas anidadas, `context.go` a una ruta profunda monta la pila
+  entera, asi que la flecha automatica de `AppBar` lleva al **padre de la ruta**,
+  no al sitio anterior.
+- Arreglo: quien navega deja dicho de donde viene (`Rutas.conVuelta`, que lo pone
+  como `?volver=` en la URL) y `BotonAtras` lo respeta. Sin ese parametro se
+  comporta como siempre, asi que las pantallas a las que solo se llega por su
+  padre no cambian.
+- Va en la URL y no en `extra` para que sobreviva a una recarga, que en web pasa
+  constantemente. El origen se arrastra ademas al encadenar ejercicios: terminar
+  el tercero y pulsar atras sigue llevando al inicio.
+
+**Hecho (la descripcion del ejercicio es opcional):**
+
+- Hay ejercicios que se explican solos y obligar a escribir algo solo conseguia
+  rellenos. Vacia se guarda como cadena vacia, no `null`: la columna es
+  `not null` y esto no merecia una migracion. La ficha oculta el apartado "Como
+  se ejecuta" cuando no hay nada que contar.
+
+**Pendiente / notas:**
+
+- Los tests de pantalla necesitan ahora una sesion, porque el andamio pregunta el
+  rol: se anade `test/ayudas/sesion_falsa.dart`. El helper recibe el contenedor
+  ya construido en vez de la lista de overrides porque **el tipo `Override` de
+  Riverpod 3 no es publico** y no se puede nombrar en una firma.
+- Verificado en el navegador: abriendo un ejercicio desde el inicio del cliente,
+  la URL lleva `?volver=/cliente`, la barra de navegacion esta en pantalla y la
+  flecha de atras devuelve a `/cliente`. En la ficha de un ejercicio, la barra
+  marca "Biblioteca".
+- `flutter test` **381**, `dart analyze --fatal-infos` limpio.
+
+**Pendiente / notas (traspaso de conversacion):**
+
+- Lo que queda abierto esta recogido en `docs/estado-actual.md`, seccion
+  "Pendientes abiertos": el peso por lado (propuesta hecha, faltan dos decisiones
+  del entrenador), las guardas de `dar-de-baja-cliente` tras el baneo accidental,
+  y el formato de `RESEND_FROM_EMAIL`.
+- Todo lo de hoy esta **sin commitear**: los commits los hace el.

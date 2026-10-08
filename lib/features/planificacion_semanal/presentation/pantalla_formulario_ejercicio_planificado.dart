@@ -4,6 +4,8 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
+
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
@@ -160,6 +162,7 @@ class _EstadoFormularioEjercicioPlanificado
     final ejercicio = _ejercicio;
 
     return FormularioCentrado(
+      seccion: SeccionDeNavegacion.inicio,
       titulo: widget.esEdicion ? 'Editar ejercicio' : 'Añadir ejercicio',
       subtitulo: 'Bloque de ${widget.bloque.tipo.etiqueta}',
       hijos: [
