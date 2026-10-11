@@ -18,6 +18,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/video_ejemplo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 
 /// Ficha de un ejercicio. La ven los dos roles; el entrenador ademas puede
 /// editar y dar de baja desde aqui.
@@ -102,12 +103,7 @@ class _Contenido extends ConsumerWidget {
           runSpacing: 4,
           children: [
             Chip(
-              avatar: Icon(
-                ejercicio.tipo.esFuerza
-                    ? Icons.fitness_center
-                    : Icons.directions_run,
-                size: 18,
-              ),
+              avatar: Icon(ejercicio.tipo.icono, size: 18),
               label: Text(ejercicio.tipo.etiqueta),
             ),
             if (ejercicio.estado.estaEliminado)
@@ -120,13 +116,30 @@ class _Contenido extends ConsumerWidget {
         const SizedBox(height: 8),
         Text(ejercicio.tipo.descripcionPlanificacion, style: textos.bodySmall),
         const Divider(height: 32),
-        if (ejercicio.grupoMuscular case final grupo?)
-          _Dato(etiqueta: 'Grupo muscular', valor: grupo),
+        // La ficha es donde hay sitio, asi que los musculos salen con su
+        // nombre anatomico completo ("Porción esterno-clavicular") y no con el
+        // corto de los chips.
+        if (ejercicio.grupo case final grupo?)
+          _Dato(etiqueta: 'Grupo muscular', valor: grupo.etiqueta),
+        if (ejercicio.musculoPrincipal case final principal?)
+          _Dato(
+            etiqueta: 'Músculo principal',
+            valor: principal.etiquetaCompleta,
+          ),
+        if (ejercicio.musculosSecundarios.isNotEmpty)
+          _Dato(
+            etiqueta: 'Músculos secundarios',
+            valor: ejercicio.musculosSecundarios
+                .map((musculo) => musculo.etiquetaCompleta)
+                .join(', '),
+          ),
         if (ejercicio.equipamiento case final equipo?)
           _Dato(etiqueta: 'Equipamiento', valor: equipo),
-        const SizedBox(height: 8),
+        // La descripcion es opcional (hay ejercicios que se explican solos), y
+        // sin ella el apartado no se pinta en lugar de dejar un hueco.
         if (ejercicio.descripcion.trim() case final comoSeEjecuta
             when comoSeEjecuta.isNotEmpty) ...[
+          const SizedBox(height: 8),
           Text('Cómo se ejecuta', style: textos.titleMedium),
           const SizedBox(height: 8),
           Text(comoSeEjecuta),

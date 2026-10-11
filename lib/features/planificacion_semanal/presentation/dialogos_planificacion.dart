@@ -4,9 +4,141 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
+
+/// De que semana se copia el planning que se va a traer aqui (CU-05, variante).
+///
+/// Se elige de la **lista de plannings del cliente** y no de un calendario: un
+/// calendario deja elegir semanas que no tienen nada, y el error solo se veria
+/// despues de copiar. Entran tambien los archivados, que es justo el historico
+/// que interesa reutilizar.
+///
+/// Devuelve `null` si se cancela.
+Future<PlanningSemanal?> elegirPlanningParaDuplicar({
+  required BuildContext context,
+  required String clienteId,
+  required Semana destino,
+}) => showDialog<PlanningSemanal>(
+  context: context,
+  builder: (contexto) => AlertDialog(
+    icon: const Icon(Icons.content_copy_outlined),
+    title: Text('Traer a la semana del ${destino.etiqueta}'),
+    content: SizedBox(
+      width: 420,
+      child: Consumer(
+        builder: (contexto, ref, _) {
+          final plannings = ref.watch(planningsDeClienteProvider(clienteId));
+
+          return plannings.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Text(mensajeDeErrorPlanificacion(error)),
+            data: (lista) {
+              // La semana de destino no se ofrece: copiarse sobre si misma no
+              // significa nada, y ademas el indice unico lo rechazaria.
+              final origenes = lista
+                  .where((p) => p.fechaInicio != destino.lunes)
+                  .toList();
+              if (origenes.isEmpty) {
+                return const Text(
+                  'Este cliente no tiene ninguna otra semana planificada '
+                  'todavía.',
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: origenes.length,
+                itemBuilder: (contexto, indice) {
+                  final planning = origenes[indice];
+                  return ListTile(
+                    key: Key('duplicar_desde_${planning.id}'),
+                    leading: const Icon(Icons.calendar_month_outlined),
+                    title: Text(
+                      'Semana del ${_comoFecha(planning.fechaInicio)}',
+                    ),
+                    subtitle: Text(
+                      [
+                        ?planning.nombreObjetivo,
+                        if (planning.estado.estaArchivado) 'Archivado',
+                      ].join(' · '),
+                    ),
+                    onTap: () => Navigator.of(contexto).pop(planning),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(contexto).pop(),
+        child: const Text('Cancelar'),
+      ),
+    ],
+  ),
+);
+
+String _comoFecha(DateTime fecha) =>
+    '${fecha.day.toString().padLeft(2, '0')}/'
+    '${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+
+/// A que bloque de la sesion va el ejercicio que se acaba de elegir (CU-08).
+///
+/// Solo se pregunta cuando hay **mas de un bloque**: antes el ejercicio caia
+/// siempre en el primero, y una sesion con calentamiento y fuerza es justo el
+/// caso en el que eso nunca es lo que se queria. Devuelve `null` si se cancela.
+Future<BloqueEjercicio?> elegirBloque({
+  required BuildContext context,
+  required SesionEntrenamiento sesion,
+  required Ejercicio ejercicio,
+}) => showDialog<BloqueEjercicio>(
+  context: context,
+  builder: (contexto) => SimpleDialog(
+    title: Text('¿En qué bloque va ${ejercicio.nombre}?'),
+    children: [
+      for (final bloque in sesion.bloques)
+        SimpleDialogOption(
+          key: Key('elegir_bloque_${bloque.id}'),
+          onPressed: () => Navigator.of(contexto).pop(bloque),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              radius: 14,
+              child: Text(
+                '${bloque.orden}',
+                style: Theme.of(contexto).textTheme.labelMedium,
+              ),
+            ),
+            title: Text('Bloque ${bloque.orden} · ${bloque.tipo.etiqueta}'),
+            subtitle: Text(
+              bloque.ejercicios.isEmpty
+                  ? 'Vacío'
+                  : '${bloque.ejercicios.length} '
+                        '${bloque.ejercicios.length == 1 ? 'ejercicio' : 'ejercicios'}',
+            ),
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.only(right: 16, top: 4),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.of(contexto).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ),
+      ),
+    ],
+  ),
+);
 
 /// Confirmaciones de borrado de CU-13 a CU-16.
 ///

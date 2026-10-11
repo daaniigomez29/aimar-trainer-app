@@ -2,6 +2,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
 part 'ejercicio.freezed.dart';
@@ -14,6 +16,9 @@ part 'ejercicio.g.dart';
 /// propia copia de series y minutos, y solo referencian el `id`.
 @freezed
 abstract class Ejercicio with _$Ejercicio {
+  // Necesario para que freezed admita los getters derivados de abajo.
+  const Ejercicio._();
+
   const factory Ejercicio({
     required String id,
     required String nombre,
@@ -21,7 +26,17 @@ abstract class Ejercicio with _$Ejercicio {
     required TipoEjercicio tipo,
     required EstadoEjercicio estado,
     required DateTime creadoEn,
-    String? grupoMuscular,
+
+    /// Grupo guardado **a mano**, y solo cuando no hay musculo principal (el
+    /// cardio, que no tiene uno concreto). Con principal, el grupo se deriva de
+    /// el: usa [grupo], no este campo.
+    @JsonKey(name: 'grupo_muscular')
+    @ConversorGrupoMuscular()
+    GrupoMuscular? grupoDeclarado,
+    @ConversorMusculo() Musculo? musculoPrincipal,
+    @ConversorMusculos()
+    @Default(<Musculo>[])
+    List<Musculo> musculosSecundarios,
     String? equipamiento,
     String? videoEjemploUrl,
 
@@ -33,6 +48,35 @@ abstract class Ejercicio with _$Ejercicio {
 
   factory Ejercicio.fromJson(Map<String, dynamic> json) =>
       _$EjercicioFromJson(json);
+
+  /// Grupo muscular efectivo: el del musculo principal si lo hay, y si no el
+  /// declarado a mano. `null` si el ejercicio esta sin clasificar.
+  GrupoMuscular? get grupo => musculoPrincipal?.grupo ?? grupoDeclarado;
+
+  /// Principal primero, secundarios despues. Vacia si no se ha clasificado.
+  List<Musculo> get musculos => [?musculoPrincipal, ...musculosSecundarios];
+
+  /// Todos los grupos que toca el ejercicio, no solo el principal: filtrar por
+  /// "Pierna" tiene que encontrar la sentadilla aunque su principal sea
+  /// cuadriceps y el gluteo vaya de secundario.
+  Set<GrupoMuscular> get grupos => {
+    ?grupo,
+    for (final musculo in musculosSecundarios) musculo.grupo,
+  };
+
+  /// Un ejercicio puede tener secundarios sin principal (en rehabilitacion
+  /// tiene sentido decir que musculos entran sin senalar un protagonista), asi
+  /// que no basta con mirar el grupo.
+  bool get estaClasificado => grupo != null || musculosSecundarios.isNotEmpty;
+
+  /// Trabaja ese musculo, como principal o como secundario.
+  bool trabaja(Musculo musculo) =>
+      musculoPrincipal == musculo || musculosSecundarios.contains(musculo);
+
+  /// "Pierna · Cuádriceps" o, sin principal, solo "Pierna". Lo que se pinta
+  /// bajo el nombre en el listado.
+  String? get resumenMuscular =>
+      musculoPrincipal?.etiquetaConGrupo ?? grupo?.etiqueta;
 }
 
 /// Datos que el entrenador introduce al crear o editar un ejercicio (CU-02,
@@ -43,7 +87,9 @@ class DatosEjercicio {
     required this.nombre,
     required this.descripcion,
     required this.tipo,
-    this.grupoMuscular,
+    this.grupoDeclarado,
+    this.musculoPrincipal,
+    this.musculosSecundarios = const <Musculo>[],
     this.equipamiento,
     this.videoEjemploUrl,
     this.imagenRuta,
@@ -55,7 +101,11 @@ class DatosEjercicio {
   final String nombre;
   final String descripcion;
   final TipoEjercicio tipo;
-  final String? grupoMuscular;
+
+  /// Solo se guarda cuando no hay [musculoPrincipal]; ver [Ejercicio.grupo].
+  final GrupoMuscular? grupoDeclarado;
+  final Musculo? musculoPrincipal;
+  final List<Musculo> musculosSecundarios;
   final String? equipamiento;
   final String? videoEjemploUrl;
 
@@ -65,9 +115,23 @@ class DatosEjercicio {
 
   String get nombreNormalizado => nombre.trim();
 
+  /// El grupo solo viaja si no hay musculo principal: con principal lo deriva
+  /// la entidad, y la base de datos rechaza guardar los dos
+  /// (`grupo_solo_sin_musculo_principal`).
+  GrupoMuscular? get grupoNormalizado =>
+      musculoPrincipal == null ? grupoDeclarado : null;
+
+  /// Sin duplicados y sin el principal dentro, conservando el orden en que se
+  /// eligieron.
+  List<Musculo> get secundariosNormalizados {
+    final vistos = <Musculo>{};
+    return musculosSecundarios
+        .where((musculo) => musculo != musculoPrincipal && vistos.add(musculo))
+        .toList();
+  }
+
   /// Campos de texto opcionales: se guardan como `null` si quedan vacios, para
   /// no mezclar cadena vacia y ausencia de dato en la base de datos.
-  String? get grupoMuscularNormalizado => _oNulo(grupoMuscular);
   String? get equipamientoNormalizado => _oNulo(equipamiento);
   String? get videoEjemploUrlNormalizada => _oNulo(videoEjemploUrl);
 
@@ -131,11 +195,34 @@ class DatosEjercicio {
     return null;
   }
 
+  /// La clasificacion muscular es opcional, pero si se usa tiene que ser
+  /// coherente: el musculo principal no puede repetirse entre los secundarios.
+  /// Los duplicados sueltos no son un error, se descartan en
+  /// [secundariosNormalizados]; esto si lo es, porque significa que el
+  /// entrenador ha elegido dos cosas distintas para el mismo musculo.
+  static ErrorValidacion? validarMusculos({
+    required Musculo? principal,
+    required List<Musculo> secundarios,
+  }) {
+    if (principal != null && secundarios.contains(principal)) {
+      return ErrorValidacion(
+        '${principal.etiqueta} ya es el músculo principal: quítalo de los '
+        'secundarios.',
+        campo: 'musculos',
+      );
+    }
+    return null;
+  }
+
   /// Primer error de validacion, o `null` si los datos son validos.
   ErrorValidacion? validar() =>
       validarNombre(nombre) ??
       validarDescripcion(descripcion) ??
-      validarVideo(videoEjemploUrl);
+      validarVideo(videoEjemploUrl) ??
+      validarMusculos(
+        principal: musculoPrincipal,
+        secundarios: musculosSecundarios,
+      );
 
   /// Cuerpo para Supabase. Las claves van en `snake_case` porque aqui se escribe
   /// un filtro/payload a mano, no un modelo generado.
@@ -143,7 +230,11 @@ class DatosEjercicio {
     'nombre': nombreNormalizado,
     'descripcion': descripcion.trim(),
     'tipo': tipo.name,
-    'grupo_muscular': grupoMuscularNormalizado,
+    'grupo_muscular': grupoNormalizado?.valorJson,
+    'musculo_principal': musculoPrincipal?.valorJson,
+    'musculos_secundarios': secundariosNormalizados
+        .map((musculo) => musculo.valorJson)
+        .toList(),
     'equipamiento': equipamientoNormalizado,
     'video_ejemplo_url': videoEjemploUrlNormalizada,
     'imagen_ruta': _oNulo(imagenRuta),
@@ -155,7 +246,9 @@ class DatosEjercicio {
     nombre: nombre,
     descripcion: descripcion,
     tipo: tipo,
-    grupoMuscular: grupoMuscular,
+    grupoDeclarado: grupoDeclarado,
+    musculoPrincipal: musculoPrincipal,
+    musculosSecundarios: musculosSecundarios,
     equipamiento: equipamiento,
     videoEjemploUrl: videoEjemploUrl,
     imagenRuta: ruta,
@@ -166,7 +259,9 @@ class DatosEjercicio {
     nombre: ejercicio.nombre,
     descripcion: ejercicio.descripcion,
     tipo: ejercicio.tipo,
-    grupoMuscular: ejercicio.grupoMuscular,
+    grupoDeclarado: ejercicio.grupoDeclarado,
+    musculoPrincipal: ejercicio.musculoPrincipal,
+    musculosSecundarios: ejercicio.musculosSecundarios,
     equipamiento: ejercicio.equipamiento,
     videoEjemploUrl: ejercicio.videoEjemploUrl,
     imagenRuta: ejercicio.imagenRuta,

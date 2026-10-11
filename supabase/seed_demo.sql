@@ -24,24 +24,38 @@
 -- El vídeo de ejemplo es un corto libre de YouTube, puesto solo para probar que
 -- el reproductor incrustado funciona. Sustitúyelo por los vídeos reales de Aimar
 -- cuando los haya.
+-- La clasificacion muscular sigue la taxonomia de `musculo`: musculo principal
+-- mas secundarios en los que van por series, y solo el grupo en los de cardio,
+-- donde no hay un musculo protagonista. Son datos de demostracion: si Aimar
+-- discrepa de alguno, se corrige desde el formulario.
 insert into ejercicios (
-  nombre, descripcion, tipo, grupo_muscular, equipamiento, video_ejemplo_url
+  nombre, descripcion, tipo, grupo_muscular, musculo_principal,
+  musculos_secundarios, equipamiento, video_ejemplo_url
 ) values
-  ('Press de banca', 'Tumbado en banco plano, baja la barra al pecho con los codos a unos 45 grados y empuja hasta extender.', 'fuerza', 'Pecho', 'Barra', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ'),
-  ('Press inclinado con mancuernas', 'Banco a 30 grados. Baja las mancuernas a la altura del pecho y sube sin chocarlas arriba.', 'fuerza', 'Pecho', 'Mancuernas', null),
-  ('Fondos en paralelas', 'Cuerpo ligeramente inclinado hacia delante. Baja hasta que el codo haga 90 grados.', 'fuerza', 'Pecho', 'Paralelas', null),
-  ('Dominadas', 'Agarre prono algo más ancho que los hombros. Sube hasta pasar la barbilla sin balancearte.', 'fuerza', 'Espalda', 'Barra fija', null),
-  ('Remo con barra', 'Tronco inclinado unos 45 grados, espalda neutra. Lleva la barra al abdomen.', 'fuerza', 'Espalda', 'Barra', null),
-  ('Jalón al pecho', 'Sentado, tira de la barra hacia la parte alta del pecho juntando las escápulas.', 'fuerza', 'Espalda', 'Polea', null),
-  ('Sentadilla trasera', 'Barra en el trapecio. Baja controlando hasta romper la paralela y sube empujando con el talón.', 'fuerza', 'Piernas', 'Barra', null),
-  ('Peso muerto rumano', 'Rodillas poco flexionadas, lleva la cadera atrás y baja la barra pegada a la pierna.', 'fuerza', 'Isquiotibiales', 'Barra', null),
-  ('Prensa de piernas', 'Pies a la anchura de los hombros. No bloquees la rodilla arriba.', 'fuerza', 'Piernas', 'Máquina', null),
-  ('Press militar', 'De pie, barra a la altura de la clavícula. Empuja arriba sin arquear la zona lumbar.', 'fuerza', 'Hombros', 'Barra', null),
-  ('Elevaciones laterales', 'Sube los brazos hasta la altura del hombro, con el codo algo flexionado.', 'fuerza', 'Hombros', 'Mancuernas', null),
-  ('Curl con barra Z', 'Codos pegados al cuerpo, sube sin balancear el tronco.', 'fuerza', 'Bíceps', 'Barra Z', null),
-  ('Cinta de correr', 'Carrera continua a ritmo suave, por debajo del umbral de conversación.', 'cardio', 'Piernas', 'Cinta', null),
-  ('Bicicleta estática', 'Pedaleo constante, resistencia media.', 'cardio', 'Piernas', 'Bicicleta', null),
-  ('Remo ergómetro', 'Secuencia piernas, tronco, brazos. Vuelta en orden inverso.', 'cardio', 'Espalda', 'Remo', null)
+  ('Press de banca', 'Tumbado en banco plano, baja la barra al pecho con los codos a unos 45 grados y empuja hasta extender.', 'fuerza', null, 'porcion_esterno_costal', array['deltoides_anterior', 'triceps']::musculo[], 'Barra', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ'),
+  ('Press inclinado con mancuernas', 'Banco a 30 grados. Baja las mancuernas a la altura del pecho y sube sin chocarlas arriba.', 'fuerza', null, 'porcion_esterno_clavicular', array['deltoides_anterior', 'triceps']::musculo[], 'Mancuernas', null),
+  ('Fondos en paralelas', 'Cuerpo ligeramente inclinado hacia delante. Baja hasta que el codo haga 90 grados.', 'fuerza', null, 'porcion_esterno_costal', array['triceps', 'deltoides_anterior']::musculo[], 'Paralelas', null),
+  ('Dominadas', 'Agarre prono algo más ancho que los hombros. Sube hasta pasar la barbilla sin balancearte.', 'fuerza', null, 'dorsal_ancho', array['biceps', 'romboides']::musculo[], 'Barra fija', null),
+  ('Remo con barra', 'Tronco inclinado unos 45 grados, espalda neutra. Lleva la barra al abdomen.', 'fuerza', null, 'dorsal_ancho', array['trapecio', 'romboides', 'biceps']::musculo[], 'Barra', null),
+  ('Jalón al pecho', 'Sentado, tira de la barra hacia la parte alta del pecho juntando las escápulas.', 'fuerza', null, 'dorsal_ancho', array['biceps', 'romboides']::musculo[], 'Polea', null),
+  ('Sentadilla trasera', 'Barra en el trapecio. Baja controlando hasta romper la paralela y sube empujando con el talón.', 'fuerza', null, 'cuadriceps', array['gluteo', 'isquiotibiales', 'lumbar']::musculo[], 'Barra', null),
+  ('Peso muerto rumano', 'Rodillas poco flexionadas, lleva la cadera atrás y baja la barra pegada a la pierna.', 'fuerza', null, 'isquiotibiales', array['gluteo', 'lumbar']::musculo[], 'Barra', null),
+  ('Prensa de piernas', 'Pies a la anchura de los hombros. No bloquees la rodilla arriba.', 'fuerza', null, 'cuadriceps', array['gluteo']::musculo[], 'Máquina', null),
+  ('Press militar', 'De pie, barra a la altura de la clavícula. Empuja arriba sin arquear la zona lumbar.', 'fuerza', null, 'deltoides_anterior', array['deltoides_lateral', 'triceps']::musculo[], 'Barra', null),
+  ('Elevaciones laterales', 'Sube los brazos hasta la altura del hombro, con el codo algo flexionado.', 'fuerza', null, 'deltoides_lateral', array['trapecio']::musculo[], 'Mancuernas', null),
+  ('Curl con barra Z', 'Codos pegados al cuerpo, sube sin balancear el tronco.', 'fuerza', null, 'biceps', array['antebrazo']::musculo[], 'Barra Z', null),
+  -- Cardio: grupo muscular sin musculo principal. Decir que la cinta de correr
+  -- es "de cuadriceps" seria inventarse el dato.
+  ('Cinta de correr', 'Carrera continua a ritmo suave, por debajo del umbral de conversación.', 'cardio', 'pierna', null, '{}', 'Cinta', null),
+  ('Bicicleta estática', 'Pedaleo constante, resistencia media.', 'cardio', 'pierna', null, '{}', 'Bicicleta', null),
+  ('Remo ergómetro', 'Secuencia piernas, tronco, brazos. Vuelta en orden inverso.', 'cardio', 'espalda', null, '{}', 'Remo', null),
+  -- Fortalecimiento: trabajo para clientes con lesiones. Va por series igual que
+  -- Fuerza, con el peso y el RIR opcionales porque casi siempre es peso corporal
+  -- o goma.
+  ('Puente de glúteo', 'Tumbado boca arriba, pies apoyados. Eleva la cadera apretando el glúteo arriba sin arquear la lumbar.', 'fortalecimiento', null, 'gluteo', array['isquiotibiales', 'lumbar']::musculo[], 'Sin material', null),
+  ('Rotación externa con goma', 'Codo pegado al costado y flexionado 90 grados. Abre el antebrazo hacia fuera sin separar el codo.', 'fortalecimiento', null, 'deltoides_posterior', array['trapecio']::musculo[], 'Goma elástica', null),
+  ('Elevación de talones a una pierna', 'Apoyado en una pierna, sube el talón lo máximo posible y baja controlando.', 'fortalecimiento', null, 'gemelo', '{}', 'Sin material', null),
+  ('Pallof press con goma', 'De pie, de lado a la goma. Extiende los brazos al frente resistiendo la rotación del tronco.', 'fortalecimiento', null, 'oblicuos', array['transverso', 'recto_abdominal']::musculo[], 'Goma elástica', null)
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------

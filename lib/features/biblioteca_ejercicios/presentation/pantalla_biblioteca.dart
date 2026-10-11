@@ -12,6 +12,8 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_biblioteca.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/tarjeta_ejercicio.dart';
 
@@ -29,7 +31,17 @@ class PantallaBiblioteca extends ConsumerStatefulWidget {
 }
 
 class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
-  final _busqueda = TextEditingController();
+  late final TextEditingController _busqueda;
+
+  @override
+  void initState() {
+    super.initState();
+    // Arranca con lo que el filtro ya tenga: con un controlador vacio, la
+    // lista saldria recortada por un texto que no se ve en ninguna parte.
+    _busqueda = TextEditingController(
+      text: ref.read(filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca)).texto,
+    );
+  }
 
   @override
   void dispose() {
@@ -41,7 +53,9 @@ class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
   Widget build(BuildContext context) {
     final rol = ref.watch(rolActualProvider);
     final esEntrenador = rol?.esEntrenador ?? false;
-    final ejercicios = ref.watch(ejerciciosFiltradosProvider);
+    final ejercicios = ref.watch(
+      ejerciciosFiltradosProvider(AmbitoDeFiltro.biblioteca),
+    );
     // Se observa, aunque no se use su valor aqui, para que el provider siga vivo
     // mientras esta pantalla lo esta: el flujo de baja de CU-04 pasa por dos
     // dialogos y, sin un oyente, Riverpod lo desecharia entre medias.
@@ -71,14 +85,17 @@ class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
                 clave: const Key('campo_busqueda'),
                 controlador: _busqueda,
                 onCambio: (texto) => ref
-                    .read(filtroBibliotecaProvider.notifier)
+                    .read(
+                      filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca)
+                          .notifier,
+                    )
                     .cambiarTexto(texto),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        _ChipsDeGrupo(mostrarEliminados: esEntrenador),
+        _FiltrosMusculares(mostrarEliminados: esEntrenador),
         const SizedBox(height: 4),
         Expanded(
           child: ejercicios.when(
@@ -104,6 +121,11 @@ class _PantallaBibliotecaState extends ConsumerState<PantallaBiblioteca> {
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, indice) => TarjetaEjercicio(
                       ejercicio: lista[indice],
+                      resaltar: ref
+                          .watch(
+                            filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca),
+                          )
+                          .musculo,
                       onTap: () => context.go(
                         Rutas.ejercicioDeLaBiblioteca(
                           rol ?? RolUsuario.cliente,
@@ -196,53 +218,124 @@ class _Resumen extends StatelessWidget {
   }
 }
 
-/// Chips de grupo muscular. Salen de los datos, no de una lista fija: el grupo
-/// es texto libre en la entidad, asi que la unica fuente fiable es la biblioteca.
-class _ChipsDeGrupo extends ConsumerWidget {
-  const _ChipsDeGrupo({required this.mostrarEliminados});
+/// Filtro muscular en dos niveles.
+///
+/// Arriba los grupos; al elegir uno aparece debajo la fila de sus musculos. Es
+/// el mismo recorrido que hace el entrenador al pensar ("pierna… glúteo"), y
+/// evita la lista plana de 21 musculos, que es justo lo que no se podia buscar.
+///
+/// Los chips salen de [FacetasBiblioteca], no de la taxonomia completa: un chip
+/// que no devuelve nada al pulsarlo es ruido. Descubrir la taxonomia entera es
+/// cosa del formulario, que es donde se clasifica.
+class _FiltrosMusculares extends ConsumerWidget {
+  const _FiltrosMusculares({required this.mostrarEliminados});
 
   final bool mostrarEliminados;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final grupos =
-        ref.watch(gruposMuscularesProvider).value ?? const <String>[];
-    final filtro = ref.watch(filtroBibliotecaProvider);
-    final notificador = ref.read(filtroBibliotecaProvider.notifier);
+    final facetas =
+        ref.watch(facetasBibliotecaProvider(AmbitoDeFiltro.biblioteca)).value ??
+        FacetasBiblioteca.vacias;
+    final filtro = ref.watch(
+      filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca),
+    );
+    final notificador = ref.read(
+      filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca).notifier,
+    );
 
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Tokens.margenPantalla),
-        children: [
-          ChipFiltro(
-            etiqueta: 'Todos',
-            activo: filtro.grupoMuscular == null,
-            onPulsar: () => notificador.cambiarGrupoMuscular(null),
-          ),
-          for (final grupo in grupos) ...[
-            const SizedBox(width: 8),
-            ChipFiltro(
-              etiqueta: grupo,
-              activo: filtro.grupoMuscular == grupo,
-              onPulsar: () => notificador.cambiarGrupoMuscular(
-                filtro.grupoMuscular == grupo ? null : grupo,
+    return Column(
+      children: [
+        SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Tokens.margenPantalla,
+            ),
+            children: [
+              ChipFiltro(
+                etiqueta: 'Todos',
+                activo: filtro.grupo == null && !filtro.soloSinClasificar,
+                onPulsar: () {
+                  notificador.alternarSinClasificar(solo: false);
+                  notificador.cambiarGrupo(null);
+                },
               ),
+              for (final grupo in facetas.grupos) ...[
+                const SizedBox(width: 8),
+                ChipFiltro(
+                  key: Key('grupo_${grupo.valorJson}'),
+                  etiqueta: grupo.etiqueta,
+                  activo: filtro.grupo == grupo,
+                  onPulsar: () => notificador.cambiarGrupo(
+                    filtro.grupo == grupo ? null : grupo,
+                  ),
+                ),
+              ],
+              if (facetas.haySinClasificar) ...[
+                const SizedBox(width: 8),
+                ChipFiltro(
+                  key: const Key('chip_sin_clasificar'),
+                  etiqueta: 'Sin clasificar',
+                  activo: filtro.soloSinClasificar,
+                  onPulsar: () => notificador.alternarSinClasificar(
+                    solo: !filtro.soloSinClasificar,
+                  ),
+                ),
+              ],
+              if (mostrarEliminados) ...[
+                const SizedBox(width: 8),
+                ChipFiltro(
+                  etiqueta: 'Dados de baja',
+                  activo: filtro.soloEliminados,
+                  onPulsar: () => notificador.alternarEliminados(
+                    solo: !filtro.soloEliminados,
+                  ),
+                ),
+              ],
+              const SizedBox(width: Tokens.margenPantalla),
+            ],
+          ),
+        ),
+        // El segundo nivel solo existe con un grupo elegido, y solo si ese grupo
+        // tiene mas de un musculo con ejercicios: ofrecer un unico musculo que
+        // ya equivale al grupo no filtra nada.
+        if (filtro.grupo case final grupo?
+            when facetas.musculosDe(grupo).length > 1) ...[
+          // Aire entre los dos niveles: pegados no se lee que el de abajo
+          // depende del de arriba, parecen una sola fila partida.
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.margenPantalla,
+              ),
+              children: [
+                ChipFiltro(
+                  etiqueta: 'Todo ${grupo.etiqueta.toLowerCase()}',
+                  activo: filtro.musculo == null,
+                  onPulsar: () => notificador.cambiarMusculo(null),
+                ),
+                for (final musculo in facetas.musculosDe(grupo)) ...[
+                  const SizedBox(width: 8),
+                  ChipFiltro(
+                    key: Key('musculo_${musculo.valorJson}'),
+                    etiqueta: musculo.etiqueta,
+                    activo: filtro.musculo == musculo,
+                    onPulsar: () => notificador.cambiarMusculo(
+                      filtro.musculo == musculo ? null : musculo,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: Tokens.margenPantalla),
+              ],
             ),
-          ],
-          if (mostrarEliminados) ...[
-            const SizedBox(width: 8),
-            ChipFiltro(
-              etiqueta: 'Dados de baja',
-              activo: filtro.soloEliminados,
-              onPulsar: () =>
-                  notificador.alternarEliminados(solo: !filtro.soloEliminados),
-            ),
-          ],
-          const SizedBox(width: Tokens.margenPantalla),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -254,7 +347,9 @@ class _SinResultados extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final filtro = ref.watch(filtroBibliotecaProvider);
+    final filtro = ref.watch(
+      filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca),
+    );
     final conFiltro = !filtro.estaVacio;
 
     return _Mensaje(
@@ -266,8 +361,12 @@ class _SinResultados extends ConsumerWidget {
           : 'Tu entrenador todavía no ha añadido ejercicios.',
       accion: conFiltro
           ? TextButton(
-              onPressed: () =>
-                  ref.read(filtroBibliotecaProvider.notifier).limpiar(),
+              onPressed: () => ref
+                  .read(
+                    filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca)
+                        .notifier,
+                  )
+                  .limpiar(),
               child: const Text('Quitar filtros'),
             )
           : null,

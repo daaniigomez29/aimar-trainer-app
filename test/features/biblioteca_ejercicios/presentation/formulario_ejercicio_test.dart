@@ -10,6 +10,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 
@@ -25,14 +26,19 @@ class RepositorioFalso extends Mock implements EjercicioRepositorio {}
 void main() {
   late RepositorioFalso repositorio;
 
-  Ejercicio ejercicio({String? imagenRuta, String? video}) => Ejercicio(
+  Ejercicio ejercicio({
+    String? imagenRuta,
+    String? video,
+    List<Musculo> secundarios = const [],
+  }) => Ejercicio(
     id: 'id-1',
     nombre: 'Press banca',
     descripcion: 'Tumbado en banco plano.',
     tipo: TipoEjercicio.fuerza,
     estado: EstadoEjercicio.activo,
     creadoEn: DateTime.utc(2026),
-    grupoMuscular: 'Pecho',
+    musculoPrincipal: Musculo.porcionEsternoCostal,
+    musculosSecundarios: secundarios,
     imagenRuta: imagenRuta,
     videoEjemploUrl: video,
   );
@@ -90,8 +96,39 @@ void main() {
 
     expect(find.text('Editar ejercicio'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Press banca'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Pecho'), findsOneWidget);
+    // La clasificacion muscular ya no es texto libre: se precarga en los dos
+    // desplegables, y el grupo sale del musculo principal.
+    expect(find.text('Pecho'), findsWidgets);
+    expect(find.text('Porción esterno-costal'), findsWidgets);
     expect(tester.takeException(), isNull);
+  });
+
+  // Los 21 musculos repartidos en seis grupos alargaban el formulario aunque
+  // no se fuera a poner ningun secundario, que es el caso mas comun.
+  testWidgets('los músculos secundarios nacen plegados', (tester) async {
+    await montar(tester);
+
+    expect(find.byKey(const Key('secundarios')), findsOneWidget);
+    // Ni los grupos ni sus musculos estan a la vista.
+    expect(find.text('Pierna'), findsNothing);
+    expect(find.text('Cuádriceps'), findsNothing);
+
+    await tester.tap(find.text('Músculos secundarios'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pierna'), findsOneWidget);
+  });
+
+  testWidgets('al editar uno que ya tiene secundarios, se abre solo', (
+    tester,
+  ) async {
+    await montar(
+      tester,
+      aEditar: ejercicio(secundarios: const [Musculo.triceps]),
+    );
+
+    expect(find.text('Brazo'), findsOneWidget);
+    expect(find.textContaining('Tríceps'), findsWidgets);
   });
 
   testWidgets('un ejercicio con imagen ofrece cambiarla y quitarla', (

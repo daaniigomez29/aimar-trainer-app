@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:aimar_trainer_app/core/enrutado/boton_atras.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 
@@ -177,7 +176,7 @@ class _FilaEjercicio extends StatelessWidget {
   Widget build(BuildContext context) {
     final esquema = Theme.of(context).colorScheme;
     final registrado = ejercicio.estadoRegistro.estaRegistrado;
-    final esCardio = ejercicio.ejercicio?.tipo == TipoEjercicio.cardio;
+    final vaPorMinutos = ejercicio.ejercicio?.tipo.vaPorMinutos ?? false;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -188,7 +187,7 @@ class _FilaEjercicio extends StatelessWidget {
           color: registrado ? esquema.primary : esquema.outline,
         ),
         title: Text(ejercicio.ejercicio?.nombre ?? 'Ejercicio'),
-        subtitle: Text(_resumen(ejercicio, esCardio: esCardio)),
+        subtitle: Text(_resumen(ejercicio, vaPorMinutos: vaPorMinutos)),
         trailing: habilitado ? const Icon(Icons.chevron_right) : null,
         enabled: habilitado,
         onTap: habilitado
@@ -210,9 +209,9 @@ class _FilaEjercicio extends StatelessWidget {
   /// Que toca y que se lleva hecho, en una linea.
   static String _resumen(
     EjercicioPlanificado ejercicio, {
-    required bool esCardio,
+    required bool vaPorMinutos,
   }) {
-    if (esCardio) {
+    if (vaPorMinutos) {
       final previstos = ejercicio.minutosPlanificados;
       final hechos = ejercicio.minutosRealizados;
       return [

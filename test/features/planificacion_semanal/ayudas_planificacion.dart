@@ -4,6 +4,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_eje
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 
 /// Constructores de entidades de planificacion para los tests, con valores por
 /// defecto razonables para no repetirlos en cada caso.
@@ -18,7 +19,13 @@ PlanningSemanal planningDePrueba({
 }) => PlanningSemanal(
   id: id,
   clienteId: clienteId,
-  fechaInicio: fechaInicio ?? DateTime(2026, 10, 5),
+  // La semana **en curso**, calculada, no una fecha fija.
+  //
+  // POR QUE: desde que `esEditable` mira si la semana ya paso, un planning con
+  // fecha fija se vuelve no editable en cuanto llega el lunes siguiente, y
+  // todos los tests de edicion empezarian a fallar solos una noche cualquiera,
+  // sin que nadie haya tocado el codigo.
+  fechaInicio: fechaInicio ?? Semana.deHoy().lunes,
   estado: estado,
   creadoEn: DateTime.utc(2026, 10),
   nombreObjetivo: nombreObjetivo,

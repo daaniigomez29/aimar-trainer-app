@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/modo_planificacion.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/medidas.dart';
 
@@ -80,17 +81,21 @@ enum MetricaEjercicio {
     MetricaEjercicio.minutos => 'Minutos registrados en la sesión.',
   };
 
-  /// Las que tienen sentido para un tipo de ejercicio. Fuerza y Cardio no
-  /// comparten ninguna: uno se mide en series, el otro en minutos.
-  static List<MetricaEjercicio> deTipo(TipoEjercicio tipo) => switch (tipo) {
-    TipoEjercicio.fuerza => const [
-      MetricaEjercicio.pesoMaximo,
-      MetricaEjercicio.volumenTotal,
-      MetricaEjercicio.repeticionesTotales,
-      MetricaEjercicio.rirMedio,
-    ],
-    TipoEjercicio.cardio => const [MetricaEjercicio.minutos],
-  };
+  /// Las que tienen sentido para un tipo de ejercicio.
+  ///
+  /// Se decide por el **modo de planificacion**, no por el tipo: lo que se
+  /// puede medir depende de si hay series o minutos, y los dos conjuntos no
+  /// comparten ninguna metrica. Fortalecimiento mide lo mismo que Fuerza.
+  static List<MetricaEjercicio> deTipo(TipoEjercicio tipo) =>
+      switch (tipo.modo) {
+        ModoPlanificacion.series => const [
+          MetricaEjercicio.pesoMaximo,
+          MetricaEjercicio.volumenTotal,
+          MetricaEjercicio.repeticionesTotales,
+          MetricaEjercicio.rirMedio,
+        ],
+        ModoPlanificacion.minutos => const [MetricaEjercicio.minutos],
+      };
 
   /// Resume en un valor las filas de una misma sesion. `null` si esas filas no
   /// tienen el dato que la metrica necesita (por ejemplo, series sin peso).

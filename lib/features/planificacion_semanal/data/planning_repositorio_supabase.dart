@@ -35,6 +35,11 @@ class PlanningRepositorioSupabase implements PlanningRepositorio {
   static const String _funcionGuardarEjercicio =
       'guardar_ejercicio_planificado';
 
+  /// Copia la jerarquia entera de un planning en otra semana. Va en una
+  /// funcion por lo mismo que la de guardar: son decenas de `insert` que tienen
+  /// que ir todos o ninguno, y PostgREST abre una transaccion por peticion.
+  static const String _funcionDuplicarPlanning = 'duplicar_planning';
+
   /// Funciones que renumeran en una transaccion. No se puede hacer con `update`
   /// sueltos: el indice unico del orden rechaza los estados intermedios.
   static const String _funcionReordenarBloques = 'reordenar_bloques';
@@ -184,6 +189,25 @@ sesiones_entrenamiento(
   );
 
   @override
+  Future<Result<ResultadoDuplicado>> duplicarPlanning({
+    required String origenId,
+    required DateTime fechaInicio,
+  }) async {
+    try {
+      final respuesta = await cliente.rpc<Map<String, dynamic>>(
+        _funcionDuplicarPlanning,
+        params: {
+          'p_origen': origenId,
+          'p_fecha_inicio': soloFecha(fechaInicio),
+        },
+      );
+      return Success(ResultadoDuplicado.desdeJson(respuesta));
+    } on Object catch (error, traza) {
+      return Failure(_traducir(error, traza));
+    }
+  }
+
+  @override
   Future<Result<PlanningSemanal>> archivarPlanning(String id) => _actualizarUno(
     tabla: _plannings,
     id: id,
@@ -286,8 +310,8 @@ sesiones_entrenamiento(
           'p_bloque_id': datos.bloqueId,
           'p_ejercicio_id': datos.ejercicioId,
           'p_orden': datos.orden,
-          'p_descanso_seg': datos.esFuerza ? datos.descansoSeg : null,
-          'p_minutos': datos.esCardio ? datos.minutos : null,
+          'p_descanso_seg': datos.vaPorSeries ? datos.descansoSeg : null,
+          'p_minutos': datos.vaPorMinutos ? datos.minutos : null,
           'p_series': [
             for (final serie in datos.series)
               {

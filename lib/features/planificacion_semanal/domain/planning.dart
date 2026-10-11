@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 
 part 'planning.freezed.dart';
 part 'planning.g.dart';
@@ -75,8 +76,19 @@ extension SemanaDelPlanning on PlanningSemanal {
         !dia.isAfter(inicio.add(const Duration(days: diasPorSemana - 1)));
   }
 
-  /// Se puede modificar solo si esta activo (regla de dominio del planning).
-  bool get esEditable => estado.esActivo;
+  /// La semana a la que pertenece.
+  Semana get semana => Semana.de(fechaInicio);
+
+  /// **Lo pasado no se toca**: el entrenador no crea, modifica, borra ni
+  /// duplica semanas que ya han terminado; se trabaja la actual y las
+  /// siguientes. Lo garantizan ademas los triggers
+  /// `prohibir_cambios_en_semana_pasada` de la base de datos, que es donde la
+  /// regla no depende de que la interfaz se acuerde.
+  ///
+  /// Dos cosas **si** se pueden hacer en una semana pasada, y por eso no entran
+  /// aqui: que el cliente registre lo que hizo (si el planning sigue activo) y
+  /// que el entrenador la archive, que no cambia el plan.
+  bool get esEditable => estado.esActivo && !semana.esPasada;
 }
 
 /// Sesion de entrenamiento (entidad 3).

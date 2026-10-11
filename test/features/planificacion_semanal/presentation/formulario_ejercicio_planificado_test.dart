@@ -54,6 +54,13 @@ void main() {
     WidgetTester tester, {
     EjercicioPlanificado? previo,
   }) async {
+    // El viewport por defecto son 600 px de alto y la pantalla lleva ahora
+    // barra de navegacion: sin agrandarlo, el boton de anadir serie cae debajo
+    // de la barra y el `tap` no acierta.
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
     final contenedor = await conSesionAbierta(
       ProviderContainer(
         overrides: [
@@ -97,13 +104,52 @@ void main() {
     ],
   );
 
-  /// Elige un ejercicio del desplegable por su nombre.
+  /// Elige un ejercicio de la lista por su nombre. Ya no es un desplegable:
+  /// la lista se pinta en la pantalla, con buscador y filtro muscular encima.
   Future<void> elegir(WidgetTester tester, String nombre) async {
-    await tester.tap(find.byKey(const Key('selector_ejercicio')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.textContaining(nombre).last);
+    // Con uno ya elegido la lista no se pinta (lo que importa entonces son las
+    // series, no volver a buscar), asi que primero hay que soltarlo.
+    final cambiar = find.byKey(const Key('cambiar_ejercicio'));
+    if (cambiar.evaluate().isNotEmpty) {
+      await tester.tap(cambiar);
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text(nombre));
     await tester.pumpAndSettle();
   }
+
+  // Antes esto era un desplegable con la biblioteca entera dentro, y es la
+  // pantalla que el entrenador repite una vez por ejercicio de cada bloque.
+  testWidgets('el buscador recorta la lista de ejercicios', (tester) async {
+    await montar(tester);
+
+    expect(find.text('Press banca'), findsOneWidget);
+    expect(find.text('Cinta'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('busqueda_ejercicio')), 'cin');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Press banca'), findsNothing);
+    expect(find.text('Cinta'), findsOneWidget);
+  });
+
+  testWidgets('con uno elegido la lista se retira y se puede cambiar', (
+    tester,
+  ) async {
+    await montar(tester);
+    await tester.tap(find.text('Press banca'));
+    await tester.pumpAndSettle();
+
+    // El otro ejercicio deja de estar a la vista: con uno elegido lo que
+    // importa son las series.
+    expect(find.text('Cinta'), findsNothing);
+    expect(find.byKey(const Key('busqueda_ejercicio')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('cambiar_ejercicio')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cinta'), findsOneWidget);
+  });
 
   testWidgets('sin ejercicio elegido no se puede guardar', (tester) async {
     await montar(tester);

@@ -17,6 +17,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_biblioteca.dart';
 
@@ -29,7 +30,8 @@ Ejercicio _ejercicio({
   String nombre = 'Press banca',
   TipoEjercicio tipo = TipoEjercicio.fuerza,
   EstadoEjercicio estado = EstadoEjercicio.activo,
-  String? grupoMuscular = 'Pecho',
+  Musculo? musculoPrincipal = Musculo.porcionEsternoCostal,
+  List<Musculo> musculosSecundarios = const [],
 }) => Ejercicio(
   id: id,
   nombre: nombre,
@@ -37,7 +39,8 @@ Ejercicio _ejercicio({
   tipo: tipo,
   estado: estado,
   creadoEn: DateTime.utc(2026),
-  grupoMuscular: grupoMuscular,
+  musculoPrincipal: musculoPrincipal,
+  musculosSecundarios: musculosSecundarios,
 );
 
 void main() {
@@ -127,6 +130,113 @@ void main() {
     );
 
     expect(find.text('Dados de baja'), findsOneWidget);
+  });
+
+  // El filtro de dos niveles: arriba los grupos, y al elegir uno aparecen sus
+  // musculos. Es lo que sustituye a la lista plana en la que no se podia buscar.
+  testWidgets('al elegir un grupo aparecen sus músculos', (tester) async {
+    await montar(
+      tester,
+      rol: RolUsuario.entrenador,
+      biblioteca: [
+        _ejercicio(
+          id: 'id-1',
+          nombre: 'Sentadilla',
+          musculoPrincipal: Musculo.cuadriceps,
+          musculosSecundarios: const [Musculo.gluteo],
+        ),
+        _ejercicio(
+          id: 'id-2',
+          nombre: 'Hip thrust',
+          musculoPrincipal: Musculo.gluteo,
+        ),
+      ],
+    );
+
+    // El segundo nivel no existe hasta elegir grupo.
+    expect(find.byKey(const Key('musculo_cuadriceps')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('grupo_pierna')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('musculo_cuadriceps')), findsOneWidget);
+    expect(find.byKey(const Key('musculo_gluteo')), findsOneWidget);
+  });
+
+  testWidgets('filtrar por un músculo cuenta los secundarios, con el '
+      'principal delante', (tester) async {
+    await montar(
+      tester,
+      rol: RolUsuario.entrenador,
+      biblioteca: [
+        _ejercicio(
+          id: 'id-1',
+          nombre: 'Sentadilla',
+          musculoPrincipal: Musculo.cuadriceps,
+          musculosSecundarios: const [Musculo.gluteo],
+        ),
+        _ejercicio(
+          id: 'id-2',
+          nombre: 'Hip thrust',
+          musculoPrincipal: Musculo.gluteo,
+        ),
+      ],
+    );
+
+    await tester.tap(find.byKey(const Key('grupo_pierna')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('musculo_gluteo')));
+    await tester.pumpAndSettle();
+
+    // La sentadilla sigue estando, aunque el gluteo sea secundario, y lo dice.
+    expect(find.text('Hip thrust'), findsOneWidget);
+    expect(find.text('Sentadilla'), findsOneWidget);
+    expect(find.textContaining('secundario'), findsOneWidget);
+
+    final posiciones = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((texto) => texto.data)
+        .toList();
+    expect(
+      posiciones.indexOf('Hip thrust'),
+      lessThan(posiciones.indexOf('Sentadilla')),
+    );
+  });
+
+  // Lo que quedo por reclasificar al pasar del texto libre a la taxonomia: se
+  // ofrece como pestana para que el entrenador lo complete, en vez de dejarlo
+  // escondido.
+  testWidgets('los sin clasificar tienen su propia pestaña', (tester) async {
+    await montar(
+      tester,
+      rol: RolUsuario.entrenador,
+      biblioteca: [
+        _ejercicio(id: 'id-1', nombre: 'Press banca'),
+        _ejercicio(
+          id: 'id-2',
+          nombre: 'Ejercicio viejo',
+          musculoPrincipal: null,
+        ),
+      ],
+    );
+
+    await tester.tap(find.byKey(const Key('chip_sin_clasificar')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ejercicio viejo'), findsOneWidget);
+    expect(find.text('Press banca'), findsNothing);
+  });
+
+  testWidgets('sin ninguno sin clasificar, esa pestaña no se ofrece', (
+    tester,
+  ) async {
+    await montar(
+      tester,
+      rol: RolUsuario.entrenador,
+      biblioteca: [_ejercicio()],
+    );
+
+    expect(find.byKey(const Key('chip_sin_clasificar')), findsNothing);
   });
 
   testWidgets('la búsqueda filtra el listado', (tester) async {
