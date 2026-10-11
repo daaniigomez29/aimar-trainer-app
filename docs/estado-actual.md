@@ -20,7 +20,7 @@ principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
 Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **429**,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **430**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**

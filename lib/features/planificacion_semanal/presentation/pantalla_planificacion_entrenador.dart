@@ -1656,61 +1656,92 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
       filtroBibliotecaProvider(AmbitoDeFiltro.panelPlanning),
     );
 
-    return Padding(
-      padding: const EdgeInsets.all(Tokens.margenPantalla),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.enModal
-                      ? 'Añadir ejercicio'
-                      : 'Biblioteca de ejercicios',
-                  style: textos.titleMedium,
-                ),
-              ),
-              if (widget.enModal)
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Mismo buscador y mismo filtro que el formulario de CU-08, con el
-          // mismo estado (`filtroBibliotecaProvider`): este panel es donde el
-          // entrenador busca de verdad, una vez por ejercicio de cada bloque.
-          const FiltroDeEjercicios(ambito: AmbitoDeFiltro.panelPlanning),
-          const SizedBox(height: 14),
-          Expanded(
-            child: ejercicios.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Text(mensajeDeError(error)),
-              data: (lista) {
-                final activos = lista.where((e) => e.estado.esActivo).toList();
-                if (activos.isEmpty) {
-                  return Text(
-                    'Ningún ejercicio coincide.',
-                    style: textos.bodySmall,
-                  );
-                }
-                return ListView.separated(
-                  itemCount: activos.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, indice) => _FilaBiblioteca(
-                    ejercicio: activos[indice],
-                    resaltar: filtro.musculo,
-                    onAnadir: widget.sesion == null || !widget.puedeEditar
-                        ? null
-                        : () => _anadir(activos[indice]),
+    // `Material` transparente: el panel vive dentro de un contenedor con color
+    // de fondo, y los `ExpansionTile` del filtro pintan su tinta sobre el
+    // `Material` mas cercano. Sin esto, Flutter avisa de que el fondo tapa esa
+    // tinta ("ListTile background color or ink splashes may be invisible") y
+    // las pulsaciones no se ven.
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsets.all(Tokens.margenPantalla),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.enModal
+                        ? 'Añadir ejercicio'
+                        : 'Biblioteca de ejercicios',
+                    style: textos.titleMedium,
                   ),
-                );
-              },
+                ),
+                if (widget.enModal)
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            // Un unico scroll para el filtro y los resultados.
+            //
+            // POR QUE: el filtro crece al abrir grupos, y como no es flexible,
+            // en un `Column` se queda con el alto que pida y deja al
+            // `Expanded` de debajo sin sitio. Con dos grupos abiertos el panel
+            // desbordaba por abajo ("BOTTOM OVERFLOWED BY 14 PIXELS"). Asi el
+            // filtro se desplaza con la lista y no hay alto que repartir.
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  // Mismo buscador y mismo filtro que el formulario de CU-08,
+                  // cada uno con su propio ambito: este panel es donde el
+                  // entrenador busca de verdad, una vez por ejercicio de cada
+                  // bloque.
+                  const FiltroDeEjercicios(
+                    ambito: AmbitoDeFiltro.panelPlanning,
+                  ),
+                  const SizedBox(height: 14),
+                  ejercicios.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, _) => Text(mensajeDeError(error)),
+                    data: (lista) {
+                      final activos = lista
+                          .where((e) => e.estado.esActivo)
+                          .toList();
+                      if (activos.isEmpty) {
+                        return Text(
+                          'Ningún ejercicio coincide.',
+                          style: textos.bodySmall,
+                        );
+                      }
+                      return ListView.separated(
+                        // Dentro del scroll de fuera: se pinta entera y no
+                        // desplaza por su cuenta.
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: activos.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, indice) => _FilaBiblioteca(
+                          ejercicio: activos[indice],
+                          resaltar: filtro.musculo,
+                          onAnadir: widget.sesion == null || !widget.puedeEditar
+                              ? null
+                              : () => _anadir(activos[indice]),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

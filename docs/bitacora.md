@@ -1921,12 +1921,34 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   icono y lo tapaba. Fuera con `showCheckmark: false`: que esta elegido ya se
   ve por el color.
 
+**Corregido (el panel de biblioteca desbordaba al abrir dos grupos):**
+
+- Sintoma: el rayado amarillo y negro de *BOTTOM OVERFLOWED BY 14 PIXELS* en el
+  panel lateral del planning, al abrir dos grupos del filtro.
+- Causa: el filtro y la lista estaban en un `Column` con el filtro **sin
+  flexibilidad**. El filtro crece al abrir grupos, se queda con el alto que
+  pida y deja al `Expanded` de debajo sin sitio. No hay nada que recortar: la
+  columna desborda.
+- Arreglo: un **unico scroll** para el filtro y los resultados. El filtro se
+  desplaza con la lista y ya no hay alto que repartir.
+- El aviso del `ListTile` que salia en consola era **otra cosa**: el panel vive
+  dentro de un contenedor con color de fondo y los `ExpansionTile` pintan su
+  tinta sobre el `Material` mas cercano, que quedaba por encima de ese fondo.
+  Se arregla con un `Material` transparente propio del panel. No tenia nada que
+  ver con el desbordamiento, aunque aparecieran juntos.
+- Test de regresion (`panel_biblioteca_test.dart`), **comprobado contra la
+  version anterior**: con el panel viejo falla con *overflowed by 123 pixels*.
+  Dos cosas que costaron ahi: con la fuente de los tests (mas ancha que la
+  real) el boton "Crear la semana" desborda a lo ancho, asi que el test monta
+  la semana **con** planning; y los grupos llevan `PageStorageKey`, que
+  `find.byKey(Key(...))` no encuentra.
+
 **Pendiente / notas:**
 
 - `supabase db reset` aplica **24 migraciones**, `./scripts/probar_local.sh`
   **200/200** (ocho comprobaciones nuevas de la regla, incluida que archivar una
   semana pasada si se puede y que la semana en curso se sigue creando),
-  `flutter test` **429**, `dart analyze --fatal-infos` limpio.
+  `flutter test` **430**, `dart analyze --fatal-infos` limpio.
 - `planningDePrueba` ya no fija la fecha: calcula la semana en curso. Con la
   fecha fija, los tests de edicion habrian empezado a fallar solos al cambiar de
   semana. Un test de `pantalla_planning` fijaba ademas una semana de septiembre
