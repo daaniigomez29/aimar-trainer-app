@@ -1967,12 +1967,47 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   value*). Montan la pantalla **sin clave** a proposito, para probar que la
   pantalla aguanta por si misma y no solo porque el enrutador la proteja.
 
+**Corregido (al terminar un dia, el cliente acababa en el siguiente):**
+
+- El inicio del cliente abre por `siguientePendiente`, "la primera sesion sin
+  terminar". Justo despues de acabar el Dia 1, esa es el Dia 2: al cliente le
+  desaparecia de la vista lo que acababa de hacer. Pasaba **siempre** que
+  quedara algun dia por hacer; si era el ultimo, no habia pendiente y se
+  quedaba donde estaba, que es lo que confundia.
+- Ahora al terminar se vuelve con `?dia=N` (`Rutas.inicioClienteEnDia`) y el
+  inicio abre por ese dia. Lo que el cliente elija luego en la tira manda sobre
+  el parametro.
+- El parametro lo lee el **enrutador** y lo pasa como argumento, en vez de que
+  la pantalla haga `GoRouterState.of`. Lo intente asi primero y rompio dos
+  tests que la montan sin `GoRouter` encima: `of` revienta ahi, y en esta
+  version de go_router no hay `maybeOf`. Inyectarlo ademas deja la pantalla
+  montable suelta.
+
+**Hecho (al crear un dia, el entrenador va a ese dia):**
+
+- Lo pidio pensando que se habia roto al arreglar lo del cliente. **No era
+  eso**: la eleccion de sesion del editor no se ha tocado en toda la sesion y
+  el unico commit que la toco nunca es `ee84405`. Lo que parecia que iba es el
+  caso de la **primera** sesion de una semana vacia: ahi no hay ninguna
+  elegida y la pantalla cae en la primera, que es la nueva.
+- Aun asi tiene sentido, y ahora `pedirDatosSesion` devuelve la sesion guardada
+  en vez de un `bool`, de modo que quien la crea puede abrirla. Editar una
+  existente no cambia de dia.
+
+**Corregido (un fallo que me colé al hacer lo anterior):**
+
+- Al reescribir `pedirDatosSesion` como expresion, el `reiniciar()` del
+  controlador acabo **dentro del `builder`** del dialogo, que se ejecuta
+  durante el build: *Tried to modify a provider while the widget tree was
+  building*. Lo caza el test nuevo al abrir el dialogo; sin el, habria llegado
+  a la app.
+
 **Pendiente / notas:**
 
 - `supabase db reset` aplica **24 migraciones**, `./scripts/probar_local.sh`
   **200/200** (ocho comprobaciones nuevas de la regla, incluida que archivar una
   semana pasada si se puede y que la semana en curso se sigue creando),
-  `flutter test` **432**, `dart analyze --fatal-infos` limpio.
+  `flutter test` **434**, `dart analyze --fatal-infos` limpio.
 - `planningDePrueba` ya no fija la fecha: calcula la semana en curso. Con la
   fecha fija, los tests de edicion habrian empezado a fallar solos al cambiar de
   semana. Un test de `pantalla_planning` fijaba ademas una semana de septiembre

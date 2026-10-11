@@ -177,18 +177,25 @@ class _EstadoDialogoPlanning extends ConsumerState<_DialogoPlanning> {
 ///
 /// Ya no pide dia: la sesion se numera sola dentro del planning. Lo unico que
 /// escribe el entrenador es el nombre.
-Future<bool> pedirDatosSesion({
+/// Devuelve la sesion guardada, o `null` si se cancelo o fallo.
+///
+/// Devuelve la sesion y no un `bool` para que quien la crea pueda **abrirla**:
+/// el entrenador anade el Dia 3 y lo que quiere es montarlo, no quedarse en el
+/// dia que estaba mirando.
+Future<SesionEntrenamiento?> pedirDatosSesion({
   required BuildContext context,
   required WidgetRef ref,
   required PlanningSemanal planning,
   SesionEntrenamiento? sesion,
-}) async {
+}) {
+  // `reiniciar` va **antes** de abrir, no dentro del `builder`: ahi se
+  // ejecutaria durante el build y modificar un provider ahi esta prohibido
+  // ("Tried to modify a provider while the widget tree was building").
   ref.read(controladorPlanificacionProvider.notifier).reiniciar();
-  final guardado = await showDialog<bool>(
+  return showDialog<SesionEntrenamiento>(
     context: context,
     builder: (_) => _DialogoSesion(planning: planning, sesion: sesion),
   );
-  return guardado ?? false;
 }
 
 class _DialogoSesion extends ConsumerStatefulWidget {
@@ -238,7 +245,7 @@ class _EstadoDialogoSesion extends ConsumerState<_DialogoSesion> {
           );
 
     if (!mounted || resultado.esFallo) return;
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop(resultado.valorONulo);
   }
 
   @override

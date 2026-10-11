@@ -636,7 +636,7 @@ class _Planning extends ConsumerWidget {
             ),
             const SizedBox(height: 18),
             if (sesion == null)
-              _SemanaVacia(planning: planning)
+              _SemanaVacia(planning: planning, onSesionCreada: onElegirSesion)
             else
               _Sesion(
                 sesion: sesion,
@@ -747,12 +747,17 @@ class _PestanasDeSesion extends ConsumerWidget {
           if (indice == sesiones.length) {
             return OutlinedButton.icon(
               key: const Key('boton_anadir_sesion'),
+              // Se abre el dia recien creado: el entrenador anade el Dia 3
+              // porque va a montarlo, no para seguir mirando el Dia 1.
               onPressed: planning.esEditable
-                  ? () => pedirDatosSesion(
-                      context: context,
-                      ref: ref,
-                      planning: planning,
-                    )
+                  ? () async {
+                      final creada = await pedirDatosSesion(
+                        context: context,
+                        ref: ref,
+                        planning: planning,
+                      );
+                      if (creada != null) onElegir(creada.orden);
+                    }
                   : null,
               icon: const Icon(Icons.add, size: 18),
               label: Text('Día ${planning.siguienteOrden}'),
@@ -772,9 +777,12 @@ class _PestanasDeSesion extends ConsumerWidget {
 }
 
 class _SemanaVacia extends ConsumerWidget {
-  const _SemanaVacia({required this.planning});
+  const _SemanaVacia({required this.planning, required this.onSesionCreada});
 
   final PlanningSemanal planning;
+
+  /// Para abrir el dia recien creado en vez de quedarse en la semana vacia.
+  final ValueChanged<int> onSesionCreada;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -794,11 +802,14 @@ class _SemanaVacia extends ConsumerWidget {
           OutlinedButton.icon(
             key: const Key('boton_primera_sesion'),
             onPressed: planning.esEditable
-                ? () => pedirDatosSesion(
-                    context: context,
-                    ref: ref,
-                    planning: planning,
-                  )
+                ? () async {
+                    final creada = await pedirDatosSesion(
+                      context: context,
+                      ref: ref,
+                      planning: planning,
+                    );
+                    if (creada != null) onSesionCreada(creada.orden);
+                  }
                 : null,
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Añadir sesión'),

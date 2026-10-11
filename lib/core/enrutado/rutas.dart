@@ -143,6 +143,21 @@ abstract final class Rutas {
   /// Nombre del parametro que dice **de donde se venia**.
   static const String paramVolver = 'volver';
 
+  /// Nombre del parametro que dice **en que dia abrir** el inicio del cliente.
+  static const String paramDia = 'dia';
+
+  /// El inicio del cliente, abierto en el dia [orden].
+  ///
+  /// POR QUE HACE FALTA: sin el, el inicio abre por la primera sesion sin
+  /// terminar. Justo despues de acabar un dia, esa es la **siguiente**, asi
+  /// que al cliente le desaparecia de la vista lo que acababa de hacer y se
+  /// encontraba el dia de despues. Al terminar se vuelve al dia terminado.
+  ///
+  /// En la URL y no en `extra`, por lo mismo que [conVuelta]: asi sobrevive a
+  /// una recarga.
+  static String inicioClienteEnDia(int? orden) =>
+      orden == null ? inicioCliente : '$inicioCliente?$paramDia=$orden';
+
   /// Anade a [ruta] el sitio al que debe volver la flecha de atras.
   ///
   /// POR QUE HACE FALTA: con rutas anidadas, `context.go` a una ruta profunda

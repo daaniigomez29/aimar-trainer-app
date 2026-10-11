@@ -22,7 +22,14 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/wi
 /// reves: lo primero es lo de hoy, y la semana queda como tira de dias. El
 /// historico de semanas sigue existiendo, a un toque desde la cabecera.
 class PantallaMiPlanning extends ConsumerStatefulWidget {
-  const PantallaMiPlanning({super.key});
+  const PantallaMiPlanning({this.diaInicial, super.key});
+
+  /// Dia por el que abrir la tira, si se pide uno.
+  ///
+  /// Lo inyecta el enrutador desde la URL (`?dia=`), en vez de leerlo aqui con
+  /// `GoRouterState.of`: asi la pantalla no exige tener un `GoRouter` encima y
+  /// se puede montar suelta, por ejemplo en un test.
+  final int? diaInicial;
 
   @override
   ConsumerState<PantallaMiPlanning> createState() => _EstadoMiPlanning();
@@ -87,6 +94,7 @@ class _EstadoMiPlanning extends ConsumerState<PantallaMiPlanning> {
               idCliente: idCliente,
               planningId: planning.id,
               semana: semana,
+              diaInicial: widget.diaInicial,
               onCambiarSemana: _irA,
             );
           },
@@ -169,11 +177,13 @@ class _Semana extends ConsumerStatefulWidget {
     required this.planningId,
     required this.semana,
     required this.onCambiarSemana,
+    this.diaInicial,
   });
 
   final String idCliente;
   final String planningId;
   final Semana semana;
+  final int? diaInicial;
   final ValueChanged<Semana> onCambiarSemana;
 
   @override
@@ -198,10 +208,13 @@ class _SemanaState extends ConsumerState<_Semana> {
             ref.invalidate(planningCompletoProvider(widget.planningId)),
       ),
       data: (planning) {
-        // Se empieza por la primera sesion sin terminar: es por donde el cliente
-        // va a seguir. Si ya estan todas, por la ultima.
+        // Orden de preferencia: lo que el cliente haya elegido en la tira; si
+        // no, el dia que pida la URL (se vuelve asi del ultimo ejercicio, para
+        // quedarse en el dia terminado y no saltar al siguiente); si no, la
+        // primera sesion sin terminar, que es por donde va a seguir; y si ya
+        // estan todas, la ultima.
         final sesion =
-            planning.sesionNumero(_orden ?? -1) ??
+            planning.sesionNumero(_orden ?? widget.diaInicial ?? -1) ??
             planning.siguientePendiente ??
             planning.sesionesOrdenadas.lastOrNull;
 
