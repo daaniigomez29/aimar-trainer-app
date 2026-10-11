@@ -1943,12 +1943,36 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   la semana **con** planning; y los grupos llevan `PageStorageKey`, que
   `find.byKey(Key(...))` no encuentra.
 
+**Corregido (el registro del cliente mezclaba ejercicios y reventaba tras un cardio):**
+
+- Sintoma 1: al pulsar "Guardar y siguiente", el nombre del ejercicio cambiaba
+  pero las series eran las del anterior, con el plan del nuevo al lado. Press
+  militar tiene una serie planificada y salian dos, las de la sentadilla.
+- Sintoma 2: al guardar un cardio, pantalla roja con *Unexpected null value*.
+- Causa, la misma para los dos: al encadenar ejercicios con `context.go`, el
+  widget ocupa el mismo sitio del arbol y Flutter **reutiliza su `State`**. Lo
+  que se prepara en `initState` —los controladores de cada serie y el de
+  minutos— se quedaba con lo del ejercicio anterior. Y viniendo de un cardio,
+  que no crea ninguna serie, el mapa estaba vacio: la pantalla pedia
+  `_campos[1]!` para la primera serie del siguiente y el `!` sobre `null`
+  reventaba encima del entrenamiento.
+- Arreglo en dos sitios: el enrutador pasa `key: ValueKey(ejercicio.id)`, asi
+  que cada ejercicio estrena `State`; y la pantalla rehace sus campos en
+  `didUpdateWidget` cuando cambia el id, para ser correcta tambien si alguien
+  la monta sin clave. Ademas el `_campos[numero]!` pasa a crear la serie que
+  falte: un desajuste es recuperable y no merece tirar la pantalla a media
+  sesion.
+- Dos tests nuevos, **comprobados contra la version anterior**: con ella fallan
+  los dos (uno por las series heredadas, el otro por el *Unexpected null
+  value*). Montan la pantalla **sin clave** a proposito, para probar que la
+  pantalla aguanta por si misma y no solo porque el enrutador la proteja.
+
 **Pendiente / notas:**
 
 - `supabase db reset` aplica **24 migraciones**, `./scripts/probar_local.sh`
   **200/200** (ocho comprobaciones nuevas de la regla, incluida que archivar una
   semana pasada si se puede y que la semana en curso se sigue creando),
-  `flutter test` **430**, `dart analyze --fatal-infos` limpio.
+  `flutter test` **432**, `dart analyze --fatal-infos` limpio.
 - `planningDePrueba` ya no fija la fecha: calcula la semana en curso. Con la
   fecha fija, los tests de edicion habrian empezado a fallar solos al cambiar de
   semana. Un test de `pantalla_planning` fijaba ademas una semana de septiembre
