@@ -26,7 +26,11 @@ class RepositorioFalso extends Mock implements EjercicioRepositorio {}
 void main() {
   late RepositorioFalso repositorio;
 
-  Ejercicio ejercicio({String? imagenRuta, String? video}) => Ejercicio(
+  Ejercicio ejercicio({
+    String? imagenRuta,
+    String? video,
+    List<Musculo> secundarios = const [],
+  }) => Ejercicio(
     id: 'id-1',
     nombre: 'Press banca',
     descripcion: 'Tumbado en banco plano.',
@@ -34,6 +38,7 @@ void main() {
     estado: EstadoEjercicio.activo,
     creadoEn: DateTime.utc(2026),
     musculoPrincipal: Musculo.porcionEsternoCostal,
+    musculosSecundarios: secundarios,
     imagenRuta: imagenRuta,
     videoEjemploUrl: video,
   );
@@ -96,6 +101,34 @@ void main() {
     expect(find.text('Pecho'), findsWidgets);
     expect(find.text('Porción esterno-costal'), findsWidgets);
     expect(tester.takeException(), isNull);
+  });
+
+  // Los 21 musculos repartidos en seis grupos alargaban el formulario aunque
+  // no se fuera a poner ningun secundario, que es el caso mas comun.
+  testWidgets('los músculos secundarios nacen plegados', (tester) async {
+    await montar(tester);
+
+    expect(find.byKey(const Key('secundarios')), findsOneWidget);
+    // Ni los grupos ni sus musculos estan a la vista.
+    expect(find.text('Pierna'), findsNothing);
+    expect(find.text('Cuádriceps'), findsNothing);
+
+    await tester.tap(find.text('Músculos secundarios'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pierna'), findsOneWidget);
+  });
+
+  testWidgets('al editar uno que ya tiene secundarios, se abre solo', (
+    tester,
+  ) async {
+    await montar(
+      tester,
+      aEditar: ejercicio(secundarios: const [Musculo.triceps]),
+    );
+
+    expect(find.text('Brazo'), findsOneWidget);
+    expect(find.textContaining('Tríceps'), findsWidgets);
   });
 
   testWidgets('un ejercicio con imagen ofrece cambiarla y quitarla', (

@@ -1812,13 +1812,19 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 
 - Sintoma: lo de ayer (barra de navegacion en toda pantalla con sesion, y la
   flecha de atras volviendo de donde se vino) ya no estaba.
-- Causa, y **no era un fallo de codigo**: la rama de trabajo `ejercicios-v2`
-  sale de `6cdaad8`, el commit **anterior** a `752fa14`, que es donde vive ese
-  trabajo. En algun momento el arbol se reseteo a ese punto —a mitad de sesion,
-  porque `ejercicio.dart` todavia tenia la descripcion opcional cuando se leyo
-  al principio y no la tenia despues—, asi que `pantalla_con_navegacion.dart`,
-  `boton_atras.dart` y `sesion_falsa.dart` desaparecieron y `rutas.dart` volvio
-  a su version sin `conVuelta`.
+- Causa, y **no era un fallo de codigo** ni un reset, como se penso al
+  principio: lo cuenta el reflog. El 8 de octubre a las **23:18:16** se creo
+  `ejercicios-v2` desde la punta de `dev`, que entonces era `6cdaad8`; el
+  trabajo del navbar todavia **no era un commit**, eran cambios en el arbol. A
+  las **23:18:49** se volvio a `dev` y a las **23:20:05** se commiteo alli
+  (`752fa14`). Al volver a `ejercicios-v2` a las **23:44:01**, esos archivos ya
+  estaban seguidos por git en `dev` y no existian en esta rama, asi que el
+  cambio de rama los borro del disco: `pantalla_con_navegacion.dart`,
+  `boton_atras.dart`, `sesion_falsa.dart` y el `conVuelta` de `rutas.dart`.
+- **La leccion**: el trabajo sin commitear no pertenece a ninguna rama, flota en
+  el arbol y te sigue al cambiar. Por eso al ramificar parecia que estaba todo.
+  Una rama nueva hereda los *commits* de donde sale, nunca lo que haya a medias:
+  antes de ramificar, `git status`, y si sale algo, decidir primero donde va.
 - Arreglo: restaurado en el arbol. Los 13 archivos que esta tanda no tocaba,
   copiados tal cual de `752fa14` (`git checkout 752fa14 -- …`, que ahi no pisa
   nada porque coincidian con HEAD); los 7 que si, portados a mano hunk a hunk.
@@ -1859,6 +1865,118 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 - Todo sin commitear: los commits los hace el.
 
 ### 2026-10-11
+
+**Hecho (borrar el planning desde el editor):**
+
+- `confirmarEliminarPlanning` ya existia, pero solo en la ficha del cliente.
+  Ahora esta tambien en la cabecera del editor, que es donde se cometen los
+  errores que hay que deshacer: crear la semana sin querer, o duplicar del
+  origen equivocado. Borrar arrastra en cascada sesiones, bloques, ejercicios y
+  series, asi que no hay que deshacer nada a mano.
+- Con eso, duplicar se queda como estaba: **solo duplica**, no borra.
+
+**Hecho (regla de dominio: lo pasado no se toca):**
+
+- El entrenador no crea, modifica, borra ni duplica el planning de una semana
+  terminada. Se trabaja la semana en curso y las siguientes.
+- Dos excepciones: el **cliente sigue registrando** lo que hizo en una semana
+  pasada que siga activa (entrena el domingo, lo apunta el lunes), y el
+  entrenador **si puede archivarla**, que no cambia el plan y es justo cuando se
+  archiva. Ademas archivar es lo que libera la semana en el indice unico.
+- Consecuencia asumida y hablada: un error en una semana pasada ya no se
+  deshace.
+- En la base, migracion `20261011100000`: `semana_pasada()` calculada en
+  `Europe/Madrid` (en UTC, entre las 00:00 y las 02:00 del lunes, la regla
+  dejaria editar lo que ya es pasado) y un trigger en las cinco tablas de
+  planificacion. **Triggers y no politicas RLS** por la trampa 8: un `update`
+  bloqueado por RLS no da error, deja 0 filas y la app lo traduce a "eso ya no
+  existe".
+- En la app, el interruptor es `PlanningSemanal.esEditable`, que ya existia para
+  los archivados. En el editor habia **14 puntos de escritura y solo 2 lo
+  miraban**: alli el planning siempre estaba activo y la comprobacion era codigo
+  muerto. Ahora lo miran todos, incluidas las celdas de la cuadricula (si no,
+  dejarian teclear algo que el boton de guardar, apagado, no podria guardar) y
+  el `+` del panel de biblioteca.
+
+**Corregido (dos trampas de plpgsql que costaron la primera pasada):**
+
+- El `and` de SQL **no garantiza cortocircuito**: el trigger compartido hacia
+  `if tg_table_name = 'sesiones_entrenamiento' and new.planning_id ...` y, para
+  las otras tablas, Postgres evaluaba igualmente el acceso al campo y reventaba
+  con `42703`, *record "new" has no field planning_id*. Hay que anidar los `if`.
+- `coalesce(new, old)` sobre registros pierde el tipo y los accesos a campos
+  fallan con `22P02`. Cada rama usa `new` u `old` segun `TG_OP`.
+- Lo desagradable fue el sintoma: 26 comprobaciones del script fallaron de
+  golpe en sitios que no tenian nada que ver con la regla nueva, porque el
+  trigger se dispara en cada escritura de planificacion.
+
+**Corregido (dos detalles del formulario de ejercicio):**
+
+- Los musculos secundarios enseñaban los seis grupos de golpe y alargaban el
+  formulario aunque no se fuera a poner ninguno, que es el caso mas comun.
+  Ahora van dentro de **otro** desplegable, cerrado de partida; al editar un
+  ejercicio que ya tiene secundarios se abre solo, para que no parezca que no
+  tiene ninguno.
+- El `ChoiceChip` del tipo pintaba su marca de verificacion **encima** del
+  icono y lo tapaba. Fuera con `showCheckmark: false`: que esta elegido ya se
+  ve por el color.
+
+**Pendiente / notas:**
+
+- `supabase db reset` aplica **24 migraciones**, `./scripts/probar_local.sh`
+  **200/200** (ocho comprobaciones nuevas de la regla, incluida que archivar una
+  semana pasada si se puede y que la semana en curso se sigue creando),
+  `flutter test` **429**, `dart analyze --fatal-infos` limpio.
+- `planningDePrueba` ya no fija la fecha: calcula la semana en curso. Con la
+  fecha fija, los tests de edicion habrian empezado a fallar solos al cambiar de
+  semana. Un test de `pantalla_planning` fijaba ademas una semana de septiembre
+  para algo en lo que la fecha era incidental; se le ha quitado.
+- Sin comprobar en el navegador, que lo mira el.
+
+
+**Hecho (duplicar un planning semanal, CU-05 variante):**
+
+- Se duplica **hacia la semana en la que estas**: te pones en la que quieres
+  montar y eliges de que planning traerla. De las dos opciones que habia sobre
+  la mesa (duplicar la semana anterior o una señalada), la segunda contiene a la
+  primera y no cuesta mas.
+- Boton con el icono de copiar a la izquierda de la flecha `<` del navegador de
+  semanas. El navegador lo comparten entrenador y cliente, asi que la accion es
+  opcional: al cliente le llega en `null` y el boton ni se pinta.
+- Con la semana ya ocupada el boton se **deshabilita con el motivo** en vez de
+  desaparecer: si desaparece, parece que la funcion no existe.
+- El origen se elige de la lista de plannings del cliente, archivados incluidos.
+  Un calendario dejaria señalar semanas vacias y el fallo solo se veria despues.
+
+**Migracion `20261011090000_duplicar_planning.sql`:**
+
+- Funcion `duplicar_planning(origen, fecha)`, `security invoker`. Va en Postgres
+  por lo de siempre: son cuatro niveles anidados y decenas de `insert` que
+  tienen que ir todos o ninguno, y PostgREST abre una transaccion por peticion.
+- Copia **solo lo planificado**. Nada de lo realizado: ni series realizadas, ni
+  minutos realizados, ni estado de registro, ni fecha realizada, ni el
+  `resultado_registrado` de la sesion. Si se copiara, las graficas de CU-21
+  contarian entrenamientos que no pasaron.
+- Omite los ejercicios dados de baja y **devuelve cuantos** en un `jsonb`, para
+  que la app lo diga. Al omitir uno renumera el bloque: copiar el orden original
+  dejaria huecos (1 y 3) y la app calcula la siguiente posicion como "cuantos
+  hay + 1", que chocaria con el indice unico del bloque.
+- Verificada contra Supabase local con ocho invariantes antes de tocar Dart, y
+  despues por la API en `probar_local.sh` con el token del entrenador, que es el
+  camino de la app.
+
+**Pendiente / notas:**
+
+- `supabase db reset` aplica **23 migraciones**, `./scripts/probar_local.sh`
+  **192/192** (ocho comprobaciones nuevas), `flutter test` **422**,
+  `dart analyze --fatal-infos` limpio.
+- Dos expectativas del script estaban mal puestas por mi y las corrigio la
+  ejecucion: en ese punto el planning tiene dos ejercicios y no tres, y el
+  cliente que intenta duplicar recibe **403**, no 500. El 403 es mas honesto de
+  lo que yo esperaba: el planning es suyo y si lo ve, asi que no sale por "ya no
+  existe"; lo para la politica de `insert`, que exige entrenador.
+- Sin comprobar en el navegador, que lo mira el.
+
 
 **Corregido (Clientes -> una ficha -> Plannings dejaba la app colgada):**
 

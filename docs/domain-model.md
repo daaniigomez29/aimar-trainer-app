@@ -41,6 +41,8 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 - No pueden coexistir dos plannings **activos** del mismo cliente con la misma `fechaInicio` (un archivado con la misma fecha no cuenta como conflicto).
 - Eliminar un planning elimina en cascada sesiones, bloques y ejercicios planificados.
 - Un planning archivado no admite añadir/editar/eliminar sesiones (solo consulta).
+- **Lo pasado no se toca**: el entrenador no crea, modifica, borra ni duplica el planning de una semana que ya ha terminado. Se trabaja la semana en curso y las siguientes. Dos excepciones, cada una por un motivo distinto: el **cliente sí registra** lo que hizo en una semana pasada que siga activa (si entrena el domingo y lo apunta el lunes, tiene que poder), y el entrenador **sí puede archivarla**, porque archivar no cambia el plan y una semana se archiva justo cuando acaba.
+- Consecuencia asumida: un error en una semana pasada ya no se deshace.
 
 ## 3. Sesión de entrenamiento
 

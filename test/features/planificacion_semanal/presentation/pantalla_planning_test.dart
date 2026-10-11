@@ -100,7 +100,9 @@ void main() {
   /// Una semana con cuatro sesiones numeradas. Antes estaban atadas a dias del
   /// calendario; ahora son Dia 1 a Dia 4 y el cliente las hace cuando puede.
   PlanningSemanal semanaConCuatroSesiones() => planningDePrueba(
-    fechaInicio: DateTime(2026, 9, 28),
+    // Sin fecha: la ayuda usa la semana en curso. Con una fija del pasado, la
+    // regla "lo pasado no se toca" dejaria el planning no editable y este test
+    // comprobaria lo contrario de lo que quiere.
     sesiones: [
       sesionDePrueba(id: 's-1', orden: 1, nombre: 'Empuje'),
       sesionDePrueba(id: 's-2', orden: 2, nombre: 'ggg'),

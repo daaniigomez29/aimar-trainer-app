@@ -23,6 +23,8 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-07** — Añadir bloques de entrenamiento dentro de una sesión (tipo: calentamiento/fuerza/cardio/movilidad/otro).
 - **RF-08** — Añadir ejercicios de la biblioteca a un bloque, con series/reps/peso/descanso (Fuerza y Fortalecimiento) o minutos (Cardio). Al añadirlo se elige **a qué bloque** de la sesión va.
 - **RF-08.1** — Buscar un ejercicio de la biblioteca por nombre y filtrarlo por grupo muscular y por músculo, tanto en la biblioteca como al añadirlo a un bloque. El filtro por un músculo incluye los ejercicios que lo trabajan de forma **secundaria**, detrás de los que lo tienen como principal.
+- **RF-06.1** — Duplicar un planning en otra semana, copiando sesiones, bloques, ejercicios y series **planificadas**; nunca lo registrado por el cliente. Los ejercicios dados de baja se omiten y se informa de cuántos.
+- **RF-06.2** — El entrenador solo crea, modifica, borra y duplica plannings de la semana en curso o posteriores. Las semanas terminadas son de solo lectura, salvo archivarlas y salvo el registro del cliente.
 - **RF-09 a RF-12** — Editar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente.
 - **RF-13 a RF-16** — Eliminar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente (con confirmación y cascada donde aplique).
 

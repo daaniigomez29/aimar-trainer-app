@@ -335,6 +335,7 @@ class _SelectorTipo extends StatelessWidget {
               avatar: Icon(tipo.icono, size: 18),
               label: Text(tipo.etiqueta),
               selected: valor == tipo,
+              showCheckmark: false,
               onSelected: habilitado ? (_) => onCambio(tipo) : null,
             ),
         ],
@@ -421,33 +422,46 @@ class _SelectorMusculatura extends StatelessWidget {
           opciones: {for (final m in deEsteGrupo) m: m.etiquetaCompleta},
           onCambio: onPrincipal,
         ),
-        const SizedBox(height: 12),
-        Text('Músculos secundarios', style: textos.labelLarge),
-        const SizedBox(height: 2),
-        Text(
-          secundarios.isEmpty
-              ? 'Ninguno. Abre un grupo para añadirlos.'
-              : secundarios.map((m) => m.etiqueta).join(', '),
-          style: textos.bodySmall,
-        ),
-        const SizedBox(height: 4),
-        // Se eligen de **toda** la taxonomia, no solo del grupo del principal:
-        // en un press de banca el principal es del pecho y los secundarios son
-        // deltoides y triceps, de otros dos grupos. Y van en una lista plegada
-        // por grupos, porque los 21 a la vez son otra lista interminable.
-        ListaMusculosPlegable(
-          grupos: GrupoMuscular.values,
-          musculosDe: Musculo.delGrupo,
-          seleccionados: secundarios.toSet(),
-          onMusculo: onAlternarSecundario,
-          ocultar: {?principal},
-          habilitado: habilitado,
-          resumenDe: (grupo) {
-            final elegidos = Musculo.delGrupo(grupo)
-                .where(secundarios.contains)
-                .map((m) => m.etiqueta);
-            return elegidos.isEmpty ? '—' : elegidos.join(', ');
-          },
+        const SizedBox(height: 8),
+        // Dos niveles de plegado, y el de fuera cerrado: los seis grupos a la
+        // vista alargaban el formulario aunque no se vaya a poner ningun
+        // secundario, que es el caso mas comun.
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            key: const Key('secundarios'),
+            // Al editar un ejercicio que ya tiene secundarios se abre solo: si
+            // no, pareceria que no tiene ninguno.
+            initiallyExpanded: secundarios.isNotEmpty,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
+            title: Text('Músculos secundarios', style: textos.labelLarge),
+            subtitle: Text(
+              secundarios.isEmpty
+                  ? 'Ninguno'
+                  : secundarios.map((m) => m.etiqueta).join(', '),
+              style: textos.bodySmall,
+            ),
+            children: [
+              // Se eligen de **toda** la taxonomia, no solo del grupo del
+              // principal: en un press de banca el principal es del pecho y
+              // los secundarios son deltoides y triceps, de otros dos grupos.
+              ListaMusculosPlegable(
+                grupos: GrupoMuscular.values,
+                musculosDe: Musculo.delGrupo,
+                seleccionados: secundarios.toSet(),
+                onMusculo: onAlternarSecundario,
+                ocultar: {?principal},
+                habilitado: habilitado,
+                resumenDe: (grupo) {
+                  final elegidos = Musculo.delGrupo(grupo)
+                      .where(secundarios.contains)
+                      .map((m) => m.etiqueta);
+                  return elegidos.isEmpty ? '—' : elegidos.join(', ');
+                },
+              ),
+            ],
+          ),
         ),
         if (error case final mensaje?) ...[
           const SizedBox(height: 4),

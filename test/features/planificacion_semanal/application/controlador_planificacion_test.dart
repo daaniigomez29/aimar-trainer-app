@@ -43,6 +43,56 @@ void main() {
   ControladorPlanificacion controlador() =>
       contenedor.read(controladorPlanificacionProvider.notifier);
 
+  // Duplicar es la unica operacion que crea un planning entero de golpe: lo
+  // hace una funcion de Postgres, asi que aqui solo se comprueba que el
+  // controlador le pasa el origen y la semana destino, y devuelve el recuento
+  // de omitidos tal cual (la app lo necesita para avisar).
+  group('duplicarPlanning', () {
+    test('pasa el origen y la semana, y devuelve lo omitido', () async {
+      when(
+        () => repositorio.duplicarPlanning(
+          origenId: any(named: 'origenId'),
+          fechaInicio: any(named: 'fechaInicio'),
+        ),
+      ).thenAnswer(
+        (_) async => const Success(
+          ResultadoDuplicado(planningId: 'p-nuevo', ejerciciosOmitidos: 2),
+        ),
+      );
+
+      final resultado = await controlador().duplicarPlanning(
+        origenId: 'p-origen',
+        fechaInicio: DateTime(2026, 11, 16),
+      );
+
+      expect(resultado.valorONulo?.planningId, 'p-nuevo');
+      expect(resultado.valorONulo?.ejerciciosOmitidos, 2);
+      expect(resultado.valorONulo?.hayOmitidos, isTrue);
+      verify(
+        () => repositorio.duplicarPlanning(
+          origenId: 'p-origen',
+          fechaInicio: DateTime(2026, 11, 16),
+        ),
+      ).called(1);
+    });
+
+    test('un fallo del repositorio llega tal cual', () async {
+      when(
+        () => repositorio.duplicarPlanning(
+          origenId: any(named: 'origenId'),
+          fechaInicio: any(named: 'fechaInicio'),
+        ),
+      ).thenAnswer((_) async => const Failure(ErrorNoAutorizado()));
+
+      final resultado = await controlador().duplicarPlanning(
+        origenId: 'p-origen',
+        fechaInicio: DateTime(2026, 11, 16),
+      );
+
+      expect(resultado.esFallo, isTrue);
+    });
+  });
+
   group('CU-05 crear planning', () {
     test('no llama al repositorio sin cliente', () async {
       final resultado = await controlador().crearPlanning(

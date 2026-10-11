@@ -25,6 +25,18 @@ class Semana {
 
   DateTime get domingo => _sumarDias(lunes, 6);
 
+  /// Si la semana ya termino.
+  ///
+  /// Se compara por el **lunes** y no por el domingo: una semana es pasada
+  /// cuando empezo antes que la actual, y la que esta en curso no lo es ni
+  /// siquiera el domingo por la noche.
+  ///
+  /// OJO: depende de `DateTime.now()`, asi que cualquier cosa que se apoye en
+  /// esto deja de ser determinista en un test. Las ayudas de test calculan su
+  /// semana con `Semana.deHoy()` en vez de fijar una fecha, o los tests
+  /// empezarian a fallar solos al cambiar de semana.
+  bool get esPasada => lunes.isBefore(Semana.deHoy().lunes);
+
   Semana get anterior => Semana._(_sumarDias(lunes, -7));
   Semana get siguiente => Semana._(_sumarDias(lunes, 7));
 

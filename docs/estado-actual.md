@@ -19,8 +19,8 @@ principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
-Verificación actual: `supabase db reset` aplica **22 migraciones** limpias,
-`./scripts/probar_local.sh` da **184/184**, `flutter test` **417**,
+Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **429**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -218,7 +218,22 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     unbounded" y deja la pantalla en blanco: desde fuera parece que la app se
     cuelga. Va envuelta en un `SizedBox` con su `preferredSize.height`, que ya
     cuenta el `bottom`.
-28. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
+28. **Meter "hoy" en el dominio vuelve los tests dependientes de la fecha.**
+    Desde que `esEditable` mira si la semana ya pasó, un planning de prueba con
+    fecha fija deja de ser editable en cuanto llega el lunes siguiente: los
+    tests de edición empezarían a fallar solos una noche cualquiera, sin que
+    nadie toque el código. `planningDePrueba` calcula su semana con
+    `Semana.deHoy()` en vez de fijarla, y ningún test de edición puede volver a
+    poner una fecha del pasado.
+29. **El `and` de SQL no garantiza cortocircuito.** Un trigger compartido por
+    varias tablas que haga
+    `if tg_table_name = 'sesiones' and new.planning_id ...` se evalúa entero
+    para las demás y revienta con `42703`, *record "new" has no field*. Hay que
+    anidar los `if`. Lo mismo con `coalesce(new, old)`: sobre registros pierde
+    el tipo y los accesos a campos fallan con `22P02`. Costó ver porque el
+    error aparecía en comprobaciones que no tenían nada que ver con la regla
+    nueva.
+30. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
     se añadió en la fase 6 y no se incluyó en el paso del CI, así que su código no
     pasaba por el comprobador de tipos. Ya están las tres.
 
@@ -450,6 +465,44 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 - **"Guardar y siguiente ejercicio" guarda**, no solo navega: el check verde de
   cada serie sigue estando, pero no puede ser la única forma de guardar. El
   cliente rellena, pulsa el botón de abajo y da por hecho que con eso vale.
+- **Duplicar una semana se hace "hacia aquí"** (2026-10-11): el entrenador se
+  pone en la semana que quiere montar y elige de qué planning traerla, en vez
+  de ir al origen y elegir destino. Es el recorrido real —estás preparando la
+  semana que viene, no visitando la pasada— y te deja ya donde quieres ver el
+  resultado. El origen se elige de la **lista de plannings del cliente**, no de
+  un calendario: un calendario deja señalar semanas vacías y el error solo se
+  vería después de copiar. Entran también los archivados, que es el histórico
+  que interesa reutilizar.
+- **La copia es del plan, nunca de lo realizado**: ni `series_realizadas`, ni
+  `minutos_realizados`, ni `estado_registro`, ni `fecha_realizada`, ni
+  `resultado_registrado`. Si se copiara, el histórico y las gráficas de CU-21
+  contarían entrenamientos que no existieron.
+- **Los ejercicios dados de baja se quedan fuera**, y la función devuelve
+  cuántos para que la app lo diga. La regla de dominio es que un ejercicio
+  eliminado no se añade a bloques nuevos, y duplicar es añadirlo; omitirlos en
+  silencio dejaría bloques con menos ejercicios sin explicación. Al omitir uno
+  se **renumera** el bloque: copiar el orden original dejaría huecos (1 y 3), y
+  la app calcula la siguiente posición como "cuantos hay + 1", que chocaría con
+  el índice único.
+- **Solo se duplica sobre una semana vacía**: un planning activo por cliente y
+  semana lo impone el índice único, así que el botón se deshabilita con el
+  motivo en lugar de prometer algo que la base de datos va a rechazar.
+- **Lo pasado no se toca** (2026-10-11): el entrenador no crea, modifica, borra
+  ni duplica semanas terminadas. Vive en triggers y no en políticas RLS por la
+  trampa 8: un `update` bloqueado por RLS no da error, deja 0 filas y la app lo
+  traduciría a "eso ya no existe", que no explica nada. Tres exenciones, cada
+  una por su motivo: solo aplica al entrenador (si no, el seed, que mete
+  semanas pasadas, no arrancaría), el cliente sigue registrando lo que hizo, y
+  archivar sigue permitido porque no cambia el plan.
+- **El interruptor es `PlanningSemanal.esEditable`**, que ya existía para los
+  archivados. En el editor del entrenador había 14 puntos de escritura y solo
+  2 lo miraban: allí el planning siempre estaba activo y la comprobación era
+  código muerto. Ahora lo miran todos, incluidas las celdas de la cuadrícula,
+  que si no dejarían teclear algo que el botón de guardar, apagado, no podría
+  guardar.
+- **Borrar el planning también desde el editor**: es donde se cometen los
+  errores que hay que deshacer (crear la semana sin querer, duplicar del origen
+  equivocado). Antes solo estaba en la ficha del cliente.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

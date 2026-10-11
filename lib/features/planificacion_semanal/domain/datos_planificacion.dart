@@ -413,6 +413,29 @@ class DatosEjercicioPlanificado {
 }
 
 /// `YYYY-MM-DD` para las columnas `date`, sin arrastrar hora ni zona horaria.
+/// Lo que devuelve duplicar un planning.
+///
+/// Trae el recuento de ejercicios omitidos porque la copia **deja fuera los
+/// dados de baja** (un ejercicio eliminado no se anade a bloques nuevos, y
+/// duplicar es anadirlo). Callarselo dejaria bloques vacios sin explicacion.
+class ResultadoDuplicado {
+  const ResultadoDuplicado({
+    required this.planningId,
+    required this.ejerciciosOmitidos,
+  });
+
+  factory ResultadoDuplicado.desdeJson(Map<String, dynamic> json) =>
+      ResultadoDuplicado(
+        planningId: json['planning_id'] as String,
+        ejerciciosOmitidos: (json['ejercicios_omitidos'] as num?)?.toInt() ?? 0,
+      );
+
+  final String planningId;
+  final int ejerciciosOmitidos;
+
+  bool get hayOmitidos => ejerciciosOmitidos > 0;
+}
+
 String soloFecha(DateTime fecha) =>
     '${fecha.year.toString().padLeft(4, '0')}-'
     '${fecha.month.toString().padLeft(2, '0')}-'

@@ -424,6 +424,26 @@ create trigger comprobar_tipo_ejercicio_planificado
   for each row execute function validar_tipo_ejercicio_planificado();
 ```
 
+**Lo pasado no se toca** (migración `20261011100000`). `semana_pasada(fecha)`
+compara contra el lunes de la semana en curso **en `Europe/Madrid`**, no en UTC:
+entre las 00:00 y las 02:00 españolas del lunes, UTC sigue en la semana
+anterior y la regla dejaría editar lo que ya es pasado. Un trigger
+`before insert or update or delete` en las cinco tablas de planificación la
+impone, con tres exenciones:
+
+1. Solo aplica si quien escribe es el entrenador (`es_entrenador()`). Es una
+   regla sobre quien planifica, y además el seed —que inserta semanas pasadas
+   como `postgres`— seguiría funcionando.
+2. En `sesiones_entrenamiento` y `ejercicios_planificados` se dejan pasar los
+   cambios que **solo tocan columnas de lo realizado**. Una política RLS no
+   puede mirar qué columnas se tocan, así que se comprueba a mano.
+3. En `plannings_semanales` se deja pasar el cambio de `estado`: archivar y
+   reactivar no cambian el plan.
+
+Van en triggers y no en políticas a propósito: con RLS, un `UPDATE` bloqueado
+no da error, deja la petición en 0 filas y la app lo traduciría a "eso ya no
+existe". El trigger puede decir por qué.
+
 **Nota de seguridad conocida:** la política de `update` del cliente permite
 técnicamente escribir toda la fila, no solo `minutos_realizados`. Se acepta
 por ahora vía RLS + interfaz. Pendiente a futuro: separar en columnas con
