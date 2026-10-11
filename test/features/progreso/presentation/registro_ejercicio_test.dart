@@ -53,6 +53,7 @@ void main() {
     WidgetTester tester,
     EjercicioPlanificado ejercicio, {
     String rutaInicial = '/registro',
+    SesionEntrenamiento? sesion,
   }) async {
     // La pantalla muestra todas las series a la vez: con los 600 px por defecto
     // no caben y los finders no las encontrarian.
@@ -84,8 +85,16 @@ void main() {
           rutas: [
             GoRoute(
               path: Rutas.inicioCliente,
-              builder: (context, state) =>
-                  const Scaffold(body: Text('mi planning')),
+              builder: (context, state) => Scaffold(
+                body: Column(
+                  children: [
+                    const Text('mi planning'),
+                    Text(
+                      'dia=${state.uri.queryParameters[Rutas.paramDia] ?? '-'}',
+                    ),
+                  ],
+                ),
+              ),
             ),
             GoRoute(
               path: '/registro',
@@ -93,6 +102,7 @@ void main() {
                 ejercicio: ejercicio,
                 planningId: 'p-1',
                 clienteId: 'cli-1',
+                sesion: sesion,
               ),
             ),
           ],
@@ -436,6 +446,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('mi planning'), findsOneWidget);
+  });
+
+  // El fallo: al terminar, el inicio abre por la primera sesion sin terminar,
+  // que a esas alturas es la SIGUIENTE. Al cliente le desaparecia de la vista
+  // el dia que acababa de hacer y se encontraba el de despues.
+  testWidgets('terminar deja al cliente en el día que acaba de hacer', (
+    tester,
+  ) async {
+    final ejercicio = deFuerza();
+    await montar(
+      tester,
+      ejercicio,
+      sesion: sesionDePrueba(
+        orden: 2,
+        nombre: 'Día 2',
+        bloques: [
+          bloqueDePrueba(ejercicios: [ejercicio]),
+        ],
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('mi planning'), findsOneWidget);
+    expect(find.text('dia=2'), findsOneWidget);
   });
 
   // El fallo: entrando al ejercicio desde el inicio del cliente, la flecha de

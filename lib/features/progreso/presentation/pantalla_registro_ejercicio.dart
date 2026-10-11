@@ -261,7 +261,9 @@ class _PantallaRegistroEjercicioState
     final lista = _ejerciciosDeLaSesion;
     final indice = _indiceActual;
     if (lista == null || indice == null || indice + 1 >= lista.length) {
-      context.go(Rutas.inicioCliente);
+      // Al dia que se acaba de terminar, no al siguiente: ver
+      // `Rutas.inicioClienteEnDia`.
+      context.go(Rutas.inicioClienteEnDia(widget.sesion?.orden));
       return;
     }
 

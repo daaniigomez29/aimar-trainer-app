@@ -20,7 +20,7 @@ principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
 Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **432**,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **434**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -512,6 +512,17 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 - **Borrar el planning también desde el editor**: es donde se cometen los
   errores que hay que deshacer (crear la semana sin querer, duplicar del origen
   equivocado). Antes solo estaba en la ficha del cliente.
+- **Al crear un día, el entrenador se va a ese día** (`pedirDatosSesion`
+  devuelve la sesión guardada en vez de un `bool`): se añade el Día 3 para
+  montarlo, no para seguir mirando el Día 1. Editar uno existente no cambia de
+  día. Es lo contrario que en el cliente, y a propósito: uno viene a trabajar
+  lo que acaba de crear, el otro acaba de terminar lo que estaba haciendo.
+- **Al terminar un día, el cliente se queda en ese día**: el inicio abre por la
+  primera sesión sin terminar, que justo después de acabar es la siguiente, así
+  que lo recién hecho desaparecía de la vista. Se vuelve con `?dia=N` y el
+  parámetro lo **inyecta el enrutador**, no lo lee la pantalla: con
+  `GoRouterState.of` dentro, la pantalla deja de poder montarse sin un
+  `GoRouter` encima (y en esta versión de go_router no hay `maybeOf`).
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 

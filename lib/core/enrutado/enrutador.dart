@@ -199,7 +199,13 @@ GoRouter enrutador(Ref ref) {
         path: Rutas.inicioCliente,
         // La pantalla de entrada del cliente es su planning (ui-design 6.1), no
         // un panel de accesos: lo primero que ve es lo que toca hoy.
-        builder: (context, state) => const PantallaMiPlanning(),
+        builder: (context, state) => PantallaMiPlanning(
+          // Al terminar un dia se vuelve aqui con `?dia=N` para quedarse en el
+          // que se acaba de hacer; ver `Rutas.inicioClienteEnDia`.
+          diaInicial: int.tryParse(
+            state.uri.queryParameters[Rutas.paramDia] ?? '',
+          ),
+        ),
         routes: [
           GoRoute(
             path: Rutas.biblioteca,
