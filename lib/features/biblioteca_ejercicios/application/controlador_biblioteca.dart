@@ -4,7 +4,10 @@ import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
 part 'controlador_biblioteca.g.dart';
@@ -25,11 +28,12 @@ Future<List<Ejercicio>> bibliotecaEjercicios(Ref ref) async {
   };
 }
 
-/// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
+/// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+/// biblioteca y el selector de ejercicios no se pisan la busqueda.
 @riverpod
 class FiltroBiblioteca extends _$FiltroBiblioteca {
   @override
-  FiltroEjercicios build() => const FiltroEjercicios();
+  FiltroEjercicios build(AmbitoDeFiltro ambito) => const FiltroEjercicios();
 
   void cambiarTexto(String texto) => state = state.copiarCon(texto: texto);
 
@@ -38,16 +42,54 @@ class FiltroBiblioteca extends _$FiltroBiblioteca {
   void cambiarTipo(TipoEjercicio? tipo) => state = FiltroEjercicios(
     texto: state.texto,
     tipo: tipo,
-    grupoMuscular: state.grupoMuscular,
+    grupo: state.grupo,
+    musculo: state.musculo,
+    soloEliminados: state.soloEliminados,
+    soloSinClasificar: state.soloSinClasificar,
+  );
+
+  /// `null` quita el filtro por grupo. Al cambiar de grupo se **suelta el
+  /// musculo** elegido: era del grupo anterior y dejaria la lista vacia sin que
+  /// se vea por que.
+  void cambiarGrupo(GrupoMuscular? grupo) => state = FiltroEjercicios(
+    texto: state.texto,
+    tipo: state.tipo,
+    grupo: grupo,
+    musculo: grupo != null && state.musculo?.grupo == grupo
+        ? state.musculo
+        : null,
     soloEliminados: state.soloEliminados,
   );
 
-  /// `null` quita el filtro por grupo muscular.
-  void cambiarGrupoMuscular(String? grupo) => state = FiltroEjercicios(
+  /// Ver el grupo **entero**, soltando el musculo que hubiera.
+  ///
+  /// No vale `cambiarGrupo`, que conserva el musculo si es de ese mismo grupo:
+  /// con cuadriceps elegido, pulsar "Todo pierna" no hacia nada visible, porque
+  /// el musculo seguia puesto y el chip se quedaba sin marcar.
+  void verTodoElGrupo(GrupoMuscular? grupo) => state = FiltroEjercicios(
     texto: state.texto,
     tipo: state.tipo,
-    grupoMuscular: grupo,
+    grupo: grupo,
     soloEliminados: state.soloEliminados,
+  );
+
+  /// `null` quita el filtro por musculo y deja el del grupo. Elegir un musculo
+  /// fija ademas su grupo: son dos niveles de lo mismo, no dos filtros sueltos.
+  void cambiarMusculo(Musculo? musculo) => state = FiltroEjercicios(
+    texto: state.texto,
+    tipo: state.tipo,
+    grupo: musculo?.grupo ?? state.grupo,
+    musculo: musculo,
+    soloEliminados: state.soloEliminados,
+  );
+
+  /// Los sin clasificar son una pestana, asi que al entrar se suelta el filtro
+  /// muscular: por definicion no tienen ninguno.
+  void alternarSinClasificar({required bool solo}) => state = FiltroEjercicios(
+    texto: state.texto,
+    tipo: state.tipo,
+    soloEliminados: state.soloEliminados,
+    soloSinClasificar: solo,
   );
 
   void alternarEliminados({required bool solo}) =>
@@ -56,28 +98,55 @@ class FiltroBiblioteca extends _$FiltroBiblioteca {
   void limpiar() => state = const FiltroEjercicios();
 }
 
-/// Listado ya filtrado que consume la pantalla.
+/// Listado ya filtrado y ordenado que consume la pantalla.
 @riverpod
-Future<List<Ejercicio>> ejerciciosFiltrados(Ref ref) async {
+Future<List<Ejercicio>> ejerciciosFiltrados(
+  Ref ref,
+  AmbitoDeFiltro ambito,
+) async {
   final todos = await ref.watch(bibliotecaEjerciciosProvider.future);
-  final filtro = ref.watch(filtroBibliotecaProvider);
-  return todos.where(filtro.aceptar).toList();
+  final filtro = ref.watch(filtroBibliotecaProvider(ambito));
+  return filtro.aplicar(todos);
 }
 
-/// Grupos musculares presentes en la biblioteca, para ofrecerlos como filtro sin
-/// mantener una lista fija en el codigo.
+/// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+///
+/// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+/// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+/// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+/// chips no se recortan segun lo que el buscador tenga escrito, o irian
+/// desapareciendo mientras se teclea.
 @riverpod
-Future<List<String>> gruposMusculares(Ref ref) async {
+Future<FacetasBiblioteca> facetasBiblioteca(
+  Ref ref,
+  AmbitoDeFiltro ambito,
+) async {
   final todos = await ref.watch(bibliotecaEjerciciosProvider.future);
-  final grupos = todos
-      .where((e) => e.estado.esActivo)
-      .map((e) => e.grupoMuscular)
-      .whereType<String>()
-      .where((g) => g.trim().isNotEmpty)
-      .toSet()
-      .toList();
-  grupos.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-  return grupos;
+  final soloEliminados = ref
+      .watch(filtroBibliotecaProvider(ambito))
+      .soloEliminados;
+
+  final visibles = todos.where(
+    (ejercicio) => soloEliminados == !ejercicio.estado.esActivo,
+  );
+
+  final porGrupo = <GrupoMuscular, int>{};
+  final musculos = <Musculo>{};
+  var haySinClasificar = false;
+
+  for (final ejercicio in visibles) {
+    for (final grupo in ejercicio.grupos) {
+      porGrupo[grupo] = (porGrupo[grupo] ?? 0) + 1;
+    }
+    musculos.addAll(ejercicio.musculos);
+    haySinClasificar = haySinClasificar || !ejercicio.estaClasificado;
+  }
+
+  return FacetasBiblioteca(
+    ejerciciosPorGrupo: porGrupo,
+    musculosConEjercicios: musculos,
+    haySinClasificar: haySinClasificar,
+  );
 }
 
 /// Un ejercicio concreto, para la pantalla de detalle.

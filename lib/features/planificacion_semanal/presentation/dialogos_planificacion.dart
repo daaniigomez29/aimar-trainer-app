@@ -4,9 +4,60 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+
+/// A que bloque de la sesion va el ejercicio que se acaba de elegir (CU-08).
+///
+/// Solo se pregunta cuando hay **mas de un bloque**: antes el ejercicio caia
+/// siempre en el primero, y una sesion con calentamiento y fuerza es justo el
+/// caso en el que eso nunca es lo que se queria. Devuelve `null` si se cancela.
+Future<BloqueEjercicio?> elegirBloque({
+  required BuildContext context,
+  required SesionEntrenamiento sesion,
+  required Ejercicio ejercicio,
+}) => showDialog<BloqueEjercicio>(
+  context: context,
+  builder: (contexto) => SimpleDialog(
+    title: Text('¿En qué bloque va ${ejercicio.nombre}?'),
+    children: [
+      for (final bloque in sesion.bloques)
+        SimpleDialogOption(
+          key: Key('elegir_bloque_${bloque.id}'),
+          onPressed: () => Navigator.of(contexto).pop(bloque),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              radius: 14,
+              child: Text(
+                '${bloque.orden}',
+                style: Theme.of(contexto).textTheme.labelMedium,
+              ),
+            ),
+            title: Text('Bloque ${bloque.orden} · ${bloque.tipo.etiqueta}'),
+            subtitle: Text(
+              bloque.ejercicios.isEmpty
+                  ? 'Vacío'
+                  : '${bloque.ejercicios.length} '
+                        '${bloque.ejercicios.length == 1 ? 'ejercicio' : 'ejercicios'}',
+            ),
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.only(right: 16, top: 4),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () => Navigator.of(contexto).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ),
+      ),
+    ],
+  ),
+);
 
 /// Confirmaciones de borrado de CU-13 a CU-16.
 ///

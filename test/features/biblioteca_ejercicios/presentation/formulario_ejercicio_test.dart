@@ -10,6 +10,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/pantalla_formulario_ejercicio.dart';
 
@@ -32,7 +33,7 @@ void main() {
     tipo: TipoEjercicio.fuerza,
     estado: EstadoEjercicio.activo,
     creadoEn: DateTime.utc(2026),
-    grupoMuscular: 'Pecho',
+    musculoPrincipal: Musculo.porcionEsternoCostal,
     imagenRuta: imagenRuta,
     videoEjemploUrl: video,
   );
@@ -90,7 +91,10 @@ void main() {
 
     expect(find.text('Editar ejercicio'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Press banca'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Pecho'), findsOneWidget);
+    // La clasificacion muscular ya no es texto libre: se precarga en los dos
+    // desplegables, y el grupo sale del musculo principal.
+    expect(find.text('Pecho'), findsWidgets);
+    expect(find.text('Porción esterno-costal'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

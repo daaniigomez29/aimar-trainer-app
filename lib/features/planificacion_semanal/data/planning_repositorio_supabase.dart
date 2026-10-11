@@ -286,8 +286,8 @@ sesiones_entrenamiento(
           'p_bloque_id': datos.bloqueId,
           'p_ejercicio_id': datos.ejercicioId,
           'p_orden': datos.orden,
-          'p_descanso_seg': datos.esFuerza ? datos.descansoSeg : null,
-          'p_minutos': datos.esCardio ? datos.minutos : null,
+          'p_descanso_seg': datos.vaPorSeries ? datos.descansoSeg : null,
+          'p_minutos': datos.vaPorMinutos ? datos.minutos : null,
           'p_series': [
             for (final serie in datos.series)
               {

@@ -65,28 +65,38 @@ final class BibliotecaEjerciciosProvider
 String _$bibliotecaEjerciciosHash() =>
     r'fbcff9f485cbe8e0cf87efa2eb9a711202cf33cf';
 
-/// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
+/// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+/// biblioteca y el selector de ejercicios no se pisan la busqueda.
 
 @ProviderFor(FiltroBiblioteca)
-final filtroBibliotecaProvider = FiltroBibliotecaProvider._();
+final filtroBibliotecaProvider = FiltroBibliotecaFamily._();
 
-/// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
+/// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+/// biblioteca y el selector de ejercicios no se pisan la busqueda.
 final class FiltroBibliotecaProvider
     extends $NotifierProvider<FiltroBiblioteca, FiltroEjercicios> {
-  /// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
-  FiltroBibliotecaProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'filtroBibliotecaProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  /// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+  /// biblioteca y el selector de ejercicios no se pisan la busqueda.
+  FiltroBibliotecaProvider._({
+    required FiltroBibliotecaFamily super.from,
+    required AmbitoDeFiltro super.argument,
+  }) : super(
+         retry: null,
+         name: r'filtroBibliotecaProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
   String debugGetCreateSourceHash() => _$filtroBibliotecaHash();
+
+  @override
+  String toString() {
+    return r'filtroBibliotecaProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -99,14 +109,59 @@ final class FiltroBibliotecaProvider
       providerOverride: $SyncValueProvider<FiltroEjercicios>(value),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FiltroBibliotecaProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
-String _$filtroBibliotecaHash() => r'86bdf065da7450e5f3eab265c1304214e6940c3e';
+String _$filtroBibliotecaHash() => r'995ec958ed809d72745336f0d7a230fda8979cc0';
 
-/// Filtro activo del listado (CU-21 usa el mismo patron para su rango de fechas).
+/// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+/// biblioteca y el selector de ejercicios no se pisan la busqueda.
+
+final class FiltroBibliotecaFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          FiltroBiblioteca,
+          FiltroEjercicios,
+          FiltroEjercicios,
+          FiltroEjercicios,
+          AmbitoDeFiltro
+        > {
+  FiltroBibliotecaFamily._()
+    : super(
+        retry: null,
+        name: r'filtroBibliotecaProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+  /// biblioteca y el selector de ejercicios no se pisan la busqueda.
+
+  FiltroBibliotecaProvider call(AmbitoDeFiltro ambito) =>
+      FiltroBibliotecaProvider._(argument: ambito, from: this);
+
+  @override
+  String toString() => r'filtroBibliotecaProvider';
+}
+
+/// Filtro activo del listado, **uno por ambito** (ver [AmbitoDeFiltro]): la
+/// biblioteca y el selector de ejercicios no se pisan la busqueda.
 
 abstract class _$FiltroBiblioteca extends $Notifier<FiltroEjercicios> {
-  FiltroEjercicios build();
+  late final _$args = ref.$arg as AmbitoDeFiltro;
+  AmbitoDeFiltro get ambito => _$args;
+
+  FiltroEjercicios build(AmbitoDeFiltro ambito);
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -119,16 +174,16 @@ abstract class _$FiltroBiblioteca extends $Notifier<FiltroEjercicios> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    return element.handleCreate(ref, () => build(_$args));
   }
 }
 
-/// Listado ya filtrado que consume la pantalla.
+/// Listado ya filtrado y ordenado que consume la pantalla.
 
 @ProviderFor(ejerciciosFiltrados)
-final ejerciciosFiltradosProvider = EjerciciosFiltradosProvider._();
+final ejerciciosFiltradosProvider = EjerciciosFiltradosFamily._();
 
-/// Listado ya filtrado que consume la pantalla.
+/// Listado ya filtrado y ordenado que consume la pantalla.
 
 final class EjerciciosFiltradosProvider
     extends
@@ -138,20 +193,27 @@ final class EjerciciosFiltradosProvider
           FutureOr<List<Ejercicio>>
         >
     with $FutureModifier<List<Ejercicio>>, $FutureProvider<List<Ejercicio>> {
-  /// Listado ya filtrado que consume la pantalla.
-  EjerciciosFiltradosProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'ejerciciosFiltradosProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
+  /// Listado ya filtrado y ordenado que consume la pantalla.
+  EjerciciosFiltradosProvider._({
+    required EjerciciosFiltradosFamily super.from,
+    required AmbitoDeFiltro super.argument,
+  }) : super(
+         retry: null,
+         name: r'ejerciciosFiltradosProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
 
   @override
   String debugGetCreateSourceHash() => _$ejerciciosFiltradosHash();
+
+  @override
+  String toString() {
+    return r'ejerciciosFiltradosProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
@@ -161,59 +223,162 @@ final class EjerciciosFiltradosProvider
 
   @override
   FutureOr<List<Ejercicio>> create(Ref ref) {
-    return ejerciciosFiltrados(ref);
+    final argument = this.argument as AmbitoDeFiltro;
+    return ejerciciosFiltrados(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is EjerciciosFiltradosProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
 String _$ejerciciosFiltradosHash() =>
-    r'b6eee4f5e24702abe3d3c402baa1cf7b6828433f';
+    r'b5cc4aae9ca0df4380ff11b3e3d7169b371525d9';
 
-/// Grupos musculares presentes en la biblioteca, para ofrecerlos como filtro sin
-/// mantener una lista fija en el codigo.
+/// Listado ya filtrado y ordenado que consume la pantalla.
 
-@ProviderFor(gruposMusculares)
-final gruposMuscularesProvider = GruposMuscularesProvider._();
-
-/// Grupos musculares presentes en la biblioteca, para ofrecerlos como filtro sin
-/// mantener una lista fija en el codigo.
-
-final class GruposMuscularesProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<String>>,
-          List<String>,
-          FutureOr<List<String>>
-        >
-    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
-  /// Grupos musculares presentes en la biblioteca, para ofrecerlos como filtro sin
-  /// mantener una lista fija en el codigo.
-  GruposMuscularesProvider._()
+final class EjerciciosFiltradosFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<Ejercicio>>, AmbitoDeFiltro> {
+  EjerciciosFiltradosFamily._()
     : super(
-        from: null,
-        argument: null,
         retry: null,
-        name: r'gruposMuscularesProvider',
-        isAutoDispose: true,
+        name: r'ejerciciosFiltradosProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
+        isAutoDispose: true,
       );
 
+  /// Listado ya filtrado y ordenado que consume la pantalla.
+
+  EjerciciosFiltradosProvider call(AmbitoDeFiltro ambito) =>
+      EjerciciosFiltradosProvider._(argument: ambito, from: this);
+
   @override
-  String debugGetCreateSourceHash() => _$gruposMuscularesHash();
+  String toString() => r'ejerciciosFiltradosProvider';
+}
+
+/// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+///
+/// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+/// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+/// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+/// chips no se recortan segun lo que el buscador tenga escrito, o irian
+/// desapareciendo mientras se teclea.
+
+@ProviderFor(facetasBiblioteca)
+final facetasBibliotecaProvider = FacetasBibliotecaFamily._();
+
+/// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+///
+/// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+/// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+/// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+/// chips no se recortan segun lo que el buscador tenga escrito, o irian
+/// desapareciendo mientras se teclea.
+
+final class FacetasBibliotecaProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<FacetasBiblioteca>,
+          FacetasBiblioteca,
+          FutureOr<FacetasBiblioteca>
+        >
+    with
+        $FutureModifier<FacetasBiblioteca>,
+        $FutureProvider<FacetasBiblioteca> {
+  /// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+  ///
+  /// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+  /// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+  /// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+  /// chips no se recortan segun lo que el buscador tenga escrito, o irian
+  /// desapareciendo mientras se teclea.
+  FacetasBibliotecaProvider._({
+    required FacetasBibliotecaFamily super.from,
+    required AmbitoDeFiltro super.argument,
+  }) : super(
+         retry: null,
+         name: r'facetasBibliotecaProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$facetasBibliotecaHash();
+
+  @override
+  String toString() {
+    return r'facetasBibliotecaProvider'
+        ''
+        '($argument)';
+  }
 
   @$internal
   @override
-  $FutureProviderElement<List<String>> $createElement(
+  $FutureProviderElement<FacetasBiblioteca> $createElement(
     $ProviderPointer pointer,
   ) => $FutureProviderElement(pointer);
 
   @override
-  FutureOr<List<String>> create(Ref ref) {
-    return gruposMusculares(ref);
+  FutureOr<FacetasBiblioteca> create(Ref ref) {
+    final argument = this.argument as AmbitoDeFiltro;
+    return facetasBiblioteca(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FacetasBibliotecaProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-String _$gruposMuscularesHash() => r'a18a2adcaccdd4b6ec7424e153d9e2ba9ffee2c3';
+String _$facetasBibliotecaHash() => r'73202b0927defebb89078d2d01fda84b19c13c97';
+
+/// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+///
+/// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+/// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+/// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+/// chips no se recortan segun lo que el buscador tenga escrito, o irian
+/// desapareciendo mientras se teclea.
+
+final class FacetasBibliotecaFamily extends $Family
+    with
+        $FunctionalFamilyOverride<FutureOr<FacetasBiblioteca>, AmbitoDeFiltro> {
+  FacetasBibliotecaFamily._()
+    : super(
+        retry: null,
+        name: r'facetasBibliotecaProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Opciones de filtrado con algun ejercicio detras (ver [FacetasBiblioteca]).
+  ///
+  /// Se calculan sobre los ejercicios del **estado** que se esta mirando (activos
+  /// o dados de baja), no sobre la biblioteca entera: en la pestana de bajas los
+  /// chips tienen que ser los de las bajas. Lo demas del filtro no influye: los
+  /// chips no se recortan segun lo que el buscador tenga escrito, o irian
+  /// desapareciendo mientras se teclea.
+
+  FacetasBibliotecaProvider call(AmbitoDeFiltro ambito) =>
+      FacetasBibliotecaProvider._(argument: ambito, from: this);
+
+  @override
+  String toString() => r'facetasBibliotecaProvider';
+}
 
 /// Un ejercicio concreto, para la pantalla de detalle.
 

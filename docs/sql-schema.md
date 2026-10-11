@@ -241,13 +241,42 @@ arrastrando, con `reordenar_bloques` (ver más abajo).
 ## Ejercicio (biblioteca) y Ejercicio planificado
 
 ```sql
-create type tipo_ejercicio as enum ('fuerza', 'cardio');
+-- `fortalecimiento` se anadio en la migracion 20261008090000: trabajo para
+-- clientes lesionados, que se planifica **con series**, igual que Fuerza.
+create type tipo_ejercicio as enum ('fuerza', 'cardio', 'fortalecimiento');
 create type estado_ejercicio as enum ('activo', 'eliminado');
+
+-- Taxonomia muscular (migracion 20261008090100). Dos niveles: el grupo y sus
+-- musculos. Sustituye al `grupo_muscular text` libre, con el que convivian
+-- "Piernas" e "Isquiotibiales" (region y musculo) al mismo nivel y no habia
+-- jerarquia por la que filtrar.
+create type grupo_muscular as enum (
+  'pierna', 'pecho', 'espalda', 'hombro', 'brazo', 'core'
+);
+
+create type musculo as enum (
+  'cuadriceps', 'isquiotibiales', 'gluteo', 'aductores', 'abductores', 'gemelo',
+  'porcion_esterno_clavicular', 'porcion_esterno_costal',
+  'dorsal_ancho', 'trapecio', 'romboides', 'lumbar',
+  'deltoides_anterior', 'deltoides_lateral', 'deltoides_posterior',
+  'biceps', 'triceps', 'antebrazo',
+  'recto_abdominal', 'oblicuos', 'transverso'
+);
 
 create table ejercicios (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
-  grupo_muscular text,
+  -- Solo se rellena cuando NO hay musculo principal (el cardio: la cinta de
+  -- correr es de Pierna sin un musculo concreto). Con principal, el grupo se
+  -- **deriva** de el en la app; guardar los dos permitiria el estado
+  -- "grupo: Pecho / principal: Cuadriceps", que no detectaria nadie.
+  grupo_muscular grupo_muscular,
+  musculo_principal musculo,
+  musculos_secundarios musculo[] not null default '{}',
+  -- Residuo del texto libre anterior, renombrado en vez de convertido para no
+  -- perder en silencio los valores que no mapearon. Se elimina en una migracion
+  -- posterior, cuando no quede nada sin reclasificar.
+  grupo_muscular_antiguo text,
   equipamiento text,
   descripcion text not null,
   video_ejemplo_url text,
@@ -258,6 +287,15 @@ create table ejercicios (
   estado estado_ejercicio not null default 'activo',
   creado_en timestamptz not null default now()
 );
+
+alter table ejercicios
+  add constraint grupo_solo_sin_musculo_principal check (
+    grupo_muscular is null or musculo_principal is null
+  ),
+  add constraint principal_fuera_de_secundarios check (
+    musculo_principal is null or
+    not (musculo_principal = any (musculos_secundarios))
+  );
 
 create unique index ejercicios_nombre_activo_unico
   on ejercicios (lower(nombre))
@@ -338,6 +376,27 @@ create policy "el cliente actualiza minutos realizados (solo cardio)"
   )
   with check (true);
 
+-- La pregunta es el MODO de planificacion, no el tipo. Antes eran dos `if` por
+-- valor (`= 'cardio'`, `= 'fuerza'`) sin rama por defecto, asi que al anadir
+-- 'fortalecimiento' un ejercicio no entraba en ninguno de los dos y habria
+-- podido tener minutos Y series a la vez. Un tipo nuevo que no pase por
+-- `planifica_con_minutos` falla en voz alta en lugar de colarse por la rama de
+-- series (migracion 20261008090200).
+create function planifica_con_minutos(p_tipo tipo_ejercicio) returns boolean
+  language plpgsql immutable
+  set search_path = public, pg_temp
+as $$
+begin
+  case p_tipo
+    when 'cardio' then return true;
+    when 'fuerza', 'fortalecimiento' then return false;
+    else
+      raise exception
+        'El tipo de ejercicio % no tiene modo de planificacion definido', p_tipo;
+  end case;
+end;
+$$;
+
 create function validar_tipo_ejercicio_planificado() returns trigger
   language plpgsql as $$
 declare
@@ -345,12 +404,15 @@ declare
 begin
   select tipo into v_tipo from ejercicios where id = new.ejercicio_id;
 
-  if v_tipo = 'cardio' and (new.minutos_planificados is null) then
-    raise exception 'Un ejercicio de cardio requiere minutos_planificados';
-  end if;
-
-  if v_tipo = 'fuerza' and (new.minutos_planificados is not null or new.minutos_realizados is not null) then
-    raise exception 'Un ejercicio de fuerza no admite minutos, usa series';
+  if planifica_con_minutos(v_tipo) then
+    if new.minutos_planificados is null then
+      raise exception 'Un ejercicio de % requiere minutos_planificados', v_tipo;
+    end if;
+  else
+    if new.minutos_planificados is not null or
+       new.minutos_realizados is not null then
+      raise exception 'Un ejercicio de % no admite minutos, usa series', v_tipo;
+    end if;
   end if;
 
   return new;

@@ -12,7 +12,6 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegac
 import 'package:aimar_trainer_app/core/plataforma/reproductor_video.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/video_ejemplo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -68,8 +67,10 @@ class _PantallaRegistroEjercicioState
 
   final _minutos = TextEditingController();
 
-  bool get _esCardio =>
-      widget.ejercicio.ejercicio?.tipo == TipoEjercicio.cardio;
+  /// Se registran minutos o series segun el modo del tipo, no segun el tipo:
+  /// Fortalecimiento se registra como Fuerza.
+  bool get _vaPorMinutos =>
+      widget.ejercicio.ejercicio?.tipo.vaPorMinutos ?? false;
 
   /// Cuantas series se muestran: las planificadas, y al menos tantas como el
   /// cliente haya registrado ya. Lo realizado no tiene que coincidir con lo
@@ -137,6 +138,54 @@ class _PantallaRegistroEjercicioState
     if (!mounted || resultado.esFallo) return;
 
     setState(() => _confirmadas[numero] = serie);
+  }
+
+  /// Guarda de golpe lo que haya escrito y pasa al siguiente ejercicio.
+  ///
+  /// POR QUE: el check verde de cada serie confirma una y deja ver que quedo
+  /// guardada, pero no puede ser la **unica** forma de guardar. El cliente
+  /// rellena las series, pulsa "Guardar y siguiente ejercicio" y da por hecho
+  /// que con eso vale; si no, pierde el entrenamiento sin enterarse.
+  ///
+  /// Solo entran las series con repeticiones puestas: una fila vacia es una
+  /// serie que no se ha hecho, y dejar un ejercicio a medias es valido.
+  Future<void> _guardarYSiguiente() async {
+    final pendientes = <int, DatosSerieRealizada>{..._confirmadas};
+    for (final entrada in _campos.entries) {
+      final campos = entrada.value;
+      final repeticiones = int.tryParse(campos.repeticiones.text.trim());
+      if (repeticiones == null) continue;
+      pendientes[entrada.key] = DatosSerieRealizada(
+        numeroSerie: entrada.key,
+        repeticiones: repeticiones,
+        peso: double.tryParse(campos.peso.text.trim().replaceAll(',', '.')),
+        rir: int.tryParse(campos.rir.text.trim()),
+      );
+    }
+
+    // Sin nada que guardar se pasa de largo: el cliente puede saltarse un
+    // ejercicio, y avisar de un error aqui seria mentir.
+    if (pendientes.isEmpty) {
+      _siguiente();
+      return;
+    }
+
+    final resultado = await ref
+        .read(controladorRegistroSesionProvider.notifier)
+        .registrarFuerza(
+          ejercicioPlanificadoId: widget.ejercicio.id,
+          series: pendientes.values.toList()
+            ..sort((a, b) => a.numeroSerie.compareTo(b.numeroSerie)),
+          planningId: widget.planningId,
+        );
+    if (!mounted || resultado.esFallo) return;
+
+    setState(
+      () => _confirmadas
+        ..clear()
+        ..addAll(pendientes),
+    );
+    _siguiente();
   }
 
   Future<void> _guardarCardio() async {
@@ -270,7 +319,7 @@ class _PantallaRegistroEjercicioState
           children: [
             _Encabezado(ejercicio: widget.ejercicio, onVerVideo: _verVideo),
             const SizedBox(height: Tokens.separacionBloques),
-            if (_esCardio)
+            if (_vaPorMinutos)
               _Cardio(
                 controlador: _minutos,
                 planificados: widget.ejercicio.minutosPlanificados,
@@ -285,10 +334,13 @@ class _PantallaRegistroEjercicioState
                   confirmada: _confirmadas.containsKey(numero),
                   habilitado: !estado.enCurso,
                   onConfirmar: () => _confirmarSerie(numero),
+                  onQuitar: !estado.enCurso && _sePuedeQuitar(numero)
+                      ? () => _quitarSerie(numero)
+                      : null,
                 ),
                 const SizedBox(height: 10),
               ],
-            if (!_esCardio) ...[
+            if (!_vaPorMinutos) ...[
               TextButton.icon(
                 key: const Key('boton_serie_extra'),
                 onPressed: estado.enCurso ? null : _anadirSerieExtra,
@@ -317,15 +369,17 @@ class _PantallaRegistroEjercicioState
         top: false,
         child: BotonCta(
           key: Key(
-            _esCardio ? 'boton_guardar_cardio' : 'boton_siguiente_ejercicio',
+            _vaPorMinutos
+                ? 'boton_guardar_cardio'
+                : 'boton_siguiente_ejercicio',
           ),
-          etiqueta: _esCardio
+          etiqueta: _vaPorMinutos
               ? 'Guardar minutos'
               : (lista != null && indice != null && indice + 1 < lista.length)
               ? 'Guardar y siguiente ejercicio'
               : 'Terminar ejercicio',
           cargando: estado.enCurso,
-          onPulsar: _esCardio ? _guardarCardio : _siguiente,
+          onPulsar: _vaPorMinutos ? _guardarCardio : _guardarYSiguiente,
         ),
       ),
     );
@@ -351,6 +405,24 @@ class _PantallaRegistroEjercicioState
         rir: TextEditingController(text: previa?.rir.text ?? ''),
       );
     });
+  }
+
+  /// Si esa serie se puede quitar.
+  ///
+  /// Las **planificadas no**: las pone el entrenador y el cliente no decide que
+  /// desaparezcan de su plan. Las de mas si, mientras no esten confirmadas: una
+  /// vez registradas viven en `series_realizadas`, que a proposito no tiene
+  /// `delete` (lo registrado es historico, se corrige y no se borra).
+  ///
+  /// Y solo la **ultima**: quitar una de en medio dejaria un hueco en la
+  /// numeracion, y las series se recorren del 1 al total.
+  bool _sePuedeQuitar(int numero) =>
+      numero == _totalSeries &&
+      numero > widget.ejercicio.series.length &&
+      !_confirmadas.containsKey(numero);
+
+  void _quitarSerie(int numero) {
+    setState(() => _campos.remove(numero)?.dispose());
   }
 }
 
@@ -447,8 +519,8 @@ class _Encabezado extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (ficha?.grupoMuscular case final grupo?) ...[
-                Pastilla(texto: grupo, color: Tokens.secundario),
+              if (ficha?.resumenMuscular case final musculatura?) ...[
+                Pastilla(texto: musculatura, color: Tokens.secundario),
                 const SizedBox(height: 8),
               ],
               Text(ficha?.nombre ?? 'Ejercicio', style: textos.titleLarge),
@@ -492,6 +564,7 @@ class _TarjetaSerie extends StatelessWidget {
     required this.confirmada,
     required this.habilitado,
     required this.onConfirmar,
+    this.onQuitar,
   });
 
   final int numero;
@@ -500,6 +573,10 @@ class _TarjetaSerie extends StatelessWidget {
   final bool confirmada;
   final bool habilitado;
   final VoidCallback onConfirmar;
+
+  /// Solo llega en la serie de mas que todavia se puede deshacer; ver
+  /// `_sePuedeQuitar`.
+  final VoidCallback? onQuitar;
 
   @override
   Widget build(BuildContext context) {
@@ -519,6 +596,16 @@ class _TarjetaSerie extends StatelessWidget {
                   _resumenPlan(plan),
                   style: textos.bodySmall?.copyWith(color: Tokens.secundario),
                 ),
+              if (onQuitar case final quitar?) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  key: Key('quitar_serie_$numero'),
+                  tooltip: 'Quitar esta serie',
+                  icon: const Icon(Icons.close, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: quitar,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

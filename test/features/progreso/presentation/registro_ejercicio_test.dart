@@ -174,6 +174,80 @@ void main() {
     expect(ultimoEnviado().series.single.numeroSerie, 3);
   });
 
+  // Pulsar "Añadir una serie de más" sin querer tiene que poder deshacerse.
+  testWidgets('la serie de más se puede quitar mientras no esté confirmada', (
+    tester,
+  ) async {
+    await montar(tester, deFuerza());
+
+    // Las planificadas no se pueden quitar: las pone el entrenador.
+    expect(find.byKey(const Key('quitar_serie_1')), findsNothing);
+    expect(find.byKey(const Key('quitar_serie_2')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('boton_serie_extra')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('quitar_serie_3')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('quitar_serie_3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('confirmar_serie_3')), findsNothing);
+    verifyNever(() => repositorio.registrarResultado(any()));
+  });
+
+  // Una vez registrada ya no: `series_realizadas` no tiene `delete`, asi que
+  // ofrecerlo seria prometer algo que la base de datos no deja hacer.
+  testWidgets('una serie de más ya confirmada no se puede quitar', (
+    tester,
+  ) async {
+    await montar(tester, deFuerza());
+
+    await tester.tap(find.byKey(const Key('boton_serie_extra')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirmar_serie_3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('quitar_serie_3')), findsNothing);
+  });
+
+  // El check verde no puede ser la unica forma de guardar: el cliente rellena,
+  // pulsa el boton de abajo y da por hecho que con eso vale.
+  testWidgets('"Guardar y siguiente" guarda lo escrito sin pulsar el check', (
+    tester,
+  ) async {
+    await montar(tester, deFuerza());
+
+    await tester.enterText(find.byKey(const Key('reps_serie_1')), '12');
+    await tester.enterText(find.byKey(const Key('peso_serie_1')), '62.5');
+    await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+    await tester.pumpAndSettle();
+
+    final enviado = ultimoEnviado();
+    expect(enviado.series.map((s) => s.numeroSerie).toList(), [1, 2]);
+    expect(enviado.series.first.repeticiones, 12);
+    expect(enviado.series.first.peso, 62.5);
+  });
+
+  testWidgets('sin nada escrito no guarda nada y pasa de largo', (
+    tester,
+  ) async {
+    await montar(
+      tester,
+      ejercicioPlanificadoDePrueba(
+        ejercicio: ejercicioDePrueba(),
+        series: [serieDePrueba(numeroSerie: 1, repeticiones: 10)],
+      ).copyWith(seriesRealizadas: const []),
+    );
+
+    // La serie planificada precarga sus repeticiones, asi que para que no haya
+    // nada que guardar hay que vaciarlas: es el caso de saltarse el ejercicio.
+    await tester.enterText(find.byKey(const Key('reps_serie_1')), '');
+    await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+    await tester.pumpAndSettle();
+
+    verifyNever(() => repositorio.registrarResultado(any()));
+  });
+
   testWidgets('lo ya registrado se carga para poder corregirlo', (
     tester,
   ) async {

@@ -11,7 +11,9 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-01** — Iniciar sesión con usuario/correo y contraseña, validando credenciales antes de dar acceso según rol.
 
 ### Biblioteca de ejercicios
-- **RF-02** — Añadir ejercicio (nombre, grupo muscular, descripción, imagen ilustrativa opcional), sin nombres duplicados entre activos.
+- **RF-02** — Añadir ejercicio (nombre y tipo obligatorios; descripción, equipamiento, clasificación muscular, vídeo e imagen ilustrativa opcionales), sin nombres duplicados entre activos.
+- **RF-02.1** — El tipo es **Fuerza, Cardio o Fortalecimiento**. Lo que determina cómo se planifica no es el tipo sino su modo: Fuerza y Fortalecimiento van por series, Cardio por minutos.
+- **RF-02.2** — La clasificación muscular tiene dos niveles: **grupo muscular** (Pierna, Pecho, Espalda, Hombro, Brazo, Core) y **músculos** de ese grupo. Un ejercicio declara un músculo principal y los secundarios que quiera; el grupo se deriva del principal, y solo se indica a mano cuando no hay uno concreto (el cardio).
 - **RF-03** — Editar un ejercicio existente sin afectar referencias ya usadas en plannings anteriores.
 - **RF-04** — Eliminar (baja lógica) un ejercicio, avisando si está referenciado en bloques activos.
 
@@ -19,7 +21,8 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-05** — Crear planning semanal para un cliente (fecha de inicio, cliente).
 - **RF-06** — Añadir sesiones de entrenamiento (numeradas: Día 1, Día 2…) dentro de un planning.
 - **RF-07** — Añadir bloques de entrenamiento dentro de una sesión (tipo: calentamiento/fuerza/cardio/movilidad/otro).
-- **RF-08** — Añadir ejercicios de la biblioteca a un bloque, con series/reps/peso/descanso (Fuerza) o minutos (Cardio).
+- **RF-08** — Añadir ejercicios de la biblioteca a un bloque, con series/reps/peso/descanso (Fuerza y Fortalecimiento) o minutos (Cardio). Al añadirlo se elige **a qué bloque** de la sesión va.
+- **RF-08.1** — Buscar un ejercicio de la biblioteca por nombre y filtrarlo por grupo muscular y por músculo, tanto en la biblioteca como al añadirlo a un bloque. El filtro por un músculo incluye los ejercicios que lo trabajan de forma **secundaria**, detrás de los que lo tienen como principal.
 - **RF-09 a RF-12** — Editar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente.
 - **RF-13 a RF-16** — Eliminar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente (con confirmación y cascada donde aplique).
 
@@ -29,7 +32,7 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-19** — Editar ficha de cliente existente.
 
 ### Progreso y bienestar
-- **RF-20** — El cliente registra el resultado de cada sesión (series/reps/peso/RIR reales, o minutos en cardio).
+- **RF-20** — El cliente registra el resultado de cada sesión (series/reps/peso/RIR reales en Fuerza y Fortalecimiento, o minutos en Cardio).
 - **RF-21** — Mostrar al cliente y al entrenador la evolución histórica de sus métricas.
 - **RF-22** — Notificar al cliente los días con sesión programada.
 - **RF-23** — El entrenador consulta el histórico completo de plannings de un cliente, incluidos los archivados.
@@ -56,8 +59,10 @@ postcondición, excepciones.
 
 **CU-02 Añadir ejercicio**
 - Precondición: el entrenador ha iniciado sesión.
-- Secuencia: (1) solicita añadir ejercicio (2) sistema pide nombre/grupo muscular/equipamiento/descripción, y opcionalmente una imagen que ilustre la ejecución (3) el entrenador los introduce (4) valida datos y nombre no duplicado (5) guarda (6) notifica éxito.
-- Excepciones: datos incompletos o nombre duplicado → error, vuelta al paso 2.
+- Secuencia: (1) solicita añadir ejercicio (2) el sistema pide nombre y tipo, y de forma opcional la clasificación muscular (grupo → músculo principal → secundarios), el equipamiento, la descripción, un vídeo de ejemplo y una imagen que ilustre la ejecución (3) el entrenador los introduce (4) valida datos y nombre no duplicado (5) guarda (6) notifica éxito.
+- De todo lo anterior **solo el nombre y el tipo son obligatorios**. La descripción es opcional: hay ejercicios que se explican solos y exigirla solo conseguía rellenos.
+- Los músculos secundarios se eligen de toda la taxonomía, no solo del grupo del principal: un press de banca es de pecho y trabaja además deltoides y tríceps.
+- Excepciones: nombre vacío o duplicado → error, vuelta al paso 2; músculo principal repetido entre los secundarios → error.
 
 **CU-03 Editar ejercicio**
 - Precondición: el ejercicio existe.
@@ -85,8 +90,9 @@ postcondición, excepciones.
 - Secuencia: selecciona sesión → pide tipo y orden → valida orden no repetido → añade → notifica.
 
 **CU-08 Añadir ejercicio (a bloque)**
-- Secuencia: selecciona bloque → muestra biblioteca → elige ejercicio e indica parámetros (series/reps/peso/descanso o minutos según tipo) → valida → añade → notifica.
-- Excepciones: parámetros inválidos → error; biblioteca vacía → ofrece ir a CU-02.
+- Secuencia: selecciona bloque → muestra la biblioteca **con buscador y filtro muscular** → elige ejercicio e indica parámetros (series/reps/peso/descanso o minutos según el modo del tipo) → valida → añade → notifica.
+- Desde el panel lateral de la planificación el recorrido es el inverso: se elige primero el ejercicio y después **a qué bloque** de la sesión va. Con un solo bloque no se pregunta.
+- Excepciones: parámetros inválidos → error; biblioteca vacía → ofrece ir a CU-02; la sesión no tiene ningún bloque todavía → aviso de que el ejercicio va dentro de uno.
 
 **CU-09 a CU-12 Editar planning / sesión / bloque / ejercicio en bloque**
 - Mismo patrón: seleccionar → mostrar datos actuales → modificar → validar → guardar → notificar. Excepción común: datos inválidos o conflicto (orden duplicado) → error, vuelta a editar.

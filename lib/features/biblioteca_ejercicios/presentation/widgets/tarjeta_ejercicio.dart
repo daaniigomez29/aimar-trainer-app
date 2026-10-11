@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 
 /// Fila del listado de la biblioteca (`docs/ui-design.md`, 6.4).
@@ -14,6 +16,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/wi
 class TarjetaEjercicio extends ConsumerWidget {
   const TarjetaEjercicio({
     required this.ejercicio,
+    this.resaltar,
     this.onTap,
     this.onEditar,
     this.onDarDeBaja,
@@ -22,6 +25,12 @@ class TarjetaEjercicio extends ConsumerWidget {
   });
 
   final Ejercicio ejercicio;
+
+  /// Musculo por el que se esta filtrando, si lo hay. Cuando el ejercicio lo
+  /// trabaja solo de secundario se dice, porque "ejercicios de glúteo" y
+  /// "ejercicios que ademas usan el glúteo" no son lo mismo.
+  final Musculo? resaltar;
+
   final VoidCallback? onTap;
 
   /// Solo el entrenador los recibe; al cliente le llegan `null` y no se pintan.
@@ -30,6 +39,11 @@ class TarjetaEjercicio extends ConsumerWidget {
   final VoidCallback? onReactivar;
 
   static const double ladoMiniatura = 56;
+
+  bool get _esSoloSecundario =>
+      resaltar != null &&
+      ejercicio.musculoPrincipal != resaltar &&
+      ejercicio.musculosSecundarios.contains(resaltar);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,8 +76,9 @@ class TarjetaEjercicio extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   [
-                    ?ejercicio.grupoMuscular,
+                    ?ejercicio.resumenMuscular,
                     ejercicio.tipo.etiqueta,
+                    if (_esSoloSecundario) 'secundario',
                     if (eliminado) 'Dado de baja',
                   ].join(' • '),
                   style: textos.bodySmall,
@@ -109,8 +124,6 @@ class PastillaTipo extends StatelessWidget {
   final Ejercicio ejercicio;
 
   @override
-  Widget build(BuildContext context) => Pastilla(
-    texto: ejercicio.tipo.etiqueta,
-    color: ejercicio.tipo.esFuerza ? Tokens.acento : Tokens.secundario,
-  );
+  Widget build(BuildContext context) =>
+      Pastilla(texto: ejercicio.tipo.etiqueta, color: ejercicio.tipo.color);
 }

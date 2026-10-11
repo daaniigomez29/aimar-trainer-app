@@ -8,12 +8,17 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegac
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes.dart';
+import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes_flutter.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_formulario_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/lista_musculos_plegable.dart';
 
 /// CU-02 (añadir) y CU-03 (editar) ejercicio.
 ///
@@ -66,11 +71,17 @@ class _FormularioEjercicio extends ConsumerStatefulWidget {
 class _EstadoPantallaFormularioEjercicio
     extends ConsumerState<_FormularioEjercicio> {
   late final TextEditingController _nombre;
-  late final TextEditingController _grupoMuscular;
   late final TextEditingController _equipamiento;
   late final TextEditingController _descripcion;
   late final TextEditingController _video;
   late TipoEjercicio _tipo;
+
+  /// Clasificacion muscular. El grupo solo se guarda si no hay principal; con
+  /// principal se deriva de el (ver `DatosEjercicio.grupoNormalizado`), pero
+  /// aqui se mantiene para que el selector de musculos sepa que lista ofrecer.
+  GrupoMuscular? _grupo;
+  Musculo? _principal;
+  List<Musculo> _secundarios = const [];
 
   /// Imagen elegida y ya convertida, pendiente de subir al guardar.
   ImagenParaSubir? _imagenNueva;
@@ -84,17 +95,20 @@ class _EstadoPantallaFormularioEjercicio
     super.initState();
     final e = widget.ejercicio;
     _nombre = TextEditingController(text: e?.nombre ?? '');
-    _grupoMuscular = TextEditingController(text: e?.grupoMuscular ?? '');
     _equipamiento = TextEditingController(text: e?.equipamiento ?? '');
     _descripcion = TextEditingController(text: e?.descripcion ?? '');
     _video = TextEditingController(text: e?.videoEjemploUrl ?? '');
     _tipo = e?.tipo ?? TipoEjercicio.fuerza;
+    // El grupo efectivo, no el declarado: al editar un ejercicio con musculo
+    // principal el selector tiene que aparecer ya en su grupo.
+    _grupo = e?.grupo;
+    _principal = e?.musculoPrincipal;
+    _secundarios = e?.musculosSecundarios ?? const [];
   }
 
   @override
   void dispose() {
     _nombre.dispose();
-    _grupoMuscular.dispose();
     _equipamiento.dispose();
     _descripcion.dispose();
     _video.dispose();
@@ -105,7 +119,9 @@ class _EstadoPantallaFormularioEjercicio
     nombre: _nombre.text,
     descripcion: _descripcion.text,
     tipo: _tipo,
-    grupoMuscular: _grupoMuscular.text,
+    grupoDeclarado: _grupo,
+    musculoPrincipal: _principal,
+    musculosSecundarios: _secundarios,
     equipamiento: _equipamiento.text,
     videoEjemploUrl: _video.text,
     imagenRuta: widget.ejercicio?.imagenRuta,
@@ -188,15 +204,29 @@ class _EstadoPantallaFormularioEjercicio
           onCambio: (tipo) => setState(() => _tipo = tipo),
         ),
         const SizedBox(height: 16),
-        TextField(
-          key: const Key('campo_grupo_muscular'),
-          controller: _grupoMuscular,
-          enabled: !estado.enCurso,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Grupo muscular',
-            helperText: 'Opcional. Sirve para filtrar el listado.',
-          ),
+        _SelectorMusculatura(
+          grupo: _grupo,
+          principal: _principal,
+          secundarios: _secundarios,
+          habilitado: !estado.enCurso,
+          error: estado.errorDelCampo('musculos'),
+          onGrupo: (grupo) => setState(() {
+            _grupo = grupo;
+            // El principal pertenecia al grupo anterior: dejarlo seria guardar
+            // un ejercicio cuyo grupo y cuyo musculo no cuadran.
+            if (_principal?.grupo != grupo) _principal = null;
+          }),
+          onPrincipal: (musculo) => setState(() {
+            _principal = musculo;
+            // Si estaba como secundario, pasa a principal y se quita de ahi:
+            // la base de datos rechaza tenerlo en los dos sitios.
+            _secundarios = _secundarios.where((m) => m != musculo).toList();
+          }),
+          onAlternarSecundario: (musculo) => setState(() {
+            _secundarios = _secundarios.contains(musculo)
+                ? _secundarios.where((m) => m != musculo).toList()
+                : [..._secundarios, musculo];
+          }),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -271,8 +301,12 @@ class _EstadoPantallaFormularioEjercicio
   }
 }
 
-/// Selector de Fuerza/Cardio. Obligatorio y sin valor vacio: el tipo determina
-/// como se planificara el ejercicio en la fase 4.
+/// Selector de tipo. Obligatorio y sin valor vacio: el tipo determina como se
+/// planifica el ejercicio (con series o con minutos).
+///
+/// Son `ChoiceChip` y no un `SegmentedButton` porque con el tercer tipo
+/// ("Fortalecimiento", que es largo) los tres segmentos no caben a lo ancho de
+/// un movil, y el boton segmentado no reparte en varias lineas.
 class _SelectorTipo extends StatelessWidget {
   const _SelectorTipo({
     required this.valor,
@@ -291,21 +325,19 @@ class _SelectorTipo extends StatelessWidget {
     children: [
       Text('Tipo *', style: Theme.of(context).textTheme.labelLarge),
       const SizedBox(height: 8),
-      SegmentedButton<TipoEjercicio>(
-        segments: [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
           for (final tipo in TipoEjercicio.values)
-            ButtonSegment(
-              value: tipo,
+            ChoiceChip(
+              key: Key('tipo_${tipo.name}'),
+              avatar: Icon(tipo.icono, size: 18),
               label: Text(tipo.etiqueta),
-              icon: Icon(
-                tipo.esFuerza ? Icons.fitness_center : Icons.directions_run,
-              ),
+              selected: valor == tipo,
+              onSelected: habilitado ? (_) => onCambio(tipo) : null,
             ),
         ],
-        selected: {valor},
-        onSelectionChanged: habilitado
-            ? (seleccion) => onCambio(seleccion.first)
-            : null,
       ),
       const SizedBox(height: 4),
       Text(
@@ -313,6 +345,167 @@ class _SelectorTipo extends StatelessWidget {
         style: Theme.of(context).textTheme.bodySmall,
       ),
     ],
+  );
+}
+
+/// Clasificacion muscular: grupo, musculo principal y secundarios.
+///
+/// Los tres son opcionales, y en ese orden: el grupo abre la lista de musculos
+/// de ese grupo, y el principal es el que fija el grupo definitivo del
+/// ejercicio. Sin principal (cardio, o fortalecimiento de una zona sin mas
+/// detalle) se guarda solo el grupo.
+///
+
+/// Se usan `DropdownButton` controlados dentro de un `InputDecorator`, y no
+/// `DropdownButtonFormField`: este ultimo solo admite `initialValue`, asi que al
+/// cambiar de grupo y soltar el principal el desplegable seguiria mostrando el
+/// musculo viejo.
+class _SelectorMusculatura extends StatelessWidget {
+  const _SelectorMusculatura({
+    required this.grupo,
+    required this.principal,
+    required this.secundarios,
+    required this.habilitado,
+    required this.error,
+    required this.onGrupo,
+    required this.onPrincipal,
+    required this.onAlternarSecundario,
+  });
+
+  final GrupoMuscular? grupo;
+  final Musculo? principal;
+  final List<Musculo> secundarios;
+  final bool habilitado;
+  final String? error;
+  final ValueChanged<GrupoMuscular?> onGrupo;
+  final ValueChanged<Musculo?> onPrincipal;
+  final ValueChanged<Musculo> onAlternarSecundario;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    final deEsteGrupo = grupo == null
+        ? const <Musculo>[]
+        : Musculo.delGrupo(grupo!);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Clasificación muscular', style: textos.labelLarge),
+        const SizedBox(height: 4),
+        Text(
+          'Opcional. Es lo que permite filtrar la biblioteca por grupo y por '
+          'músculo.',
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        _Desplegable<GrupoMuscular>(
+          clave: const Key('selector_grupo'),
+          etiqueta: 'Grupo muscular',
+          valor: grupo,
+          habilitado: habilitado,
+          sinValor: 'Sin especificar',
+          opciones: {for (final g in GrupoMuscular.values) g: g.etiqueta},
+          onCambio: onGrupo,
+        ),
+        const SizedBox(height: 16),
+        _Desplegable<Musculo>(
+          clave: const Key('selector_musculo_principal'),
+          etiqueta: 'Músculo principal',
+          ayuda: grupo == null
+              ? 'Elige antes un grupo muscular.'
+              : 'Déjalo vacío si no hay uno concreto, como en el cardio.',
+          valor: principal,
+          habilitado: habilitado && grupo != null,
+          sinValor: 'Sin músculo principal',
+          opciones: {for (final m in deEsteGrupo) m: m.etiquetaCompleta},
+          onCambio: onPrincipal,
+        ),
+        const SizedBox(height: 12),
+        Text('Músculos secundarios', style: textos.labelLarge),
+        const SizedBox(height: 2),
+        Text(
+          secundarios.isEmpty
+              ? 'Ninguno. Abre un grupo para añadirlos.'
+              : secundarios.map((m) => m.etiqueta).join(', '),
+          style: textos.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        // Se eligen de **toda** la taxonomia, no solo del grupo del principal:
+        // en un press de banca el principal es del pecho y los secundarios son
+        // deltoides y triceps, de otros dos grupos. Y van en una lista plegada
+        // por grupos, porque los 21 a la vez son otra lista interminable.
+        ListaMusculosPlegable(
+          grupos: GrupoMuscular.values,
+          musculosDe: Musculo.delGrupo,
+          seleccionados: secundarios.toSet(),
+          onMusculo: onAlternarSecundario,
+          ocultar: {?principal},
+          habilitado: habilitado,
+          resumenDe: (grupo) {
+            final elegidos = Musculo.delGrupo(grupo)
+                .where(secundarios.contains)
+                .map((m) => m.etiqueta);
+            return elegidos.isEmpty ? '—' : elegidos.join(', ');
+          },
+        ),
+        if (error case final mensaje?) ...[
+          const SizedBox(height: 4),
+          Text(
+            mensaje,
+            style: textos.bodySmall?.copyWith(color: Tokens.peligro),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Desplegable con una opcion "sin valor" al principio, controlado por `valor`.
+class _Desplegable<T> extends StatelessWidget {
+  const _Desplegable({
+    required this.clave,
+    required this.etiqueta,
+    required this.valor,
+    required this.habilitado,
+    required this.sinValor,
+    required this.opciones,
+    required this.onCambio,
+    this.ayuda,
+  });
+
+  final Key clave;
+  final String etiqueta;
+  final String? ayuda;
+  final T? valor;
+  final bool habilitado;
+  final String sinValor;
+  final Map<T, String> opciones;
+  final ValueChanged<T?> onCambio;
+
+  @override
+  Widget build(BuildContext context) => InputDecorator(
+    decoration: InputDecoration(
+      labelText: etiqueta,
+      helperText: ayuda,
+      enabled: habilitado,
+    ),
+    child: DropdownButton<T?>(
+      key: clave,
+      value: valor,
+      isExpanded: true,
+      isDense: true,
+      underline: const SizedBox.shrink(),
+      items: [
+        DropdownMenuItem(value: null, child: Text(sinValor)),
+        for (final opcion in opciones.entries)
+          DropdownMenuItem(
+            value: opcion.key,
+            child: Text(opcion.value, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: habilitado ? onCambio : null,
+    ),
   );
 }
 

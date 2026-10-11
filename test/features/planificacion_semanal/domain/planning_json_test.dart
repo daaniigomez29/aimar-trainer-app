@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -56,6 +58,8 @@ const Map<String, dynamic> _respuestaReal = {
                 'descripcion': 'x',
                 'equipamiento': null,
                 'grupo_muscular': null,
+                'musculo_principal': 'cuadriceps',
+                'musculos_secundarios': ['gluteo', 'lumbar'],
                 'video_ejemplo_url': null,
               },
               'series_planificadas': [
@@ -112,6 +116,19 @@ void main() {
       expect(bloque.ejercicios, hasLength(1));
       expect(bloque.ejercicios.single.ejercicio?.nombre, 'JSON Fixture');
       expect(bloque.ejercicios.single.ejercicio?.tipo, TipoEjercicio.fuerza);
+    });
+
+    // Por la trampa de los recursos incrustados: si una clave del JSON no
+    // cuadra con el campo, el valor por defecto se queda tal cual **sin dar
+    // ningun error**, y la pantalla se ve coherente pero vacia. Aqui se parsea
+    // la respuesta real, que es lo unico que lo caza.
+    test('la clasificacion muscular del ejercicio incrustado se parsea', () {
+      final ficha =
+          planning.sesiones.single.bloques.single.ejercicios.single.ejercicio;
+
+      expect(ficha?.musculoPrincipal, Musculo.cuadriceps);
+      expect(ficha?.musculosSecundarios, [Musculo.gluteo, Musculo.lumbar]);
+      expect(ficha?.grupo, GrupoMuscular.pierna);
     });
 
     test('las series planificadas y las realizadas son independientes', () {

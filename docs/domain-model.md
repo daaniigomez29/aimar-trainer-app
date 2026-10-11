@@ -81,18 +81,43 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 | --- | --- | --- |
 | id | uuid | Clave |
 | nombre | text | Único entre ejercicios activos |
-| grupoMuscular | text? | Grupo muscular principal |
+| grupoDeclarado | enum (pierna / pecho / espalda / hombro / brazo / core)? | Grupo guardado a mano, **solo** cuando no hay músculo principal |
+| musculoPrincipal | enum Músculo? | El músculo que trabaja el ejercicio |
+| musculosSecundarios | colección de Músculo | Los que entran además del principal |
 | equipamiento | text? | Material necesario |
-| descripcion | text | Técnica de ejecución |
+| descripcion | text? | Técnica de ejecución |
 | videoEjemploUrl | text? | Vídeo de ejemplo. Si es de YouTube se reproduce dentro de la app; cualquier otro enlace se queda como enlace |
 | imagenRuta | text? | Ilustración o foto de la ejecución. Ruta dentro del bucket público `imagenes-ejercicios`, no la URL |
-| tipo | enum (fuerza / cardio) | Determina series vs. minutos |
+| tipo | enum (fuerza / cardio / fortalecimiento) | Su **modo de planificación** determina series vs. minutos |
 | estado | enum (activo / eliminado) | Baja lógica |
+
+**Taxonomía muscular.** Dos niveles: el grupo y sus músculos. Cada músculo sabe
+a qué grupo pertenece, así que el grupo de un ejercicio **se deriva** de su
+músculo principal (`Ejercicio.grupo`) en lugar de guardarse por duplicado.
+
+| Grupo | Músculos |
+| --- | --- |
+| Pierna | Cuádriceps · Isquiotibiales · Glúteo · Aductores · Abductores · Gemelo |
+| Pecho | Porción esterno-clavicular · Porción esterno-costal |
+| Espalda | Dorsal ancho · Trapecio · Romboides · Lumbar |
+| Hombro | Deltoides anterior · Deltoides lateral · Deltoides posterior |
+| Brazo | Bíceps · Tríceps · Antebrazo |
+| Core | Recto abdominal · Oblicuos · Transverso |
+
+**Tipos de ejercicio.** Fuerza y Cardio son los de siempre; **Fortalecimiento**
+es trabajo para clientes con una lesión. Lo que cambia el comportamiento no es
+el tipo sino su **modo de planificación**: Fuerza y Fortalecimiento van por
+series, Cardio por minutos.
 
 **Reglas de dominio**
 - No puede haber dos ejercicios activos con el mismo `nombre`.
 - Baja siempre lógica: un ejercicio "eliminado" no puede añadirse a nuevos bloques, pero sigue visible en los que ya lo usaban.
-- Editar nombre/descripción/grupo muscular no altera parámetros ya guardados en ejercicios planificados existentes.
+- Editar nombre/descripción/clasificación muscular no altera parámetros ya guardados en ejercicios planificados existentes.
+- Solo el **nombre** y el **tipo** son obligatorios. La descripción es opcional: hay ejercicios que se explican solos y exigirla solo conseguía rellenos. Vacía se guarda como cadena vacía, no como `null`, porque la columna es `not null` y eso no merecía una migración; la ficha oculta el apartado cuando no hay nada que contar.
+- La clasificación muscular es **opcional en sus tres campos**: un cardio puede declarar solo el grupo (la cinta de correr es de Pierna, sin un músculo concreto), y un ejercicio puede quedarse sin clasificar.
+- El grupo y el músculo principal **no conviven**: con principal, el grupo se deriva de él.
+- El músculo principal no puede repetirse entre los secundarios.
+- Al filtrar, **los secundarios cuentan**: buscar "glúteo" encuentra también la sentadilla. Se listan primero los que lo tienen como principal.
 - Todos los usuarios autenticados (incluidos clientes) pueden **leer** la biblioteca completa (para ver la imagen y el vídeo de ejemplo).
 - La imagen es material de la biblioteca, no dato personal: su bucket es público y cualquiera con el enlace la ve. Subirla, reemplazarla o borrarla es solo del entrenador.
 - La imagen acompaña al ejercicio **allá donde se muestre**: la biblioteca, la planificación del entrenador y la pantalla con la que el cliente registra su resultado. Donde no la haya, un hueco con el icono de su tipo.
@@ -105,16 +130,16 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 | bloqueId | referencia a Bloque de ejercicio | Propietario |
 | ejercicioId | referencia a Ejercicio | Ejercicio de la biblioteca usado |
 | orden | integer | Posición dentro del bloque |
-| descansoPlanificado | integer (seg)? | Solo Fuerza |
+| descansoPlanificado | integer (seg)? | Solo en los tipos que van por series |
 | minutosPlanificados | numeric? | Solo Cardio, define el entrenador |
 | minutosRealizados | numeric? | Solo Cardio, registra el cliente |
-| seriesPlanificadas | colección de Serie planificada | Solo Fuerza |
+| seriesPlanificadas | colección de Serie planificada | Solo en los tipos que van por series |
 | estadoRegistro | enum (pendiente / registrado) | Derivado, mantenido por trigger |
 
 **Reglas de dominio**
-- **Fuerza y Cardio son mutuamente excluyentes**: si `Ejercicio.tipo = fuerza`, usa series (no minutos); si `= cardio`, usa minutos (no series).
+- **Series y minutos son mutuamente excluyentes**, y lo que decide cuál se usa es el **modo de planificación** del tipo: Fuerza y Fortalecimiento usan series (no minutos); Cardio usa minutos (no series). La pregunta no es por el tipo a propósito: con un tercer tipo, preguntar "¿es cardio?" convierte a Fortalecimiento en Fuerza sin que nadie lo decida.
 - No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque. Se reordena arrastrando, igual que los bloques, y también es cosa solo del entrenador.
-- `estadoRegistro` pasa a "registrado" si existe al menos una Serie realizada (Fuerza) o si `minutosRealizados` tiene valor (Cardio).
+- `estadoRegistro` pasa a "registrado" si existe al menos una Serie realizada (tipos por series) o si `minutosRealizados` tiene valor (Cardio).
 - Eliminarlo no elimina el Ejercicio de la biblioteca, solo la referencia en ese bloque.
 
 ## 7. Serie planificada

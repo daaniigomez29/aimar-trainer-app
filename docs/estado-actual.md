@@ -4,7 +4,8 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-05, con lo realizado la última vez visible al planificar y datos de demostración en el seed.
+Última actualización: 2026-10-09, con la taxonomía muscular (grupo, músculo
+principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 
 ## Fases
 
@@ -18,9 +19,9 @@ ya se han pisado y qué queda abierto**.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
-Verificación actual: `supabase db reset` aplica **18 migraciones** limpias,
-`./scripts/probar_local.sh` da **177/177**, `flutter test` **353**,
-`dart analyze --fatal-infos` sin incidencias, `flutter build web` compila.
+Verificación actual: `supabase db reset` aplica **22 migraciones** limpias,
+`./scripts/probar_local.sh` da **184/184**, `flutter test` **417**,
+`dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
 `supabase functions serve --no-verify-jwt` en otra terminal: sin él, esas
@@ -188,7 +189,36 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     código **funcionaba** igual con `data` en la raíz, porque la librería monta el
     cuerpo con `{...resto, ...options}`; era un fallo de tipos, no de
     comportamiento, y por eso el script local nunca lo vio.
-25. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
+25. **Un `if` por valor de enum no es exhaustivo, y nadie avisa.** Las dos
+    comprobaciones de la exclusión series/minutos preguntaban `if v_tipo =
+    'cardio'` y `if v_tipo = 'fuerza'`, sin rama por defecto. Al añadir
+    `fortalecimiento` al enum, un ejercicio de ese tipo no entraba en ninguna de
+    las dos: el trigger le habría dejado tener **minutos y series a la vez**, y
+    la RPC de registro habría descartado `p_minutos` en silencio. En Dart el
+    mismo problema iba al revés y era peor: `esCardio ? minutos : series`
+    **compila sin una sola queja** y convierte el tipo nuevo en Fuerza sin que
+    nadie lo decida (20 sitios en 8 archivos). Se arregla preguntando por el
+    **modo de planificación** (`planifica_con_minutos()` en SQL,
+    `TipoEjercicio.modo` en Dart), que es `if/else` sin hueco y falla en voz
+    alta ante un tipo que no haya pasado por ahí.
+26. **La ventana oculta congela Flutter web.** Con la ventana de Claude
+    minimizada o detrás de otra, el navegador deja de servir
+    `requestAnimationFrame`, y como Flutter procesa los eventos de puntero
+    dentro del frame, el lienzo ni pinta ni reacciona: las capturas expiran y
+    los clics no llegan. El texto **sí** entra (va al `<input>` oculto del DOM),
+    lo que despista. Para comprobar en el navegador hay que tener la ventana
+    delante; el árbol de accesibilidad se activa pulsando
+    `flt-semantics-placeholder`.
+27. **Un `AppBar` dentro de un `Column` necesita altura acotada.** En
+    escritorio, `PantallaEntrenador` mete la cabecera en una columna (la barra
+    lateral llega hasta arriba, así que no puede ir como `appBar` del
+    `Scaffold`). Ahí recibe alto **sin acotar**, y una cabecera con `bottom`
+    —la de Plannings lleva el nombre del cliente debajo— revienta el layout con
+    "RenderFlex children have non-zero flex but incoming height constraints are
+    unbounded" y deja la pantalla en blanco: desde fuera parece que la app se
+    cuelga. Va envuelta en un `SizedBox` con su `preferredSize.height`, que ya
+    cuenta el `bottom`.
+28. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
     se añadió en la fase 6 y no se incluyó en el paso del CI, así que su código no
     pasaba por el comprobador de tipos. Ya están las tres.
 
@@ -340,6 +370,86 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 - **Las listas de plannings las recarga el controlador**, no las pantallas:
   crear, editar, archivar, reactivar y eliminar invalidan la familia entera.
   Repartido por pantallas siempre se olvidaba alguna.
+- **La clasificación muscular tiene dos niveles y el grupo no se guarda**
+  (2026-10-09): `GrupoMuscular` (6) y `Musculo` (21), y cada músculo sabe su
+  grupo, así que el del ejercicio **se deriva** del músculo principal. Guardar
+  los dos permitiría el estado "grupo: Pecho / principal: Cuádriceps", que no
+  detectaría nadie hasta que el filtro mintiera; hay un `check` que lo impide.
+  La columna `grupo_muscular` solo se rellena cuando **no** hay principal, que
+  es el caso del cardio.
+- **Los tres campos musculares son opcionales**: la cinta de correr es de Pierna
+  sin músculo concreto, y un ejercicio de fortalecimiento puede querer declarar
+  solo la zona. Lo que queda sin clasificar no se esconde: tiene su propia
+  pestaña en la biblioteca para que el entrenador lo complete.
+- **Al filtrar, los secundarios cuentan**, pero el orden los distingue: primero
+  los que tienen ese músculo como principal, detrás los demás, con la marca
+  "secundario". Si no contaran, declararlos solo serviría para mirar la ficha;
+  si no se distinguieran, "ejercicios de glúteo" y "ejercicios que además usan
+  el glúteo" se mezclarían.
+- **La taxonomía es un enum de Postgres y una lista fija en Dart**, no un
+  catálogo editable: para un solo entrenador no compensa la tabla, la RLS y el
+  repositorio. Añadir un músculo es una migración de una línea
+  (`alter type musculo add value`) más un valor en el enum; **quitarlo o
+  renombrarlo obliga a recrear el tipo**, así que la lista se pensó una vez.
+- **Los músculos se parsean con conversores escritos a mano**
+  (`ConversorMusculo`, `ConversorMusculos`): lo que genera `@JsonEnum` lanza
+  ante un valor que no conoce, y eso tumbaría el parseo de **toda** la
+  biblioteca —no solo de esa fila— el día que una migración añada un músculo
+  antes de que se despliegue la app. Así un valor desconocido se descarta y el
+  ejercicio aparece sin clasificar.
+- **El texto libre anterior se renombró, no se convirtió**: `grupo_muscular`
+  pasó a `grupo_muscular_antiguo` y la columna nueva estrenó el nombre bueno. Un
+  `using` con mapeo habría perdido en silencio los valores no contemplados; así
+  siguen consultables para reclasificar a mano. Se elimina en otra migración
+  cuando no quede nada sin clasificar.
+- **Fortalecimiento se planifica como Fuerza** (2026-10-09): series y
+  repeticiones, con el peso y el RIR vacíos cuando es peso corporal o goma
+  (`series_planificadas` ya los tenía nulables). Planificar fortalecimiento
+  **por tiempo** (isometrías) no cabe en el modelo: haría falta `segundos` en la
+  serie, y queda como pendiente aparte.
+- **Lo que decide series o minutos es el modo, no el tipo**
+  (`ModoPlanificacion`, `planifica_con_minutos()`): ver la trampa 25.
+- **El color y el icono de cada tipo viven en un solo sitio**
+  (`EstiloTipoEjercicio`, en `presentation`): estaban repetidos como ternarios
+  en la miniatura, la tarjeta y el formulario, y los tres daban por hecho que
+  solo había dos tipos. Mismo motivo que `MiniaturaEjercicio`.
+- **El filtro muscular se pliega en dos niveles** (2026-10-09): en el formulario
+  del ejercicio y al elegir uno para un bloque, los músculos viven dentro de un
+  desplegable por grupo, y ese bloque entero dentro de otro. Pintados de golpe
+  son 21 chips, que es volver a la lista interminable que esto venía a quitar.
+  De partida solo se ve el buscador y una línea que dice por qué se está
+  filtrando.
+- **Los dos sitios desde los que se añade un ejercicio comparten filtro**
+  (`FiltroDeEjercicios`, sobre `filtroBibliotecaProvider`): el panel lateral del
+  planning y el formulario de CU-08, que antes tenía un desplegable con la
+  biblioteca entera dentro. El widget **es dueño de su campo de búsqueda** y lo
+  arranca con lo que el filtro ya tenga: con un controlador vacío, la lista
+  saldría recortada por un texto que no se ve en ninguna parte.
+- **Con un ejercicio ya elegido, el formulario de CU-08 retira la lista** y deja
+  lo elegido más un botón de cambiar: al editar, lo que importa de esa pantalla
+  son las series, no volver a buscar el ejercicio.
+- **El "+" del panel pregunta a qué bloque va** cuando la sesión tiene más de
+  uno (2026-10-09). Antes caía siempre en el primero, y una sesión de
+  calentamiento más fuerza es justo el caso en el que eso nunca es lo que se
+  quiere. Con un solo bloque no se pregunta: sería un clic sin decisión detrás.
+- **Cada pantalla filtra la biblioteca por su cuenta** (`AmbitoDeFiltro`:
+  biblioteca, panel del planning y formulario de bloque). Compartían estado, así
+  que buscar "sent" en una dejaba la otra enseñando solo la sentadilla, **sin
+  nada escrito en su buscador** que lo explicara. Tampoco lo comparten las dos
+  que sirven para lo mismo: el panel y el formulario pueden verse en el mismo
+  recorrido, y que uno herede el filtro del otro se lee como que la pantalla
+  está rota, no como una comodidad.
+- **"Todo el grupo" suelta el músculo** (`verTodoElGrupo`): con cuádriceps
+  elegido, pulsarlo no hacía nada visible, porque `cambiarGrupo` conserva el
+  músculo si es de ese mismo grupo y el chip se quedaba sin marcar.
+- **El cliente puede quitar la serie de más que acaba de añadir**, no las
+  planificadas (las pone el entrenador) ni una que ya haya confirmado:
+  `series_realizadas` no tiene `delete` a propósito, así que ofrecerlo sería
+  prometer algo que la base de datos no deja hacer. Y solo la última, para no
+  dejar huecos en la numeración.
+- **"Guardar y siguiente ejercicio" guarda**, no solo navega: el check verde de
+  cada serie sigue estando, pero no puede ser la única forma de guardar. El
+  cliente rellena, pulsa el botón de abajo y da por hecho que con eso vale.
 - **Medidas y check-in no comparten guardado**: dos formularios, dos botones, dos
   operaciones. Es lo que dice el modelo de dominio, no una limitación.
 
@@ -389,6 +499,24 @@ Decisiones que quedaron sin cerrar:
   mismo correo (Auth no admite duplicados, aunque el índice de `clientes` sí lo
   permita entre bajas). Devuelve 409 con un mensaje que lo explica. No es un caso de
   uso del ERS; queda por decidir si se añade.
+- **Comprobar en el navegador** lo de 2026-10-09 (taxonomía, Fortalecimiento,
+  filtro plegable y elección de bloque): sigue sin hacerse. La app arranca y
+  pinta (218 frames en 1,5 s), pero **los clics no llegan al lienzo**: ni por
+  coordenadas (el marco del panel va a 800×450 mientras el viewport es
+  1280×720) ni pulsando los nodos de accesibilidad desde JavaScript. El texto sí
+  entra, porque va al `<input>` oculto del DOM. Verificado por otras vías: 184
+  comprobaciones del script contra Supabase local y 406 tests. Falta verlo con
+  los ojos.
+- **Fortalecimiento por tiempo**: si Aimar quiere planificar isometrías
+  (plancha 30 s), hace falta `segundos` en la serie. No cabe en el modelo actual
+  y se dejó fuera a propósito.
+- **`requirements.md` sigue diciendo "grupo muscular"** en RF-02 y en la
+  secuencia de CU-02, donde el formulario pide ahora grupo, músculo principal y
+  secundarios. El ERS completo (Doc del proyecto) necesita el mismo retoque; no
+  se ha tocado sin decidirlo.
+- **Reclasificar lo que quede en `grupo_muscular_antiguo`** en la nube cuando se
+  despliegue: la migración mapea los valores conocidos y deja el resto sin
+  clasificar a propósito, visible en su chip.
 - **Anotar en `AGENTS.md`** la regla de migraciones inmutables (trampa 7).
 - **`linguist-generated=true`** en `.gitattributes` oculta los `.g.dart` en los diffs
   de GitHub y los excluye de las estadísticas de lenguaje. Si para el TFG interesa que

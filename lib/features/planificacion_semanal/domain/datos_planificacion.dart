@@ -254,9 +254,12 @@ class DatosSerie {
 
 /// Datos de alta y edicion de un ejercicio dentro de un bloque (CU-08, CU-12).
 ///
-/// Aqui vive la regla central de la fase: **Fuerza y Cardio son mutuamente
+/// Aqui vive la regla central de la fase: **series y minutos son mutuamente
 /// excluyentes**. La validacion no deja construir una combinacion imposible, y el
 /// trigger `validar_tipo_ejercicio_planificado` la garantiza en la base de datos.
+///
+/// Lo que decide cual de los dos se usa es el [ModoPlanificacion] del tipo, no
+/// el tipo: Fuerza y Fortalecimiento van por series, Cardio por minutos.
 class DatosEjercicioPlanificado {
   const DatosEjercicioPlanificado({
     required this.bloqueId,
@@ -279,17 +282,17 @@ class DatosEjercicioPlanificado {
   final TipoEjercicio tipoEjercicio;
   final int orden;
 
-  /// Solo Fuerza.
+  /// Solo en los tipos que van por series.
   final int? descansoSeg;
 
   /// Solo Cardio.
   final double? minutos;
 
-  /// Solo Fuerza.
+  /// Solo en los tipos que van por series.
   final List<DatosSerie> series;
 
-  bool get esFuerza => tipoEjercicio.esFuerza;
-  bool get esCardio => tipoEjercicio.esCardio;
+  bool get vaPorSeries => tipoEjercicio.vaPorSeries;
+  bool get vaPorMinutos => tipoEjercicio.vaPorMinutos;
 
   static ErrorValidacion? validarDescanso(int? segundos) {
     if (segundos == null) return null;
@@ -347,7 +350,7 @@ class DatosEjercicioPlanificado {
       }
     }
 
-    if (esCardio) {
+    if (vaPorMinutos) {
       if (series.isNotEmpty) {
         return const ErrorValidacion(
           'Un ejercicio de cardio se planifica con minutos, no con series.',
@@ -363,10 +366,11 @@ class DatosEjercicioPlanificado {
       return validarMinutos(minutos);
     }
 
-    // Fuerza.
+    // Lo que va por series: Fuerza y Fortalecimiento.
     if (minutos != null) {
-      return const ErrorValidacion(
-        'Un ejercicio de fuerza se planifica con series, no con minutos.',
+      return ErrorValidacion(
+        'Un ejercicio de ${tipoEjercicio.etiqueta.toLowerCase()} se planifica '
+        'con series, no con minutos.',
         campo: 'minutos',
       );
     }
@@ -403,8 +407,8 @@ class DatosEjercicioPlanificado {
     'bloque_id': bloqueId,
     'ejercicio_id': ejercicioId,
     'orden': orden,
-    'descanso_planificado_seg': esFuerza ? descansoSeg : null,
-    'minutos_planificados': esCardio ? minutos : null,
+    'descanso_planificado_seg': vaPorSeries ? descansoSeg : null,
+    'minutos_planificados': vaPorMinutos ? minutos : null,
   };
 }
 

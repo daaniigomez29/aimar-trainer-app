@@ -96,6 +96,7 @@ class _Contenido extends ConsumerWidget {
         // progreso ni el control. Aunque entrara, RLS no le devolveria nada.
         if (esEntrenador) ...[
           Card(
+            margin: const EdgeInsets.symmetric(vertical: 8),
             child: ListTile(
               key: const Key('acceso_plannings'),
               leading: const Icon(Icons.calendar_month),
@@ -106,6 +107,7 @@ class _Contenido extends ConsumerWidget {
             ),
           ),
           Card(
+            margin: const EdgeInsets.symmetric(vertical: 8),
             child: ListTile(
               key: const Key('acceso_progreso'),
               leading: const Icon(Icons.show_chart),
@@ -125,6 +127,7 @@ class _Contenido extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
               child: ListTile(
                 key: const Key('acceso_control_semanal'),
                 leading: const Icon(Icons.straighten),

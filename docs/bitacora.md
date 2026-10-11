@@ -1651,3 +1651,281 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   del entrenador), las guardas de `dar-de-baja-cliente` tras el baneo accidental,
   y el formato de `RESEND_FROM_EMAIL`.
 - Todo lo de hoy esta **sin commitear**: los commits los hace el.
+
+### 2026-10-09
+
+**Hecho (taxonomia muscular de dos niveles, CU-02/CU-03/RF-02):**
+
+- `grupo_muscular` era `text` libre y en el propio seed convivian "Piernas" e
+  "Isquiotibiales", region y musculo al mismo nivel. Sin jerarquia no se podia
+  filtrar "Pierna -> Gluteo", que es como busca el entrenador.
+- Ahora son dos enums, `GrupoMuscular` (6) y `Musculo` (21, la lista que dio
+  Aimar), y cada musculo sabe su grupo. El ejercicio guarda **musculo principal
+  y secundarios**; el grupo **se deriva** del principal y solo se guarda a mano
+  cuando no hay uno concreto (el cardio).
+- Los tres campos son opcionales. Un `check` impide que convivan grupo y
+  principal, y otro que el principal se repita entre los secundarios.
+- Al filtrar, los secundarios **cuentan**, pero el orden los distingue: delante
+  los que lo tienen como principal, detras los demas con la marca "secundario".
+- La biblioteca estrena filtro de dos niveles (chips de grupo y, al elegir uno,
+  sus musculos) y pestana "Sin clasificar". Los chips salen de lo que hay en la
+  biblioteca, no de la taxonomia completa: un chip que no devuelve nada es
+  ruido.
+- El mismo filtro va en el panel de biblioteca de la planificacion, que comparte
+  estado (`filtroBibliotecaProvider`). Es donde el entrenador busca de verdad,
+  una vez por ejercicio de cada bloque.
+- El formulario sustituye el campo de texto por grupo -> principal ->
+  secundarios. Los secundarios se eligen de **toda** la taxonomia, no solo del
+  grupo del principal: en un press de banca el principal es del pecho y los
+  secundarios son deltoides y triceps.
+
+**Hecho (tercer tipo de ejercicio: Fortalecimiento, para clientes lesionados):**
+
+- Se planifica **con series**, igual que Fuerza: en `series_planificadas` las
+  repeticiones son obligatorias pero el peso y el RIR ya eran nulables, que es
+  justo lo que pide el trabajo con peso corporal o goma.
+- Color propio (`Tokens.terciario`) e icono propio, y el selector de tipo pasa
+  de `SegmentedButton` a chips: con tres opciones, "Fortalecimiento" no cabe a
+  lo ancho de un movil y el boton segmentado no reparte en varias lineas.
+
+**Corregido (un tipo nuevo habria roto la exclusion series/minutos en silencio):**
+
+- Las dos comprobaciones de SQL preguntaban `if v_tipo = 'cardio'` y
+  `if v_tipo = 'fuerza'`, sin rama por defecto. Con un tercer valor, el trigger
+  le habria dejado tener **minutos y series a la vez** y la RPC de registro
+  habria descartado `p_minutos` sin decir nada.
+- En Dart era peor: `esCardio ? minutos : series` **compila sin una queja** y
+  convierte Fortalecimiento en Fuerza sin que nadie lo decida. Eran 20 sitios en
+  8 archivos.
+- Arreglo: la pregunta ya no es el tipo sino el **modo de planificacion**
+  (`planifica_con_minutos()` en SQL, `TipoEjercicio.modo` en Dart). Es `if/else`
+  sin hueco, y un tipo nuevo que no pase por ahi **falla en voz alta** en vez de
+  colarse por la rama de series. Se quitaron `esFuerza`/`esCardio` del enum a
+  proposito, para que el compilador listara los 20 sitios.
+
+**Corregido (el script de pruebas fallaba 6 comprobaciones a partir de medianoche):**
+
+- `probar_local.sh` montaba el planning del recordatorio con `current_date`, que
+  en el contenedor es **UTC**, mientras la funcion razona en `Europe/Madrid`.
+  Entre las 00:00 y las 02:00 espanolas son dias distintos, asi que el aviso de
+  sesion no encontraba planning. Es la trampa 22 otra vez, ahora dentro del
+  script. Ya usa `(now() at time zone 'Europe/Madrid')::date` en los tres sitios.
+- No tenia nada que ver con los cambios de hoy: se vio al ejecutarlo por primera
+  vez despues de medianoche.
+
+**Corregido (la ficha no ocultaba la descripcion vacia):**
+
+- La entrada del 2026-10-08 decia que la ficha oculta "Como se ejecuta" cuando
+  no hay descripcion, pero el apartado se pintaba siempre y dejaba el hueco. Ya
+  va condicionado.
+
+**Migraciones (tres, verificadas contra Supabase local):**
+
+- `20261008090000_tipo_fortalecimiento.sql`: solo el `alter type ... add value`.
+  Va sola a proposito, porque ese valor no puede usarse en la misma transaccion
+  en que se anade.
+- `20261008090100_taxonomia_muscular.sql`: los dos enums, las columnas nuevas,
+  los dos `check` y el mapeo de lo que ya habia. `grupo_muscular` se
+  **renombro** a `grupo_muscular_antiguo` en vez de convertir su tipo: un `using`
+  con mapeo habria perdido en silencio los valores no contemplados. Lo que no
+  mapea se queda sin clasificar a proposito, visible en su chip.
+- `20261008090200_modo_planificacion.sql`: `planifica_con_minutos()` y el
+  `create or replace` del trigger y de `registrar_resultado_ejercicio` (misma
+  firma exacta, para reemplazarla en sitio y no crear una sobrecarga).
+
+**Pendiente / notas:**
+
+- `supabase db reset` aplica **22 migraciones** limpias,
+  `./scripts/probar_local.sh` da **184/184** (7 comprobaciones nuevas:
+  Fortalecimiento no se planifica con minutos, registra series, no registra
+  minutos, los dos `check` de la biblioteca, un musculo inventado se rechaza y
+  con principal no se admite grupo), `flutter test` **401**,
+  `dart analyze --fatal-infos` limpio.
+- **Sin comprobar en el navegador**: con la ventana de Claude oculta el
+  navegador deja de servir `requestAnimationFrame`, y como Flutter procesa los
+  eventos de puntero dentro del frame, el lienzo ni pinta ni reacciona (el texto
+  si entra, porque va al `<input>` oculto del DOM, lo que despista). Queda ver
+  los chips de dos niveles, el formulario con sus tres selectores y el chip del
+  tipo nuevo. El servidor de verificacion esta levantado en el 54331.
+- El seed trae los 15 ejercicios reclasificados y cuatro de fortalecimiento
+  (puente de gluteo, rotacion externa con goma, elevacion de talones y Pallof
+  press). Son datos de demostracion: si Aimar discrepa de alguna clasificacion,
+  se corrige desde el formulario.
+- `requirements.md` sigue diciendo "grupo muscular" en RF-02 y en la secuencia
+  de CU-02; el ERS completo necesita el mismo retoque. No se ha tocado sin
+  decidirlo.
+- Todo sin commitear: los commits los hace el.
+**Hecho (el filtro muscular, plegado, y donde de verdad hacia falta):**
+
+- Los 21 musculos pintados de golpe eran otra lista interminable. Ahora van en
+  una lista con **un desplegable por grupo**: solo se abre el que interesa.
+  Mismo widget (`ListaMusculosPlegable`) para elegir los secundarios de un
+  ejercicio y para filtrar al buscar uno; el widget no decide nada, recibe que
+  esta marcado y avisa de cada pulsacion.
+- El formulario de CU-08 tenia un `DropdownButtonFormField` con la biblioteca
+  entera dentro. Ahora comparte con el panel lateral del planning el mismo
+  buscador y el mismo filtro (`FiltroDeEjercicios`), con el filtro entero dentro
+  de **otro** desplegable: de partida solo se ve el buscador y una linea que
+  dice por que se esta filtrando.
+- Ese widget es dueno de su campo de busqueda y lo arranca con lo que
+  `filtroBibliotecaProvider` ya tenga. Con un controlador vacio (lo que hacia el
+  panel) la lista sale recortada por un texto que no se ve en ninguna parte.
+- Con un ejercicio ya elegido, el formulario **retira la lista** y deja lo
+  elegido mas un boton de cambiar: al editar, lo que importa son las series.
+
+**Hecho (elegir a que bloque va el ejercicio, CU-08):**
+
+- El "+" del panel metia el ejercicio siempre en el **primer** bloque. Con una
+  sesion de calentamiento mas fuerza eso nunca es lo que se quiere, y no se nota
+  hasta que miras donde ha caido.
+- Ahora, con mas de un bloque, se pregunta (`elegirBloque`), ensenando de cada
+  uno su tipo y cuantos ejercicios lleva. Con uno solo no se pregunta: seria un
+  clic de mas sin ninguna decision detras.
+
+**Corregido (la descripcion seguia marcada como obligatoria en el formulario):**
+
+- La etiqueta ponia "Descripción *" y el asterisco significa obligatorio en el
+  resto de la app. Es opcional desde ayer; ahora lo dice el texto de ayuda.
+
+**Documentacion:**
+
+- `requirements.md` ya cuadra con el modelo: RF-02 dice que solo nombre y tipo
+  son obligatorios, RF-02.1 anade el tercer tipo, RF-02.2 la taxonomia de dos
+  niveles, RF-08 la eleccion de bloque y RF-08.1 el buscador y el filtro. CU-02
+  y CU-08 llevan la secuencia nueva.
+- `domain-model.md`: anotado por que la descripcion es opcional pero se guarda
+  como cadena vacia (la columna es `not null`), para que el `text?` de la tabla
+  no se lea como que admite `null`.
+
+**Pendiente / notas:**
+
+- `flutter test` **406** (tres del dialogo de bloque y dos del filtro del
+  formulario), `dart analyze --fatal-infos` limpio. El SQL no se ha tocado en
+  esta tanda.
+- **Sigue sin comprobarse en el navegador.** Esta vez la app si arranca y pinta
+  (218 frames en 1,5 s), pero los clics no llegan al lienzo: ni por coordenadas
+  —el marco del panel va a 800x450 mientras el viewport es 1280x720— ni
+  pulsando los nodos de accesibilidad desde JavaScript. Escribir si funciona,
+  porque el texto va al `<input>` oculto del DOM. El servidor sigue levantado en
+  el 54331.
+**Corregido (la barra de navegacion y el atras habian desaparecido):**
+
+- Sintoma: lo de ayer (barra de navegacion en toda pantalla con sesion, y la
+  flecha de atras volviendo de donde se vino) ya no estaba.
+- Causa, y **no era un fallo de codigo**: la rama de trabajo `ejercicios-v2`
+  sale de `6cdaad8`, el commit **anterior** a `752fa14`, que es donde vive ese
+  trabajo. En algun momento el arbol se reseteo a ese punto —a mitad de sesion,
+  porque `ejercicio.dart` todavia tenia la descripcion opcional cuando se leyo
+  al principio y no la tenia despues—, asi que `pantalla_con_navegacion.dart`,
+  `boton_atras.dart` y `sesion_falsa.dart` desaparecieron y `rutas.dart` volvio
+  a su version sin `conVuelta`.
+- Arreglo: restaurado en el arbol. Los 13 archivos que esta tanda no tocaba,
+  copiados tal cual de `752fa14` (`git checkout 752fa14 -- …`, que ahi no pisa
+  nada porque coincidian con HEAD); los 7 que si, portados a mano hunk a hunk.
+  El unico cambio real al portar es que el CTA del registro usa
+  `_vaPorMinutos`, que es como se llama ahora ese getter.
+- **Lo que falta es el historial**: el arbol esta bien, pero la rama sigue sin
+  `752fa14`. Al mezclar `dev` habra conflicto en los archivos que tocan los dos
+  lados, con el mismo contenido a ambos.
+- Efecto colateral en los tests: el formulario de CU-08 lleva ahora barra
+  inferior, y con el viewport de 600 px el boton de anadir serie cae debajo. Se
+  agranda el viewport, como ya hacia el test del formulario de ejercicio.
+
+**Corregido (la busqueda de la biblioteca y la del selector compartian estado):**
+
+- Sintoma: buscar "sent" en el formulario de anadir ejercicio a un bloque y
+  luego entrar en la biblioteca, que aparecia enseñando solo la sentadilla. Sin
+  nada escrito en su buscador, y no volvia hasta escribir algo y borrarlo.
+- Causa: los dos escribian en el mismo `filtroBibliotecaProvider`, y cada
+  pantalla crea su propio controlador de texto vacio. El filtro seguia puesto y
+  el campo no lo enseñaba.
+- Arreglo: el filtro es ahora una familia por `AmbitoDeFiltro`. La biblioteca
+  usa el suyo y el selector el suyo; el panel del planning y el formulario de
+  CU-08 comparten el de seleccion a proposito, que son el mismo gesto en dos
+  sitios. Ademas los dos campos de busqueda nacen con lo que su filtro ya tenga,
+  que era la otra mitad del fallo.
+
+**Corregido (los musculos iban pegados al nombre del grupo):**
+
+- Mas aire entre la cabecera del grupo y sus chips en la lista plegable, y entre
+  la fila de grupos y la de musculos en la biblioteca.
+
+**Pendiente / notas (tercera tanda):**
+
+- `flutter test` **410**, `dart analyze --fatal-infos` limpio. Tres tests nuevos
+  comprueban que los dos ambitos de filtro no se pisan.
+- Los 13 archivos restaurados quedan **en el indice** (`git checkout … --` los
+  deja ahi). Si molesta: `git restore --staged .`, que no toca el contenido.
+- Todo sin commitear: los commits los hace el.
+
+### 2026-10-11
+
+**Corregido (Clientes -> una ficha -> Plannings dejaba la app colgada):**
+
+- Sintoma suyo: la aplicacion se bloquea. Lo que pasa de verdad es que la
+  pantalla no llega a pintarse.
+- Causa: en escritorio, `PantallaEntrenador` mete la cabecera dentro de un
+  `Column` (la barra lateral llega hasta arriba, asi que no puede ir como
+  `appBar` del `Scaffold`), y ahi recibe alto **sin acotar**. La cabecera de
+  Plannings lleva `bottom` con el nombre del cliente, y eso revienta el layout:
+  *RenderFlex children have non-zero flex but incoming height constraints are
+  unbounded*.
+- Arreglo: la cabecera va envuelta en un `SizedBox` con su
+  `preferredSize.height`, que ya incluye el `bottom`.
+- Se reprodujo **sin navegador**, montando la pantalla en un test
+  (`plannings_cliente_test.dart`), que queda como regresion. No tenia ninguno.
+
+**Corregido (los filtros de la biblioteca se pisaban entre pantallas):**
+
+- Eran dos ambitos y ahora son tres: biblioteca, panel del planning y
+  formulario de bloque. El panel y el formulario tampoco comparten, aunque
+  sirvan para lo mismo: se ven en el mismo recorrido, y heredar el filtro del
+  otro se lee como que la pantalla esta rota.
+- Y el chip "Todo pierna" no se activaba si venias de pulsar un musculo:
+  `cambiarGrupo` conserva el musculo cuando es de ese grupo, asi que el filtro
+  seguia en "cuadriceps" y el chip no se marcaba. Ahora hay `verTodoElGrupo`,
+  que lo suelta.
+
+**Hecho (el cliente puede deshacer la serie de mas):**
+
+- Las planificadas no se tocan: las pone el entrenador. La de mas si, mientras
+  **no este confirmada**, que es el caso de pulsar el boton sin querer.
+- Una vez confirmada ya no, y no es una limitacion de la pantalla:
+  `series_realizadas` no tiene `delete` a proposito. Ofrecer la X ahi seria
+  prometer algo que la base de datos no deja hacer. Queda como pendiente, con
+  migracion, si lo quiere.
+- Solo se puede quitar la **ultima**: quitar una de en medio dejaria un hueco en
+  la numeracion, y las series se recorren del 1 al total.
+
+**Hecho ("Guardar y siguiente ejercicio" guarda de verdad):**
+
+- Antes solo navegaba, y lo escrito se perdia si no se habia pulsado el check
+  verde de cada serie. Ahora manda todas las series con repeticiones puestas en
+  una sola llamada (la RPC es idempotente, `on conflict do update`).
+- Las filas vacias no entran: una serie sin repeticiones es una serie que no se
+  ha hecho, y dejar un ejercicio a medias es valido. Sin nada que guardar, pasa
+  de largo en vez de dar un error que seria mentira.
+
+**Corregido (espaciados):**
+
+- Aire entre la fila de grupos y la de musculos en la biblioteca, que es donde
+  el lo veia pegado.
+- Aire entre las tres tarjetas de la ficha del cliente (Plannings, Progreso y
+  Control semanal), que iban con el margen por defecto de `Card`.
+
+**Pendiente / notas:**
+
+- `flutter test` **417**, `dart analyze --fatal-infos` limpio. El SQL no se ha
+  tocado en esta tanda.
+- A partir de ahora **las comprobaciones en el navegador las hace el**; aqui se
+  verifica con tests y, cuando toque SQL, contra Supabase local. Los fallos de
+  interfaz se reproducen montando la pantalla en un test de widget, que es como
+  se cazo el bloqueo de Plannings.
+- `dev` (commit `752fa14`) ya esta en el historial de la rama: rebase de
+  `ejercicios-v2` sobre `dev`. Las partes que se habian portado a mano se
+  colapsaron solas (git ve el mismo cambio en los dos lados); los cinco
+  conflictos fueron la puntuacion de un texto de ayuda, el `case ... when` de la
+  descripcion, `_esCardio` contra `_vaPorMinutos`, el viewport de un test y la
+  bitacora, que se queda con **los dos lados**: su entrada del 8 y las del 9 y
+  el 11.
+- Todo sin commitear: los commits los hace el.

@@ -40,6 +40,7 @@ Map<String, dynamic> _$RegistroProgresoToJson(_RegistroProgreso instance) =>
 const _$TipoEjercicioEnumMap = {
   TipoEjercicio.fuerza: 'fuerza',
   TipoEjercicio.cardio: 'cardio',
+  TipoEjercicio.fortalecimiento: 'fortalecimiento',
 };
 
 _EjercicioConRegistro _$EjercicioConRegistroFromJson(

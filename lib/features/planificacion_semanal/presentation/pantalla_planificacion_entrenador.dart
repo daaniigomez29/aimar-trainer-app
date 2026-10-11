@@ -12,6 +12,9 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
@@ -1087,7 +1090,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
   Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
     final ficha = widget.ejercicio.ejercicio;
-    final esCardio = ficha?.tipo == TipoEjercicio.cardio;
+    final vaPorMinutos = ficha?.tipo.vaPorMinutos ?? false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -1114,7 +1117,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                     ),
                     Text(
                       [
-                        ?ficha?.grupoMuscular,
+                        ?ficha?.resumenMuscular,
                         ficha?.tipo.etiqueta ?? '',
                       ].where((t) => t.isNotEmpty).join(' · '),
                       style: textos.bodySmall,
@@ -1150,7 +1153,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
             ],
           ),
           const SizedBox(height: 8),
-          if (esCardio)
+          if (vaPorMinutos)
             Padding(
               padding: const EdgeInsets.only(left: 44),
               child: Row(
@@ -1524,22 +1527,15 @@ class _PanelBiblioteca extends ConsumerStatefulWidget {
 }
 
 class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
-  final _busqueda = TextEditingController();
-
-  @override
-  void dispose() {
-    _busqueda.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
-    final ejercicios = ref.watch(ejerciciosFiltradosProvider);
-    final grupos =
-        ref.watch(gruposMuscularesProvider).value ?? const <String>[];
-    final filtro = ref.watch(filtroBibliotecaProvider);
-    final notificador = ref.read(filtroBibliotecaProvider.notifier);
+    final ejercicios = ref.watch(
+      ejerciciosFiltradosProvider(AmbitoDeFiltro.panelPlanning),
+    );
+    final filtro = ref.watch(
+      filtroBibliotecaProvider(AmbitoDeFiltro.panelPlanning),
+    );
 
     return Padding(
       padding: const EdgeInsets.all(Tokens.margenPantalla),
@@ -1564,31 +1560,10 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
             ],
           ),
           const SizedBox(height: 12),
-          CampoBusqueda(
-            clave: const Key('busqueda_panel_biblioteca'),
-            controlador: _busqueda,
-            onCambio: notificador.cambiarTexto,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChipFiltro(
-                etiqueta: 'Todos',
-                activo: filtro.grupoMuscular == null,
-                onPulsar: () => notificador.cambiarGrupoMuscular(null),
-              ),
-              for (final grupo in grupos)
-                ChipFiltro(
-                  etiqueta: grupo,
-                  activo: filtro.grupoMuscular == grupo,
-                  onPulsar: () => notificador.cambiarGrupoMuscular(
-                    filtro.grupoMuscular == grupo ? null : grupo,
-                  ),
-                ),
-            ],
-          ),
+          // Mismo buscador y mismo filtro que el formulario de CU-08, con el
+          // mismo estado (`filtroBibliotecaProvider`): este panel es donde el
+          // entrenador busca de verdad, una vez por ejercicio de cada bloque.
+          const FiltroDeEjercicios(ambito: AmbitoDeFiltro.panelPlanning),
           const SizedBox(height: 14),
           Expanded(
             child: ejercicios.when(
@@ -1607,6 +1582,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, indice) => _FilaBiblioteca(
                     ejercicio: activos[indice],
+                    resaltar: filtro.musculo,
                     onAnadir: widget.sesion == null
                         ? null
                         : () => _anadir(activos[indice]),
@@ -1620,7 +1596,12 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     );
   }
 
-  /// Anade el ejercicio al primer bloque de la sesion.
+  /// Anade el ejercicio a un bloque de la sesion.
+  ///
+  /// Con mas de un bloque se **pregunta a cual**: antes caia siempre en el
+  /// primero, y una sesion con calentamiento y fuerza es justo el caso en el
+  /// que eso nunca es lo que se quiere. Con uno solo no se pregunta, que seria
+  /// un clic de mas sin ninguna decision detras.
   ///
   /// Si la sesion no tiene bloques todavia, no hay donde ponerlo: un ejercicio
   /// planificado cuelga de un bloque (entidad 6), asi que se avisa en lugar de
@@ -1629,7 +1610,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final sesion = widget.sesion!;
     if (sesion.bloques.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           duration: Avisos.duracion,
           content: Text(
             'Añade antes un bloque: el ejercicio va dentro de uno.',
@@ -1639,12 +1620,20 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
       return;
     }
 
-    final bloque = sesion.bloques.first;
+    final bloque = sesion.bloques.length == 1
+        ? sesion.bloques.first
+        : await elegirBloque(
+            context: context,
+            sesion: sesion,
+            ejercicio: ejercicio,
+          );
+    if (bloque == null || !mounted) return;
+
     final orden = bloque.ejercicios.length + 1;
     // Valores de partida razonables, que el entrenador ajusta en la cuadricula.
-    // Cardio necesita minutos si o si (lo exige un trigger), y Fuerza al menos
-    // una serie.
-    final esCardio = ejercicio.tipo == TipoEjercicio.cardio;
+    // Cardio necesita minutos si o si (lo exige un trigger); lo que va por
+    // series (Fuerza y Fortalecimiento), al menos una serie.
+    final vaPorMinutos = ejercicio.tipo.vaPorMinutos;
 
     final resultado = await ref
         .read(controladorPlanificacionProvider.notifier)
@@ -1655,8 +1644,8 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
             ejercicioId: ejercicio.id,
             tipoEjercicio: ejercicio.tipo,
             orden: orden,
-            minutos: esCardio ? 20 : null,
-            series: esCardio
+            minutos: vaPorMinutos ? 20 : null,
+            series: vaPorMinutos
                 ? const []
                 : const [DatosSerie(numeroSerie: 1, repeticiones: 10)],
           ),
@@ -1675,10 +1664,23 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
 }
 
 class _FilaBiblioteca extends StatelessWidget {
-  const _FilaBiblioteca({required this.ejercicio, required this.onAnadir});
+  const _FilaBiblioteca({
+    required this.ejercicio,
+    required this.onAnadir,
+    this.resaltar,
+  });
 
   final Ejercicio ejercicio;
   final VoidCallback? onAnadir;
+
+  /// Musculo por el que se esta filtrando, para avisar de que este ejercicio
+  /// solo lo trabaja de secundario.
+  final Musculo? resaltar;
+
+  bool get _esSoloSecundario =>
+      resaltar != null &&
+      ejercicio.musculoPrincipal != resaltar &&
+      ejercicio.musculosSecundarios.contains(resaltar);
 
   @override
   Widget build(BuildContext context) {
@@ -1697,7 +1699,11 @@ class _FilaBiblioteca extends StatelessWidget {
               children: [
                 Text(ejercicio.nombre, style: textos.titleSmall),
                 Text(
-                  ejercicio.grupoMuscular ?? ejercicio.tipo.etiqueta,
+                  [
+                    ?ejercicio.resumenMuscular,
+                    ejercicio.tipo.etiqueta,
+                    if (_esSoloSecundario) 'secundario',
+                  ].join(' · '),
                   style: textos.bodySmall,
                 ),
               ],
