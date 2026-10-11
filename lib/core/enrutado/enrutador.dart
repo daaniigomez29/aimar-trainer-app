@@ -331,6 +331,12 @@ Widget _registroDeEjercicio(GoRouterState state) {
     buscar: (planning) => ejercicioPlanificadoPorId(planning, idEjercicio),
     noEncontrado: 'Ese ejercicio ya no está en la sesión.',
     construir: (planning, ejercicio) => PantallaRegistroEjercicio(
+      // Clave por ejercicio: al encadenar ejercicios con `context.go`, el
+      // widget ocupa el mismo sitio del arbol y Flutter **reutiliza su
+      // `State`**. Sin esto, la pantalla del siguiente ejercicio se queda con
+      // los campos del anterior: ensena sus series (y revienta con "Unexpected
+      // null value" si el anterior era cardio y no creo ninguna).
+      key: ValueKey(ejercicio.id),
       ejercicio: ejercicio,
       planningId: planningId,
       clienteId: planning.clienteId,

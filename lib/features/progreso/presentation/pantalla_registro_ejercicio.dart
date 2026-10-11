@@ -54,16 +54,10 @@ class _PantallaRegistroEjercicioState
   /// Un juego de campos por serie, indexado por numero de serie.
   final Map<int, _CamposSerie> _campos = {};
 
-  /// Series ya confirmadas en esta pantalla, por numero.
-  late final Map<int, DatosSerieRealizada> _confirmadas = {
-    for (final serie in widget.ejercicio.seriesRealizadas)
-      serie.numeroSerie: DatosSerieRealizada(
-        numeroSerie: serie.numeroSerie,
-        repeticiones: serie.repeticionesRealizadas,
-        peso: serie.pesoReal,
-        rir: serie.rirReal,
-      ),
-  };
+  /// Series ya confirmadas en esta pantalla, por numero. Se rellena en
+  /// `_prepararEjercicio`, no en la declaracion: al encadenar ejercicios hay
+  /// que rehacerla.
+  final Map<int, DatosSerieRealizada> _confirmadas = {};
 
   final _minutos = TextEditingController();
 
@@ -86,6 +80,47 @@ class _PantallaRegistroEjercicioState
   @override
   void initState() {
     super.initState();
+    _prepararEjercicio();
+  }
+
+  /// Rehace los campos cuando cambia el ejercicio **sin cambiar el `State`**.
+  ///
+  /// POR QUE PASA: al encadenar ejercicios con `context.go`, el widget ocupa el
+  /// mismo sitio del arbol y Flutter reutiliza su `State`. Sin esto, el
+  /// siguiente ejercicio heredaba los campos del anterior: ensenaba sus series
+  /// con el plan del nuevo, y si el anterior era un cardio (que no crea
+  /// ninguna) la pantalla reventaba al pedir una serie que no existia.
+  ///
+  /// El enrutador ademas le pone una clave por ejercicio, asi que normalmente
+  /// el `State` se crea de cero; esto es para que la pantalla sea correcta
+  /// tambien si alguien la monta sin ella.
+  @override
+  void didUpdateWidget(covariant PantallaRegistroEjercicio anterior) {
+    super.didUpdateWidget(anterior);
+    if (anterior.ejercicio.id != widget.ejercicio.id) _prepararEjercicio();
+  }
+
+  void _prepararEjercicio() {
+    for (final campos in _campos.values) {
+      campos.dispose();
+    }
+    _campos.clear();
+
+    _confirmadas
+      ..clear()
+      ..addEntries([
+        for (final serie in widget.ejercicio.seriesRealizadas)
+          MapEntry(
+            serie.numeroSerie,
+            DatosSerieRealizada(
+              numeroSerie: serie.numeroSerie,
+              repeticiones: serie.repeticionesRealizadas,
+              peso: serie.pesoReal,
+              rir: serie.rirReal,
+            ),
+          ),
+      ]);
+
     for (var numero = 1; numero <= _totalSeries; numero++) {
       _campos[numero] = _CamposSerie.desde(
         confirmada: _confirmadas[numero],
@@ -93,11 +128,26 @@ class _PantallaRegistroEjercicioState
         anterior: _confirmadas[numero - 1],
       );
     }
+
     final minutos =
         widget.ejercicio.minutosRealizados ??
         widget.ejercicio.minutosPlanificados;
-    if (minutos != null) _minutos.text = _numero(minutos);
+    _minutos.text = minutos == null ? '' : _numero(minutos);
   }
+
+  /// Los campos de esa serie, creandolos si faltaran.
+  ///
+  /// Antes era `_campos[numero]!`, y cualquier desajuste entre lo que se pinta
+  /// y lo que hay preparado se convertia en una pantalla roja a mitad del
+  /// entrenamiento. Una serie sin campos es recuperable: se crea vacia.
+  _CamposSerie _camposDe(int numero) => _campos.putIfAbsent(
+    numero,
+    () => _CamposSerie.desde(
+      confirmada: _confirmadas[numero],
+      planificada: _planificadaDe(numero),
+      anterior: _confirmadas[numero - 1],
+    ),
+  );
 
   @override
   void dispose() {
@@ -112,7 +162,7 @@ class _PantallaRegistroEjercicioState
       widget.ejercicio.series.where((s) => s.numeroSerie == numero).firstOrNull;
 
   Future<void> _confirmarSerie(int numero) async {
-    final campos = _campos[numero]!;
+    final campos = _camposDe(numero);
     final repeticiones = int.tryParse(campos.repeticiones.text.trim());
     if (repeticiones == null) {
       _avisar('Pon cuántas repeticiones hiciste en la serie $numero.');
@@ -329,7 +379,7 @@ class _PantallaRegistroEjercicioState
               for (var numero = 1; numero <= _totalSeries; numero++) ...[
                 _TarjetaSerie(
                   numero: numero,
-                  campos: _campos[numero]!,
+                  campos: _camposDe(numero),
                   planificada: _planificadaDe(numero),
                   confirmada: _confirmadas.containsKey(numero),
                   habilitado: !estado.enCurso,

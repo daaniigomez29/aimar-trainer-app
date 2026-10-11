@@ -20,7 +20,7 @@ principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
 
 Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **430**,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **432**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -233,7 +233,16 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     el tipo y los accesos a campos fallan con `22P02`. Costó ver porque el
     error aparecía en comprobaciones que no tenían nada que ver con la regla
     nueva.
-30. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
+30. **Encadenar pantallas con `context.go` reutiliza su `State`.** Al pasar de
+    un ejercicio al siguiente, el widget ocupa el mismo sitio del arbol, asi
+    que Flutter **no crea un `State` nuevo**: solo le cambia el `widget`. Lo
+    que se inicializa en `initState` (controladores de texto, mapas) se queda
+    con los datos del anterior. Se vio como una mezcla —las series de un
+    ejercicio con el plan de otro— y como una pantalla roja al venir de un
+    cardio, que no crea ninguna serie y dejaba el mapa vacio. Dos defensas: el
+    enrutador pone `key: ValueKey(ejercicio.id)`, y la pantalla rehace sus
+    campos en `didUpdateWidget` cuando cambia el id.
+31. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
     se añadió en la fase 6 y no se incluyó en el paso del CI, así que su código no
     pasaba por el comprobador de tipos. Ya están las tres.
 

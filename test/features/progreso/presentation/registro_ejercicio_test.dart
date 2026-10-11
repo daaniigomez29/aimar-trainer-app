@@ -248,6 +248,125 @@ void main() {
     verifyNever(() => repositorio.registrarResultado(any()));
   });
 
+  /// Monta la pantalla dejando que el ejercicio **cambie sin cambiar el sitio
+  /// del arbol**, que es justo lo que hace `context.go` al encadenar
+  /// ejercicios: Flutter reutiliza el `State` de la pantalla.
+  ///
+  /// A proposito **sin `key`**: el enrutador le pone una por ejercicio, pero lo
+  /// que se quiere comprobar aqui es que la pantalla es correcta por si misma.
+  Future<ValueNotifier<EjercicioPlanificado>> montarEncadenado(
+    WidgetTester tester,
+    EjercicioPlanificado primero,
+  ) async {
+    tester.view.physicalSize = const Size(900, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final actual = ValueNotifier<EjercicioPlanificado>(primero);
+    addTearDown(actual.dispose);
+
+    final contenedor = await conSesionAbierta(
+      ProviderContainer(
+        overrides: [
+          autenticacionRepositorioProvider.overrideWithValue(
+            AutenticacionDeMentira(rol: RolUsuario.cliente),
+          ),
+          progresoRepositorioProvider.overrideWithValue(repositorio),
+        ],
+      ),
+    );
+    addTearDown(contenedor.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: contenedor,
+        child: appConRutas(
+          rutaInicial: '/registro',
+          tema: TemaApp.oscuro(),
+          rutas: [
+            GoRoute(
+              path: Rutas.inicioCliente,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('mi planning')),
+            ),
+            GoRoute(
+              path: '/registro',
+              builder: (context, state) =>
+                  ValueListenableBuilder<EjercicioPlanificado>(
+                    valueListenable: actual,
+                    builder: (context, ejercicio, _) =>
+                        PantallaRegistroEjercicio(
+                          ejercicio: ejercicio,
+                          planningId: 'p-1',
+                          clienteId: 'cli-1',
+                        ),
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return actual;
+  }
+
+  // El fallo que se veia: el siguiente ejercicio salia con las series del
+  // anterior y el plan del nuevo, una mezcla de los dos.
+  testWidgets('al encadenar, el siguiente ejercicio no hereda las series', (
+    tester,
+  ) async {
+    final actual = await montarEncadenado(tester, deFuerza());
+    expect(find.byKey(const Key('reps_serie_2')), findsOneWidget);
+
+    actual.value = ejercicioPlanificadoDePrueba(
+      id: 'ep-2',
+      ejercicio: ejercicioDePrueba(id: 'ej-2', nombre: 'Press militar'),
+      series: [serieDePrueba(numeroSerie: 1, repeticiones: 9)],
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('reps_serie_1')), findsOneWidget);
+    expect(find.byKey(const Key('reps_serie_2')), findsNothing);
+    // Y con lo planificado del nuevo, no con lo tecleado en el anterior.
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('reps_serie_1')))
+          .controller
+          ?.text,
+      '9',
+    );
+  });
+
+  // El caso que rompia la pantalla: un cardio no crea ninguna serie, asi que
+  // al pasar al siguiente la pantalla pedia una que no existia y saltaba
+  // "Unexpected null value" encima del entrenamiento.
+  testWidgets('de un cardio al siguiente ejercicio no revienta', (
+    tester,
+  ) async {
+    final actual = await montarEncadenado(
+      tester,
+      ejercicioPlanificadoDePrueba(
+        id: 'ep-cardio',
+        ejercicio: ejercicioDePrueba(
+          id: 'ej-cardio',
+          nombre: 'Remo ergómetro',
+          tipo: TipoEjercicio.cardio,
+        ),
+        minutosPlanificados: 20,
+      ),
+    );
+    expect(find.byKey(const Key('campo_minutos')), findsOneWidget);
+
+    actual.value = deFuerza();
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('campo_minutos')), findsNothing);
+    expect(find.byKey(const Key('reps_serie_1')), findsOneWidget);
+    expect(find.byKey(const Key('reps_serie_2')), findsOneWidget);
+  });
+
   testWidgets('lo ya registrado se carga para poder corregirlo', (
     tester,
   ) async {
