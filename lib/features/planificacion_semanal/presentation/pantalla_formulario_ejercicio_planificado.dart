@@ -8,7 +8,12 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegac
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -107,9 +112,11 @@ class _EstadoFormularioEjercicioPlanificado
       orden: _comoEntero(_orden.text) ?? 0,
       // Los campos del tipo que no aplica van a null: asi una edicion que cambie
       // de ejercicio limpia lo que sobra.
-      descansoSeg: ejercicio.tipo.esFuerza ? _comoEntero(_descanso.text) : null,
-      minutos: ejercicio.tipo.esCardio ? _comoDecimal(_minutos.text) : null,
-      series: ejercicio.tipo.esFuerza
+      descansoSeg: ejercicio.tipo.vaPorSeries
+          ? _comoEntero(_descanso.text)
+          : null,
+      minutos: ejercicio.tipo.vaPorMinutos ? _comoDecimal(_minutos.text) : null,
+      series: ejercicio.tipo.vaPorSeries
           ? [
               for (var i = 0; i < _series.length; i++)
                 DatosSerie(
@@ -175,8 +182,7 @@ class _EstadoFormularioEjercicioPlanificado
           error: (error, _) =>
               AvisoEnLinea(mensaje: mensajeDeErrorPlanificacion(error)),
           data: (todos) {
-            final activos = todos.where((e) => e.estado.esActivo).toList();
-            if (activos.isEmpty) {
+            if (todos.where((e) => e.estado.esActivo).isEmpty) {
               // CU-08, excepcion: biblioteca vacia.
               return const AvisoEnLinea(
                 mensaje:
@@ -184,35 +190,14 @@ class _EstadoFormularioEjercicioPlanificado
                     'para poder planificarlo.',
               );
             }
-            return DropdownButtonFormField<Ejercicio>(
-              key: const Key('selector_ejercicio'),
-              initialValue: activos
-                  .where((e) => e.id == ejercicio?.id)
-                  .firstOrNull,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Ejercicio *',
-                errorText: estado.errorDelCampo('ejercicioId'),
-                helperText: ejercicio == null
-                    ? 'El tipo del ejercicio decide cómo se planifica.'
-                    : ejercicio.tipo.descripcionPlanificacion,
-              ),
-              items: [
-                for (final e in activos)
-                  DropdownMenuItem(
-                    value: e,
-                    child: Text(
-                      '${e.nombre}  ·  ${e.tipo.etiqueta}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-              onChanged: estado.enCurso
-                  ? null
-                  : (elegido) {
-                      controlador.limpiarError();
-                      setState(() => _ejercicio = elegido);
-                    },
+            return _SelectorEjercicio(
+              elegido: ejercicio,
+              habilitado: !estado.enCurso,
+              error: estado.errorDelCampo('ejercicioId'),
+              onElegir: (elegido) {
+                controlador.limpiarError();
+                setState(() => _ejercicio = elegido);
+              },
             );
           },
         ),
@@ -232,7 +217,7 @@ class _EstadoFormularioEjercicioPlanificado
         if (ejercicio != null) ...[
           const Divider(height: 32),
           // Aqui esta la exclusion: solo se pinta lo que corresponde al tipo.
-          if (ejercicio.tipo.esCardio)
+          if (ejercicio.tipo.vaPorMinutos)
             _CamposCardio(
               controlador: _minutos,
               habilitado: !estado.enCurso,
@@ -281,6 +266,164 @@ class _EstadoFormularioEjercicioPlanificado
 }
 
 /// Campos de un ejercicio de Cardio: solo minutos.
+/// Elige el ejercicio de la biblioteca: buscador, filtro muscular y lista.
+///
+/// Era un `DropdownButtonFormField` con la biblioteca entera dentro. Con veinte
+/// ejercicios ya era una lista en la que uno se pierde nada mas abrirla, y es
+/// la pantalla que el entrenador repite una vez por ejercicio de cada bloque.
+///
+/// Con uno ya elegido **no se pinta la lista**, solo lo elegido y un boton para
+/// cambiarlo: al editar, lo que importa de esta pantalla son las series, no
+/// volver a buscar el ejercicio.
+class _SelectorEjercicio extends ConsumerWidget {
+  const _SelectorEjercicio({
+    required this.elegido,
+    required this.habilitado,
+    required this.error,
+    required this.onElegir,
+  });
+
+  final Ejercicio? elegido;
+  final bool habilitado;
+  final String? error;
+  final ValueChanged<Ejercicio?> onElegir;
+
+  static const double _altoMaximoLista = 260;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textos = Theme.of(context).textTheme;
+
+    if (elegido case final ejercicio?) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Ejercicio *', style: textos.labelLarge),
+          const SizedBox(height: 8),
+          Tarjeta(
+            padding: const EdgeInsets.all(10),
+            hijo: Row(
+              children: [
+                MiniaturaEjercicio(ejercicio: ejercicio, lado: 36),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ejercicio.nombre, style: textos.titleSmall),
+                      Text(
+                        [
+                          ?ejercicio.resumenMuscular,
+                          ejercicio.tipo.etiqueta,
+                        ].join(' · '),
+                        style: textos.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                TextButton(
+                  key: const Key('cambiar_ejercicio'),
+                  onPressed: habilitado ? () => onElegir(null) : null,
+                  child: const Text('Cambiar'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            ejercicio.tipo.descripcionPlanificacion,
+            style: textos.bodySmall,
+          ),
+        ],
+      );
+    }
+
+    final filtrados = ref.watch(
+      ejerciciosFiltradosProvider(AmbitoDeFiltro.formularioBloque),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ejercicio *', style: textos.labelLarge),
+        if (error case final mensaje?) ...[
+          const SizedBox(height: 4),
+          Text(
+            mensaje,
+            style: textos.bodySmall?.copyWith(color: Tokens.peligro),
+          ),
+        ],
+        const SizedBox(height: 4),
+        FiltroDeEjercicios(
+          ambito: AmbitoDeFiltro.formularioBloque,
+          habilitado: habilitado,
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          // Acotada a proposito: dentro de un formulario que ya se desplaza,
+          // una lista sin limite empuja los demas campos fuera de la pantalla.
+          constraints: const BoxConstraints(maxHeight: _altoMaximoLista),
+          child: filtrados.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) =>
+                AvisoEnLinea(mensaje: mensajeDeErrorPlanificacion(error)),
+            data: (lista) => lista.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Ningún ejercicio coincide con la búsqueda.',
+                      style: textos.bodySmall,
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: lista.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, indice) {
+                      final ejercicio = lista[indice];
+                      return Tarjeta(
+                        key: Key('elegir_ejercicio_${ejercicio.id}'),
+                        padding: const EdgeInsets.all(10),
+                        onTap: habilitado ? () => onElegir(ejercicio) : null,
+                        hijo: Row(
+                          children: [
+                            MiniaturaEjercicio(ejercicio: ejercicio, lado: 34),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    ejercicio.nombre,
+                                    style: textos.titleSmall,
+                                  ),
+                                  Text(
+                                    [
+                                      ?ejercicio.resumenMuscular,
+                                      ejercicio.tipo.etiqueta,
+                                    ].join(' · '),
+                                    style: textos.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: Tokens.textoTenue,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CamposCardio extends StatelessWidget {
   const _CamposCardio({
     required this.controlador,

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 
 /// La foto del ejercicio, o un hueco con el icono de su tipo si no la tiene.
 ///
@@ -32,8 +33,8 @@ class MiniaturaEjercicio extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ruta = ejercicio?.imagenRuta;
-    final esFuerza = ejercicio?.tipo.esFuerza ?? true;
-    final color = esFuerza ? Tokens.acento : Tokens.secundario;
+    final tipo = ejercicio?.tipo ?? TipoEjercicio.fuerza;
+    final color = tipo.color;
     final tieneMiniatura = ejercicio?.imagenRuta != null;
 
     // Con el triangulo de video encima, el icono del tipo sobra: se pisarian.
@@ -42,11 +43,7 @@ class MiniaturaEjercicio extends ConsumerWidget {
       child: tieneMiniatura
           ? null
           : Center(
-              child: Icon(
-                esFuerza ? Icons.fitness_center : Icons.directions_run,
-                size: lado * 0.42,
-                color: color,
-              ),
+              child: Icon(tipo.icono, size: lado * 0.42, color: color),
             ),
     );
 

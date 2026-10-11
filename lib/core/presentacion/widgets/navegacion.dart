@@ -288,7 +288,15 @@ class PantallaEntrenador extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
-                        ?appBar,
+                        // Con su altura puesta: dentro de un `Column` la
+                        // cabecera recibe alto sin acotar, y una con `bottom`
+                        // (la de Plannings lleva el nombre del cliente debajo)
+                        // revienta el layout y deja la pantalla en blanco.
+                        if (appBar case final cabecera?)
+                          SizedBox(
+                            height: cabecera.preferredSize.height,
+                            child: cabecera,
+                          ),
                         Expanded(child: cuerpo),
                       ],
                     ),

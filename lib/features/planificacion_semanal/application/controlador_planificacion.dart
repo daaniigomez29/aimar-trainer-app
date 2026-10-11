@@ -111,6 +111,20 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
     recargarListas: true,
   );
 
+  /// Duplica un planning en otra semana (CU-05, variante).
+  ///
+  /// Recarga las listas porque aparece un planning nuevo, y no hay
+  /// `planningARecargar`: el que cambia es uno que todavia no existia.
+  Future<Result<ResultadoDuplicado>> duplicarPlanning({
+    required String origenId,
+    required DateTime fechaInicio,
+  }) => _ejecutar(
+    () => ref
+        .read(planningRepositorioProvider)
+        .duplicarPlanning(origenId: origenId, fechaInicio: fechaInicio),
+    recargarListas: true,
+  );
+
   Future<Result<PlanningSemanal>> archivarPlanning(String id) => _ejecutar(
     () => ref.read(planningRepositorioProvider).archivarPlanning(id),
     planningARecargar: id,

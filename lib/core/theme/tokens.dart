@@ -33,6 +33,12 @@ abstract final class Tokens {
   /// registra el cliente (regla de dominio: son independientes).
   static const Color secundario = Color(0xFFFFB136);
 
+  /// Violeta. Identifica el tipo **Fortalecimiento** en pastillas y miniaturas.
+  /// Hace falta un tercer color desde que el tipo dejo de ser binario, y no se
+  /// reutiliza ninguno de los que ya hay: el verde significa "completado" y el
+  /// ambar, "lo planificado", en toda la app.
+  static const Color terciario = Color(0xFFA78BFA);
+
   /// Serie completada.
   static const Color exito = Color(0xFF4ADE80);
 

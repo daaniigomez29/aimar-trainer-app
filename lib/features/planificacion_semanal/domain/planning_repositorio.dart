@@ -39,6 +39,15 @@ abstract interface class PlanningRepositorio {
   });
 
   /// Archiva el planning. Deja de admitir cambios pero se conserva para consulta.
+  /// Copia un planning entero en otra semana (sesiones, bloques, ejercicios y
+  /// series planificadas). **Solo lo planificado**: nada de lo que registro el
+  /// cliente. Los ejercicios dados de baja se quedan fuera y se informa de
+  /// cuantos.
+  Future<Result<ResultadoDuplicado>> duplicarPlanning({
+    required String origenId,
+    required DateTime fechaInicio,
+  });
+
   Future<Result<PlanningSemanal>> archivarPlanning(String id);
 
   Future<Result<PlanningSemanal>> reactivarPlanning(String id);

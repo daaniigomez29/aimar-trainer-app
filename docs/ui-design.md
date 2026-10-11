@@ -82,7 +82,7 @@ Cabecera con flecha atrás, contador "Ejercicio X de N" y puntos de progreso. Fi
 **Paso 2 — Check-in de recuperación**: sliders para horas de sueño, estrés, agujetas y fatiga (valor numérico a la derecha de cada uno), campo de notas opcional, botón "Guardar check-in". La flecha atrás del paso 2 regresa al paso 1 sin perder los datos introducidos.
  
 ### 6.4 Biblioteca (cliente, móvil)
-Buscador, chips de filtro por grupo muscular (funcionales: filtran la lista), lista de ejercicios con miniatura, nombre, grupo muscular, tipo (fuerza/cardio) e indicador de vídeo disponible.
+Buscador y filtro muscular **en dos niveles**: una fila de chips con los grupos (Pierna, Pecho…) y, al elegir uno, una segunda fila con sus músculos. Ambas salen de lo que hay en la biblioteca, no de la taxonomía completa: un chip que no devuelve nada es ruido. Se añaden las pestañas "Sin clasificar" (lo que quedó por reclasificar) y, para el entrenador, "Dados de baja". La lista muestra miniatura, nombre, "Grupo · Músculo principal", tipo (Fuerza / Cardio / Fortalecimiento) e indicador de vídeo; al filtrar por un músculo, los que solo lo trabajan de secundario van detrás y lo dicen.
  
 ### 6.5 Configuración (cliente, móvil)
 Sección "Cómo te avisamos": notificaciones en el dispositivo (interruptor) y correo electrónico (siempre activo, de respaldo). Texto explicativo de cuándo se notifica.

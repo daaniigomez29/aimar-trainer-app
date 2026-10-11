@@ -12,12 +12,23 @@ class NavegadorDeSemana extends StatelessWidget {
   const NavegadorDeSemana({
     required this.semana,
     required this.onCambio,
+    this.onDuplicar,
+    this.tooltipDuplicar,
     this.estilo,
     super.key,
   });
 
   final Semana semana;
   final ValueChanged<Semana> onCambio;
+
+  /// Traer aqui el contenido de otra semana. Solo lo recibe el entrenador: al
+  /// cliente le llegan los dos en `null` y el boton ni se pinta.
+  ///
+  /// Con [tooltipDuplicar] puesto y [onDuplicar] a `null`, el boton sale
+  /// **deshabilitado con el motivo**: es mejor que desaparezca, porque si no
+  /// parece que la funcion no existe.
+  final VoidCallback? onDuplicar;
+  final String? tooltipDuplicar;
 
   /// Para que cada pantalla la escriba con su tipografía.
   final TextStyle? estilo;
@@ -46,6 +57,13 @@ class NavegadorDeSemana extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (tooltipDuplicar case final tooltip?)
+          IconButton(
+            key: const Key('duplicar_semana'),
+            icon: const Icon(Icons.content_copy_outlined),
+            tooltip: tooltip,
+            onPressed: onDuplicar,
+          ),
         IconButton(
           key: const Key('semana_anterior'),
           icon: const Icon(Icons.chevron_left),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
+import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,9 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
@@ -56,6 +60,41 @@ class _PantallaPlanificacionEntrenadorState
   final Map<String, List<DatosSerie>> _pendientes = {};
 
   bool get _haySinGuardar => _pendientes.isNotEmpty;
+
+  /// Trae a [destino] el contenido de otra semana del mismo cliente.
+  ///
+  /// La copia es solo de lo planificado y deja fuera los ejercicios dados de
+  /// baja; el aviso dice cuantos, porque si no quedarian bloques con menos
+  /// ejercicios sin ninguna explicacion.
+  Future<void> _duplicarAqui({
+    required String clienteId,
+    required Semana destino,
+  }) async {
+    final origen = await elegirPlanningParaDuplicar(
+      context: context,
+      clienteId: clienteId,
+      destino: destino,
+    );
+    if (origen == null || !mounted) return;
+
+    final resultado = await ref
+        .read(controladorPlanificacionProvider.notifier)
+        .duplicarPlanning(origenId: origen.id, fechaInicio: destino.lunes);
+    if (!mounted) return;
+
+    final mensaje = switch (resultado) {
+      Failure(:final error) => error.mensaje,
+      Success(:final valor) when valor.hayOmitidos =>
+        'Semana duplicada. Se han dejado fuera '
+            '${valor.ejerciciosOmitidos} '
+            '${valor.ejerciciosOmitidos == 1 ? 'ejercicio' : 'ejercicios'} '
+            'dados de baja.',
+      Success() => 'Semana duplicada.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(duration: Avisos.duracion, content: Text(mensaje)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,11 +150,41 @@ class _PantallaPlanificacionEntrenadorState
                 _sesionElegida = null;
                 _pendientes.clear();
               }),
+              // Se duplica **hacia aqui**: el entrenador se pone en la semana
+              // que quiere montar y elige de donde traerla. Solo si esta
+              // vacia: un planning activo por cliente y semana lo impone el
+              // indice unico, y el boton no puede prometer lo contrario.
+              tooltipDuplicar: switch ((semana.esPasada, planning)) {
+                (true, _) => 'Las semanas que ya han pasado no se tocan',
+                (false, null) => 'Traer aquí otra semana',
+                (false, _) =>
+                  'Esta semana ya tiene planning: duplicar solo cabe en una '
+                      'semana vacía',
+              },
+              onDuplicar: planning == null && !semana.esPasada
+                  ? () => _duplicarAqui(clienteId: cliente.id, destino: semana)
+                  : null,
             ),
+            // Borrar vive aqui y no solo en la ficha del cliente porque es
+            // aqui donde se cometen los errores que hay que deshacer: crear
+            // la semana sin querer, o duplicar del origen equivocado. Borrar
+            // el planning se lleva en cascada sesiones, bloques, ejercicios y
+            // series, asi que no hay que deshacer nada a mano.
+            if (planning case final actual? when actual.esEditable)
+              IconButton(
+                key: const Key('boton_eliminar_planning_semana'),
+                tooltip: 'Eliminar el planning de esta semana',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => confirmarEliminarPlanning(
+                  context: context,
+                  ref: ref,
+                  planning: actual,
+                ),
+              ),
           ],
           botonGuardar: _BotonGuardar(
             compacto: !esEscritorio(context),
-            habilitado: _haySinGuardar && planning != null,
+            habilitado: _haySinGuardar && (planning?.esEditable ?? false),
             onGuardar: () {
               if (planning != null) _guardarSeries(planning);
             },
@@ -466,6 +535,8 @@ class _Semana extends ConsumerWidget {
 class _SemanaSinPlanning extends ConsumerWidget {
   const _SemanaSinPlanning({required this.cliente, required this.semana});
 
+  /// Lo pasado no se crea: ver `PlanningSemanal.esEditable`.
+
   final Cliente cliente;
   final Semana semana;
 
@@ -492,25 +563,32 @@ class _SemanaSinPlanning extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 14),
-            SizedBox(
-              width: 240,
-              child: BotonCta(
-                key: const Key('boton_crear_planning_semana'),
-                etiqueta: 'Crear la semana',
-                icono: Icons.add,
-                onPulsar: () async {
-                  // El dialogo llega con **la semana que se esta viendo**, no
-                  // con la de hoy: si el entrenador ha navegado al 19-25 para
-                  // adelantar trabajo, es esa la que quiere crear.
-                  await pedirDatosPlanning(
-                    context: context,
-                    ref: ref,
-                    clienteId: cliente.id,
-                    semana: semana,
-                  );
-                },
+            if (semana.esPasada)
+              Text(
+                'Esa semana ya ha pasado y no se puede planificar.',
+                style: textos.bodySmall,
+                textAlign: TextAlign.center,
+              )
+            else
+              SizedBox(
+                width: 240,
+                child: BotonCta(
+                  key: const Key('boton_crear_planning_semana'),
+                  etiqueta: 'Crear la semana',
+                  icono: Icons.add,
+                  onPulsar: () async {
+                    // El dialogo llega con **la semana que se esta viendo**, no
+                    // con la de hoy: si el entrenador ha navegado al 19-25 para
+                    // adelantar trabajo, es esa la que quiere crear.
+                    await pedirDatosPlanning(
+                      context: context,
+                      ref: ref,
+                      clienteId: cliente.id,
+                      semana: semana,
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -573,7 +651,9 @@ class _Planning extends ConsumerWidget {
           return Stack(
             children: [
               principal,
-              if (sesion != null)
+              // En una semana pasada no se ofrece ni abrir la biblioteca:
+              // no habria nada que hacer dentro.
+              if (sesion != null && planning.esEditable)
                 Positioned(
                   right: Tokens.margenPantalla,
                   bottom: Tokens.margenPantalla,
@@ -584,6 +664,7 @@ class _Planning extends ConsumerWidget {
                       ref,
                       sesion: sesion,
                       planningId: planning.id,
+                      puedeEditar: planning.esEditable,
                     ),
                     child: const Icon(Icons.add),
                   ),
@@ -603,7 +684,11 @@ class _Planning extends ConsumerWidget {
                 color: Tokens.superficie,
                 border: Border(left: BorderSide(color: Tokens.borde)),
               ),
-              child: _PanelBiblioteca(sesion: sesion, planningId: planning.id),
+              child: _PanelBiblioteca(
+                sesion: sesion,
+                planningId: planning.id,
+                puedeEditar: planning.esEditable,
+              ),
             ),
           ],
         );
@@ -617,6 +702,7 @@ Future<void> _abrirBibliotecaEnModal(
   WidgetRef ref, {
   required SesionEntrenamiento sesion,
   required String planningId,
+  required bool puedeEditar,
 }) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
@@ -625,6 +711,7 @@ Future<void> _abrirBibliotecaEnModal(
     child: _PanelBiblioteca(
       sesion: sesion,
       planningId: planningId,
+      puedeEditar: puedeEditar,
       enModal: true,
     ),
   ),
@@ -771,36 +858,42 @@ class _Sesion extends ConsumerWidget {
             IconButton(
               tooltip: 'Editar sesión',
               icon: const Icon(Icons.edit_outlined, size: 18),
-              onPressed: () => pedirDatosSesion(
-                context: context,
-                ref: ref,
-                planning: planning,
-                sesion: sesion,
-              ),
+              onPressed: !planning.esEditable
+                  ? null
+                  : () => pedirDatosSesion(
+                      context: context,
+                      ref: ref,
+                      planning: planning,
+                      sesion: sesion,
+                    ),
             ),
             IconButton(
               key: Key('eliminar_sesion_${sesion.id}'),
               tooltip: 'Eliminar sesión',
               icon: const Icon(Icons.delete_outline, size: 18),
-              onPressed: () => confirmarEliminarSesion(
-                context: context,
-                ref: ref,
-                sesion: sesion,
-                planningId: planning.id,
-              ),
+              onPressed: !planning.esEditable
+                  ? null
+                  : () => confirmarEliminarSesion(
+                      context: context,
+                      ref: ref,
+                      sesion: sesion,
+                      planningId: planning.id,
+                    ),
             ),
           ],
         ),
         const SizedBox(height: 14),
         ListaArrastrable(
-          onMover: (desde, hasta) => moverBloque(
-            context: context,
-            ref: ref,
-            sesion: sesion,
-            planningId: planning.id,
-            desde: desde,
-            hasta: hasta,
-          ),
+          onMover: !planning.esEditable
+              ? null
+              : (desde, hasta) => moverBloque(
+                  context: context,
+                  ref: ref,
+                  sesion: sesion,
+                  planningId: planning.id,
+                  desde: desde,
+                  hasta: hasta,
+                ),
           hijos: [
             for (final (indice, bloque) in sesion.bloques.indexed)
               Padding(
@@ -821,12 +914,14 @@ class _Sesion extends ConsumerWidget {
         ),
         OutlinedButton.icon(
           key: Key('anadir_bloque_${sesion.id}'),
-          onPressed: () => pedirDatosBloque(
-            context: context,
-            ref: ref,
-            sesion: sesion,
-            planningId: planning.id,
-          ),
+          onPressed: !planning.esEditable
+              ? null
+              : () => pedirDatosBloque(
+                  context: context,
+                  ref: ref,
+                  sesion: sesion,
+                  planningId: planning.id,
+                ),
           icon: const Icon(Icons.add, size: 18),
           label: const Text('Añadir bloque'),
         ),
@@ -878,25 +973,29 @@ class _Bloque extends ConsumerWidget {
                 tooltip: 'Editar bloque',
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 visualDensity: VisualDensity.compact,
-                onPressed: () => pedirDatosBloque(
-                  context: context,
-                  ref: ref,
-                  sesion: sesion,
-                  planningId: planning.id,
-                  bloque: bloque,
-                ),
+                onPressed: !planning.esEditable
+                    ? null
+                    : () => pedirDatosBloque(
+                        context: context,
+                        ref: ref,
+                        sesion: sesion,
+                        planningId: planning.id,
+                        bloque: bloque,
+                      ),
               ),
               IconButton(
                 key: Key('eliminar_bloque_${bloque.id}'),
                 tooltip: 'Eliminar bloque',
                 icon: const Icon(Icons.delete_outline, size: 16),
                 visualDensity: VisualDensity.compact,
-                onPressed: () => confirmarEliminarBloque(
-                  context: context,
-                  ref: ref,
-                  bloque: bloque,
-                  planningId: planning.id,
-                ),
+                onPressed: !planning.esEditable
+                    ? null
+                    : () => confirmarEliminarBloque(
+                        context: context,
+                        ref: ref,
+                        bloque: bloque,
+                        planningId: planning.id,
+                      ),
               ),
             ],
           ),
@@ -906,14 +1005,16 @@ class _Bloque extends ConsumerWidget {
           ],
           const Divider(height: 20),
           ListaArrastrable(
-            onMover: (desde, hasta) => moverEjercicio(
-              context: context,
-              ref: ref,
-              bloque: bloque,
-              planningId: planning.id,
-              desde: desde,
-              hasta: hasta,
-            ),
+            onMover: !planning.esEditable
+                ? null
+                : (desde, hasta) => moverEjercicio(
+                    context: context,
+                    ref: ref,
+                    bloque: bloque,
+                    planningId: planning.id,
+                    desde: desde,
+                    hasta: hasta,
+                  ),
             hijos: [
               for (final (indice, ejercicio) in bloque.ejercicios.indexed)
                 _EjercicioEditable(
@@ -1087,7 +1188,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
   Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
     final ficha = widget.ejercicio.ejercicio;
-    final esCardio = ficha?.tipo == TipoEjercicio.cardio;
+    final vaPorMinutos = ficha?.tipo.vaPorMinutos ?? false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -1114,7 +1215,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                     ),
                     Text(
                       [
-                        ?ficha?.grupoMuscular,
+                        ?ficha?.resumenMuscular,
                         ficha?.tipo.etiqueta ?? '',
                       ].where((t) => t.isNotEmpty).join(' · '),
                       style: textos.bodySmall,
@@ -1127,30 +1228,34 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                 tooltip: 'Editar ejercicio',
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 visualDensity: VisualDensity.compact,
-                onPressed: () => context.go(
-                  Rutas.editarEjercicioDelBloque(
-                    Rutas.planningEnEdicion(widget.planning.id),
-                    widget.bloque.id,
-                    widget.ejercicio.id,
-                  ),
-                ),
+                onPressed: !widget.planning.esEditable
+                    ? null
+                    : () => context.go(
+                        Rutas.editarEjercicioDelBloque(
+                          Rutas.planningEnEdicion(widget.planning.id),
+                          widget.bloque.id,
+                          widget.ejercicio.id,
+                        ),
+                      ),
               ),
               IconButton(
                 key: Key('eliminar_ejercicio_${widget.ejercicio.id}'),
                 tooltip: 'Quitar del bloque',
                 icon: const Icon(Icons.close, size: 16),
                 visualDensity: VisualDensity.compact,
-                onPressed: () => confirmarEliminarEjercicio(
-                  context: context,
-                  ref: ref,
-                  ejercicio: widget.ejercicio,
-                  planningId: widget.planning.id,
-                ),
+                onPressed: !widget.planning.esEditable
+                    ? null
+                    : () => confirmarEliminarEjercicio(
+                        context: context,
+                        ref: ref,
+                        ejercicio: widget.ejercicio,
+                        planningId: widget.planning.id,
+                      ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          if (esCardio)
+          if (vaPorMinutos)
             Padding(
               padding: const EdgeInsets.only(left: 44),
               child: Row(
@@ -1235,6 +1340,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                                 ),
                                 controlador: fila.peso,
                                 decimal: true,
+                                habilitado: widget.planning.esEditable,
                                 onCambio: _avisarCambio,
                               ),
                             ),
@@ -1245,6 +1351,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                                   'plan_reps_${widget.ejercicio.id}_${fila.numero}',
                                 ),
                                 controlador: fila.reps,
+                                habilitado: widget.planning.esEditable,
                                 onCambio: _avisarCambio,
                               ),
                             ),
@@ -1255,6 +1362,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                                   'plan_rir_${widget.ejercicio.id}_${fila.numero}',
                                 ),
                                 controlador: fila.rir,
+                                habilitado: widget.planning.esEditable,
                                 onCambio: _avisarCambio,
                               ),
                             ),
@@ -1480,18 +1588,26 @@ class _Celda extends StatelessWidget {
     required this.clave,
     required this.controlador,
     required this.onCambio,
+    this.habilitado = true,
     this.decimal = false,
   });
 
   final Key clave;
   final TextEditingController controlador;
   final VoidCallback onCambio;
+
+  /// En una semana pasada la cuadricula se lee pero no se escribe: si se
+  /// dejara escribir, el boton de guardar estaria apagado y lo tecleado se
+  /// perderia sin decir nada.
+  final bool habilitado;
+
   final bool decimal;
 
   @override
   Widget build(BuildContext context) => TextField(
     key: clave,
     controller: controlador,
+    enabled: habilitado,
     textAlign: TextAlign.center,
     onChanged: (_) => onCambio(),
     keyboardType: TextInputType.numberWithOptions(decimal: decimal),
@@ -1512,11 +1628,17 @@ class _PanelBiblioteca extends ConsumerStatefulWidget {
   const _PanelBiblioteca({
     required this.sesion,
     required this.planningId,
+    required this.puedeEditar,
     this.enModal = false,
   });
 
   final SesionEntrenamiento? sesion;
   final String planningId;
+
+  /// Con la semana pasada se puede mirar la biblioteca, pero no anadir nada:
+  /// ver `PlanningSemanal.esEditable`.
+  final bool puedeEditar;
+
   final bool enModal;
 
   @override
@@ -1524,22 +1646,15 @@ class _PanelBiblioteca extends ConsumerStatefulWidget {
 }
 
 class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
-  final _busqueda = TextEditingController();
-
-  @override
-  void dispose() {
-    _busqueda.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
-    final ejercicios = ref.watch(ejerciciosFiltradosProvider);
-    final grupos =
-        ref.watch(gruposMuscularesProvider).value ?? const <String>[];
-    final filtro = ref.watch(filtroBibliotecaProvider);
-    final notificador = ref.read(filtroBibliotecaProvider.notifier);
+    final ejercicios = ref.watch(
+      ejerciciosFiltradosProvider(AmbitoDeFiltro.panelPlanning),
+    );
+    final filtro = ref.watch(
+      filtroBibliotecaProvider(AmbitoDeFiltro.panelPlanning),
+    );
 
     return Padding(
       padding: const EdgeInsets.all(Tokens.margenPantalla),
@@ -1564,31 +1679,10 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
             ],
           ),
           const SizedBox(height: 12),
-          CampoBusqueda(
-            clave: const Key('busqueda_panel_biblioteca'),
-            controlador: _busqueda,
-            onCambio: notificador.cambiarTexto,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChipFiltro(
-                etiqueta: 'Todos',
-                activo: filtro.grupoMuscular == null,
-                onPulsar: () => notificador.cambiarGrupoMuscular(null),
-              ),
-              for (final grupo in grupos)
-                ChipFiltro(
-                  etiqueta: grupo,
-                  activo: filtro.grupoMuscular == grupo,
-                  onPulsar: () => notificador.cambiarGrupoMuscular(
-                    filtro.grupoMuscular == grupo ? null : grupo,
-                  ),
-                ),
-            ],
-          ),
+          // Mismo buscador y mismo filtro que el formulario de CU-08, con el
+          // mismo estado (`filtroBibliotecaProvider`): este panel es donde el
+          // entrenador busca de verdad, una vez por ejercicio de cada bloque.
+          const FiltroDeEjercicios(ambito: AmbitoDeFiltro.panelPlanning),
           const SizedBox(height: 14),
           Expanded(
             child: ejercicios.when(
@@ -1607,7 +1701,8 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, indice) => _FilaBiblioteca(
                     ejercicio: activos[indice],
-                    onAnadir: widget.sesion == null
+                    resaltar: filtro.musculo,
+                    onAnadir: widget.sesion == null || !widget.puedeEditar
                         ? null
                         : () => _anadir(activos[indice]),
                   ),
@@ -1620,7 +1715,12 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     );
   }
 
-  /// Anade el ejercicio al primer bloque de la sesion.
+  /// Anade el ejercicio a un bloque de la sesion.
+  ///
+  /// Con mas de un bloque se **pregunta a cual**: antes caia siempre en el
+  /// primero, y una sesion con calentamiento y fuerza es justo el caso en el
+  /// que eso nunca es lo que se quiere. Con uno solo no se pregunta, que seria
+  /// un clic de mas sin ninguna decision detras.
   ///
   /// Si la sesion no tiene bloques todavia, no hay donde ponerlo: un ejercicio
   /// planificado cuelga de un bloque (entidad 6), asi que se avisa en lugar de
@@ -1629,7 +1729,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final sesion = widget.sesion!;
     if (sesion.bloques.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           duration: Avisos.duracion,
           content: Text(
             'Añade antes un bloque: el ejercicio va dentro de uno.',
@@ -1639,12 +1739,20 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
       return;
     }
 
-    final bloque = sesion.bloques.first;
+    final bloque = sesion.bloques.length == 1
+        ? sesion.bloques.first
+        : await elegirBloque(
+            context: context,
+            sesion: sesion,
+            ejercicio: ejercicio,
+          );
+    if (bloque == null || !mounted) return;
+
     final orden = bloque.ejercicios.length + 1;
     // Valores de partida razonables, que el entrenador ajusta en la cuadricula.
-    // Cardio necesita minutos si o si (lo exige un trigger), y Fuerza al menos
-    // una serie.
-    final esCardio = ejercicio.tipo == TipoEjercicio.cardio;
+    // Cardio necesita minutos si o si (lo exige un trigger); lo que va por
+    // series (Fuerza y Fortalecimiento), al menos una serie.
+    final vaPorMinutos = ejercicio.tipo.vaPorMinutos;
 
     final resultado = await ref
         .read(controladorPlanificacionProvider.notifier)
@@ -1655,8 +1763,8 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
             ejercicioId: ejercicio.id,
             tipoEjercicio: ejercicio.tipo,
             orden: orden,
-            minutos: esCardio ? 20 : null,
-            series: esCardio
+            minutos: vaPorMinutos ? 20 : null,
+            series: vaPorMinutos
                 ? const []
                 : const [DatosSerie(numeroSerie: 1, repeticiones: 10)],
           ),
@@ -1675,10 +1783,23 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
 }
 
 class _FilaBiblioteca extends StatelessWidget {
-  const _FilaBiblioteca({required this.ejercicio, required this.onAnadir});
+  const _FilaBiblioteca({
+    required this.ejercicio,
+    required this.onAnadir,
+    this.resaltar,
+  });
 
   final Ejercicio ejercicio;
   final VoidCallback? onAnadir;
+
+  /// Musculo por el que se esta filtrando, para avisar de que este ejercicio
+  /// solo lo trabaja de secundario.
+  final Musculo? resaltar;
+
+  bool get _esSoloSecundario =>
+      resaltar != null &&
+      ejercicio.musculoPrincipal != resaltar &&
+      ejercicio.musculosSecundarios.contains(resaltar);
 
   @override
   Widget build(BuildContext context) {
@@ -1697,7 +1818,11 @@ class _FilaBiblioteca extends StatelessWidget {
               children: [
                 Text(ejercicio.nombre, style: textos.titleSmall),
                 Text(
-                  ejercicio.grupoMuscular ?? ejercicio.tipo.etiqueta,
+                  [
+                    ?ejercicio.resumenMuscular,
+                    ejercicio.tipo.etiqueta,
+                    if (_esSoloSecundario) 'secundario',
+                  ].join(' · '),
                   style: textos.bodySmall,
                 ),
               ],
