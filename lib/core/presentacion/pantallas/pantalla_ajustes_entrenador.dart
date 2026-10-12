@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/tutorial_de_instalacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 
@@ -24,6 +25,8 @@ class PantallaAjustesEntrenador extends ConsumerWidget {
       padding: const EdgeInsets.all(Tokens.margenPantalla),
       children: [
         Text('Ajustes', style: textos.headlineMedium),
+        const SizedBox(height: 18),
+        const TutorialDeInstalacion(),
         const SizedBox(height: 18),
         Tarjeta(
           hijo: Row(

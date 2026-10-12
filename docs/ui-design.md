@@ -86,6 +86,8 @@ Buscador y filtro muscular **en dos niveles**: una fila de chips con los grupos 
  
 ### 6.5 Configuración (cliente, móvil)
 Sección "Cómo te avisamos": notificaciones en el dispositivo (interruptor) y correo electrónico (siempre activo, de respaldo). Texto explicativo de cuándo se notifica.
+
+Debajo, **"Instalar la app en el móvil"**: desplegable (plegado por defecto) con los pasos para iPhone —obligatorio Safari— y para Android. Va justo después de los avisos porque en iOS el push **no existe** hasta que la app está en la pantalla de inicio. El mismo bloque está en los ajustes del entrenador.
  
 ### 6.6 Planificación semanal — entrenador, escritorio
 Barra superior: marca, selector de cliente, navegación de semana, botón "Guardar cambios". Barra lateral de navegación. Área principal: pestañas de día, bloques de ejercicios con series editables (kg/reps/RIR) en cuadrícula. Panel fijo a la derecha con la biblioteca de ejercicios (buscador, filtros, lista con botón "+" para añadir a la sesión).

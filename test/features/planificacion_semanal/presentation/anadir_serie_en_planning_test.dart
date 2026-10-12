@@ -252,6 +252,35 @@ void main() {
 
     expect(find.text('resultados de cli-1 dia=1'), findsOneWidget);
   });
+
+  // Anadir desde el panel de la biblioteca y anadir desde el formulario de
+  // CU-08 tienen que dar lo mismo: el atajo no puede salir mas caro que el
+  // camino largo. Antes el panel creaba **una** serie de 10 repeticiones.
+  testWidgets('desde el panel, el ejercicio nace con tres series de ocho', (
+    tester,
+  ) async {
+    when(() => ejercicios.listar()).thenAnswer(
+      (_) async => Success([ejercicioDePrueba(id: 'ej-2', nombre: 'Remo')]),
+    );
+    when(() => plannings.crearEjercicioPlanificado(any()))
+        .thenAnswer((_) async => Success(ejercicioPlanificadoDePrueba()));
+
+    await montar(tester);
+    await tester.tap(find.byKey(const Key('anadir_biblioteca_ej-2')));
+    await tester.pumpAndSettle();
+
+    final datos =
+        verify(() => plannings.crearEjercicioPlanificado(captureAny()))
+                .captured
+                .single
+            as DatosEjercicioPlanificado;
+    expect(datos.series, hasLength(seriesPorDefecto));
+    expect(
+      datos.series.every((s) => s.repeticiones == repeticionesPorDefecto),
+      isTrue,
+    );
+    expect(datos.series.map((s) => s.numeroSerie), [1, 2, 3]);
+  });
 }
 
 // El caso de la semana pasada vive en `editor_semana_pasada_test.dart`, que ya

@@ -9,6 +9,7 @@ import 'package:aimar_trainer_app/core/plataforma/servicio_push.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_cargando.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/tutorial_de_instalacion.dart';
 import 'package:aimar_trainer_app/core/supabase/proveedores_supabase.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
@@ -136,6 +137,11 @@ class PantallaPreferenciasNotificacion extends ConsumerWidget {
               const SizedBox(height: 14),
               _Dispositivos(clienteId: clienteId),
             ],
+            const SizedBox(height: 18),
+            // Debajo de los avisos a proposito: en iPhone, el push **no existe**
+            // hasta que la app esta instalada, asi que quien venga a activarlo
+            // y no pueda tiene aqui mismo el motivo y la solucion.
+            const TutorialDeInstalacion(),
             const SizedBox(height: 24),
             // La unica salida de la app para el cliente: su pantalla de inicio
             // es ahora el planning, que no tiene sitio para esto.
