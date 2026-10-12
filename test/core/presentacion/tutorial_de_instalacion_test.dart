@@ -45,10 +45,7 @@ void main() {
     // Lo que más se falla: en iOS tiene que ser Safari, porque Chrome allí no
     // puede instalar nada.
     expect(find.text('Tiene que ser con Safari.'), findsOneWidget);
-    expect(
-      find.textContaining('Añadir a pantalla de inicio'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Añadir a pantalla de inicio'), findsOneWidget);
     expect(find.textContaining('Instalar aplicación'), findsWidgets);
   });
 }
