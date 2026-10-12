@@ -5,6 +5,8 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/lista_musculos_plegable.dart';
 
 /// Buscador y filtro muscular para **elegir un ejercicio de la biblioteca**.
@@ -86,6 +88,31 @@ class _FiltroDeEjerciciosState extends ConsumerState<FiltroDeEjercicios> {
           controlador: _busqueda,
           onCambio: notificador.cambiarTexto,
         ),
+        // Cardio y Fortalecimiento tambien aqui: es donde se monta el bloque, y
+        // "ponme un cardio" o "algo de fortalecimiento para el hombro" es como
+        // se busca cuando ya sabes que clase de ejercicio quieres. Se cruzan
+        // con el filtro muscular de debajo, no lo sustituyen.
+        if (facetas.tipos.any((t) => t != TipoEjercicio.fuerza)) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final tipo in facetas.tipos)
+                if (tipo != TipoEjercicio.fuerza)
+                  ChipFiltro(
+                    key: Key('tipo_${tipo.name}'),
+                    etiqueta: tipo.etiqueta,
+                    icono: tipo.icono,
+                    activo: filtro.tipo == tipo,
+                    onPulsar: widget.habilitado
+                        ? () => notificador.cambiarTipo(
+                            filtro.tipo == tipo ? null : tipo,
+                          )
+                        : () {},
+                  ),
+            ],
+          ),
+        ],
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(

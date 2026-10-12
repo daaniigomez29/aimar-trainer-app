@@ -42,8 +42,15 @@ class _EstadoMiPlanning extends ConsumerState<PantallaMiPlanning> {
 
   void _irA(Semana semana) => setState(() => _elegida = semana);
 
-  /// Sin semana elegida, la que incluye hoy; si no hay ninguna, la activa mas
-  /// reciente, que es lo que el cliente esperaria ver al entrar.
+  /// Sin semana elegida, **la que incluye hoy**, y ninguna otra.
+  ///
+  /// POR QUE NO SE BUSCA UNA ALTERNATIVA: antes, al no haber planning de esta
+  /// semana, se caia en el mas reciente de la lista. Y la lista llega ordenada
+  /// por `fecha_inicio` descendente, asi que el cliente entraba directamente en
+  /// **la ultima semana creada por el entrenador**: con la semana que viene ya
+  /// montada, abria la app y se encontraba planificando el futuro. Sin planning
+  /// de hoy se ensena la semana en curso vacia, que es la verdad, con su
+  /// navegador para moverse.
   ///
   /// Con semana elegida manda ella, y vale en cualquier estado: el historico
   /// tambien se consulta desde aqui.
@@ -51,9 +58,9 @@ class _EstadoMiPlanning extends ConsumerState<PantallaMiPlanning> {
     if (_elegida case final semana?) {
       return lista.where((p) => Semana.de(p.fechaInicio) == semana).firstOrNull;
     }
-    final activos = lista.where((p) => p.estado.esActivo).toList();
-    return activos.where((p) => p.contiene(DateTime.now())).firstOrNull ??
-        activos.firstOrNull;
+    return lista
+        .where((p) => p.estado.esActivo && p.contiene(DateTime.now()))
+        .firstOrNull;
   }
 
   @override

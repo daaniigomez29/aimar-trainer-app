@@ -5,34 +5,66 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegac
 import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/theme/tokens.dart';
 
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/tarjeta_sesion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/chips_de_dias.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/resultados_de_sesion.dart';
 
-/// La semana completa: sesiones, bloques y ejercicios (CU-06 a CU-16).
+/// La semana de un cliente **en modo consulta**: lo planificado al lado de lo
+/// que hizo, un dia a la vez (CU-21 desde el lado del entrenador).
 ///
-/// La misma pantalla sirve al cliente en modo lectura: RLS le deja ver su propio
-/// planning, y aqui simplemente no se le ofrece ninguna accion de escritura. Un
-/// planning archivado tampoco admite cambios, ni para el entrenador.
-class PantallaPlanning extends ConsumerWidget {
-  const PantallaPlanning({required this.planningId, super.key});
+/// POR QUE ES SOLO LECTURA: antes esta pantalla editaba sesiones, bloques y
+/// ejercicios, las mismas operaciones que el editor de
+/// `/entrenador/plannings/:id`, y a la vez **no ensenaba ningun resultado**. El
+/// entrenador no tenia donde ver lo que sus clientes hacen el mismo dia si no
+/// era poniendose a planificar la semana siguiente para mirar la columna de
+/// referencia. Ahora cada vista tiene su funcion: aqui se consulta, alli se
+/// planifica. Desde el editor hay un boton directo a esta pantalla, por dia.
+///
+/// Lo que si se queda son las acciones **del planning entero**, que no editan el
+/// plan y no tienen otro sitio: archivar o reactivar, cambiar el objetivo y
+/// eliminarlo.
+///
+/// La misma pantalla sirve al cliente para su historico, con el boton de
+/// registrar su resultado (CU-20) si la semana sigue activa.
+class PantallaPlanning extends ConsumerStatefulWidget {
+  const PantallaPlanning({
+    required this.planningId,
+    this.diaInicial,
+    super.key,
+  });
 
   final String planningId;
 
+  /// Dia por el que abrir, si se pide uno. Lo inyecta el enrutador desde la URL
+  /// (`?dia=`): es como llega el boton "Visualizar resultados de la sesion" del
+  /// editor, para caer en el dia que se estaba planificando.
+  final int? diaInicial;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PantallaPlanning> createState() => _EstadoPantallaPlanning();
+}
+
+class _EstadoPantallaPlanning extends ConsumerState<PantallaPlanning> {
+  /// Dia elegido en la tira. `null` hasta que se toca: manda el de la URL.
+  int? _dia;
+
+  @override
+  Widget build(BuildContext context) {
     final esEntrenador = ref.watch(rolActualProvider)?.esEntrenador ?? false;
-    final planning = ref.watch(planningCompletoProvider(planningId));
+    final planning = ref.watch(planningCompletoProvider(widget.planningId));
     ref.watch(controladorPlanificacionProvider);
 
     return PantallaConNavegacion(
       seccion: SeccionDeNavegacion.clientes,
       appBar: AppBar(
-        title: const Text('Planning semanal'),
+        title: const Text('Resultados de la semana'),
         actions: [
           if (esEntrenador && planning.value != null) ...[
             IconButton(
@@ -70,7 +102,7 @@ class PantallaPlanning extends ConsumerWidget {
             tooltip: 'Recargar',
             icon: const Icon(Icons.refresh),
             onPressed: () =>
-                ref.invalidate(planningCompletoProvider(planningId)),
+                ref.invalidate(planningCompletoProvider(widget.planningId)),
           ),
         ],
       ),
@@ -87,8 +119,9 @@ class PantallaPlanning extends ConsumerWidget {
                   textAlign: TextAlign.center,
                 ),
                 TextButton(
-                  onPressed: () =>
-                      ref.invalidate(planningCompletoProvider(planningId)),
+                  onPressed: () => ref.invalidate(
+                    planningCompletoProvider(widget.planningId),
+                  ),
                   child: const Text('Reintentar'),
                 ),
               ],
@@ -97,8 +130,9 @@ class PantallaPlanning extends ConsumerWidget {
         ),
         data: (datos) => _Semana(
           planning: datos,
-          // Un planning archivado es de solo lectura, tambien para el entrenador.
-          puedeEditar: esEntrenador && datos.esEditable,
+          diaElegido: _dia ?? widget.diaInicial,
+          onElegirDia: (orden) => setState(() => _dia = orden),
+          esEntrenador: esEntrenador,
           // Solo el cliente registra, y solo sobre un planning activo: es lo que
           // exige la politica de `series_realizadas`.
           puedeRegistrar: !esEntrenador && datos.estado.esActivo,
@@ -111,58 +145,56 @@ class PantallaPlanning extends ConsumerWidget {
 class _Semana extends ConsumerWidget {
   const _Semana({
     required this.planning,
-    required this.puedeEditar,
+    required this.diaElegido,
+    required this.onElegirDia,
+    required this.esEntrenador,
     required this.puedeRegistrar,
   });
 
   final PlanningSemanal planning;
-  final bool puedeEditar;
+  final int? diaElegido;
+  final ValueChanged<int> onElegirDia;
+  final bool esEntrenador;
   final bool puedeRegistrar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textos = Theme.of(context).textTheme;
+    final sesiones = planning.sesionesOrdenadas;
+    // Por defecto, el primer dia: es la semana entera lo que se consulta, no
+    // una sesion suelta.
+    final sesion =
+        planning.sesionNumero(diaElegido ?? -1) ?? sesiones.firstOrNull;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(Tokens.margenPantalla),
       children: [
-        _Cabecera(planning: planning, puedeEditar: puedeEditar),
+        _Cabecera(planning: planning, esEntrenador: esEntrenador),
         const Divider(height: 24),
-        // Una sesion por fila, numeradas: ya no hay dias de la semana que
-        // mostrar, porque la sesion no cae en ninguno.
-        for (final sesion in planning.sesionesOrdenadas)
-          _FilaSesion(
-            sesion: sesion,
-            planning: planning,
-            puedeEditar: puedeEditar,
-            puedeRegistrar: puedeRegistrar,
+        if (sesiones.isEmpty)
+          Text(
+            esEntrenador
+                ? 'Esta semana no tiene sesiones. Se montan en la pantalla de '
+                      'planificación.'
+                : 'Esta semana no tiene sesiones.',
+            style: textos.bodySmall,
+          )
+        else ...[
+          ChipsDeDias(
+            sesiones: sesiones,
+            elegida: sesion?.orden,
+            onElegir: onElegirDia,
           ),
-        if (puedeEditar && planning.esEditable) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: const Key('boton_anadir_sesion'),
-              onPressed: () => pedirDatosSesion(
-                context: context,
-                ref: ref,
-                planning: planning,
-              ),
-              icon: const Icon(Icons.add, size: 18),
-              label: Text('Añadir día ${planning.siguienteOrden}'),
+          const SizedBox(height: 18),
+          if (sesion != null) ResultadosDeSesion(sesion: sesion),
+          if (puedeRegistrar && sesion != null) ...[
+            const SizedBox(height: Tokens.separacionBloques),
+            BotonCta(
+              etiqueta: 'Registrar mi resultado',
+              onPulsar: () =>
+                  context.go(Rutas.registroDeSesion(planning.id, sesion.id)),
             ),
-          ),
-        ],
-        if (planning.sesiones.isEmpty) ...[
-          const SizedBox(height: 16),
-          Center(
-            child: Text(
-              puedeEditar
-                  ? 'Añade la primera sesión para empezar.'
-                  : 'Esta semana no tiene sesiones.',
-              style: textos.bodySmall,
-            ),
-          ),
+          ],
         ],
       ],
     );
@@ -170,10 +202,10 @@ class _Semana extends ConsumerWidget {
 }
 
 class _Cabecera extends ConsumerWidget {
-  const _Cabecera({required this.planning, required this.puedeEditar});
+  const _Cabecera({required this.planning, required this.esEntrenador});
 
   final PlanningSemanal planning;
-  final bool puedeEditar;
+  final bool esEntrenador;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -195,9 +227,11 @@ class _Cabecera extends ConsumerWidget {
                 style: textos.titleLarge,
               ),
             ),
-            if (puedeEditar)
+            // Datos del planning, no su contenido: el objetivo y las fechas no
+            // se editan en ningun otro sitio.
+            if (esEntrenador)
               IconButton(
-                tooltip: 'Editar planning',
+                tooltip: 'Editar los datos del planning',
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () async {
                   await pedirDatosPlanning(
@@ -236,140 +270,7 @@ class _Cabecera extends ConsumerWidget {
             ),
           ],
         ),
-        if (!planning.esEditable) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Archivado: solo consulta. Reactívalo para poder modificarlo.',
-            style: textos.bodySmall,
-          ),
-        ],
       ],
-    );
-  }
-}
-
-/// Una sesion de la semana, numerada.
-class _FilaSesion extends ConsumerWidget {
-  const _FilaSesion({
-    required this.sesion,
-    required this.planning,
-    required this.puedeEditar,
-    required this.puedeRegistrar,
-  });
-
-  final SesionEntrenamiento sesion;
-  final PlanningSemanal planning;
-  final bool puedeEditar;
-  final bool puedeRegistrar;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final textos = Theme.of(context).textTheme;
-    final esquema = Theme.of(context).colorScheme;
-    final actual = sesion;
-    // Esta pantalla la usan los dos roles y el planning cuelga de sitios
-    // distintos (`/cliente/planning/:id` y `/entrenador/clientes/:id/...`), así
-    // que las rutas hijas se construyen sobre aquella por la que se ha llegado.
-    final rutaDeEstePlanning = GoRouterState.of(context).uri.path;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Día ${sesion.orden}',
-                style: textos.titleSmall?.copyWith(color: esquema.primary),
-              ),
-              const Spacer(),
-              if (sesion.fechaRealizada case final hecha?)
-                Text('Hecha el ${_comoFecha(hecha)}', style: textos.bodySmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          TarjetaSesion(
-            sesion: actual,
-            planning: planning,
-            puedeEditar: puedeEditar,
-            onRegistrar: !puedeRegistrar
-                ? null
-                : () => context.go(
-                    Rutas.registroDeSesion(planning.id, actual.id),
-                  ),
-            onAnadirBloque: () => pedirDatosBloque(
-              context: context,
-              ref: ref,
-              sesion: actual,
-              planningId: planning.id,
-            ),
-            onEditarSesion: () => pedirDatosSesion(
-              context: context,
-              ref: ref,
-              planning: planning,
-              sesion: actual,
-            ),
-            onEliminarSesion: () => confirmarEliminarSesion(
-              context: context,
-              ref: ref,
-              sesion: actual,
-              planningId: planning.id,
-            ),
-            onEditarBloque: (bloque) => pedirDatosBloque(
-              context: context,
-              ref: ref,
-              sesion: actual,
-              planningId: planning.id,
-              bloque: bloque,
-            ),
-            onEliminarBloque: (bloque) => confirmarEliminarBloque(
-              context: context,
-              ref: ref,
-              bloque: bloque,
-              planningId: planning.id,
-            ),
-            onAnadirEjercicio: (bloque) => context.go(
-              Rutas.nuevoEjercicioEnBloque(rutaDeEstePlanning, bloque.id),
-            ),
-            onEditarEjercicio: (bloque, ejercicio) => context.go(
-              Rutas.editarEjercicioDelBloque(
-                rutaDeEstePlanning,
-                bloque.id,
-                ejercicio.id,
-              ),
-            ),
-            onEliminarEjercicio: (ejercicio) => confirmarEliminarEjercicio(
-              context: context,
-              ref: ref,
-              ejercicio: ejercicio,
-              planningId: planning.id,
-            ),
-            // Solo si se puede editar: en un planning archivado o en la vista
-            // del cliente no hay asa que arrastrar.
-            onMoverBloque: !puedeEditar
-                ? null
-                : (desde, hasta) => moverBloque(
-                    context: context,
-                    ref: ref,
-                    sesion: actual,
-                    planningId: planning.id,
-                    desde: desde,
-                    hasta: hasta,
-                  ),
-            onMoverEjercicio: !puedeEditar
-                ? null
-                : (bloque, desde, hasta) => moverEjercicio(
-                    context: context,
-                    ref: ref,
-                    bloque: bloque,
-                    planningId: planning.id,
-                    desde: desde,
-                    hasta: hasta,
-                  ),
-          ),
-        ],
-      ),
     );
   }
 }

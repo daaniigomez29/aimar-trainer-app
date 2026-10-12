@@ -286,6 +286,33 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   invitado lo dejaba sin salida, porque allí no tiene ninguna contraseña que
   escribir. No abre nada: fijar la contraseña sigue exigiendo la sesión del
   enlace, y sin ella `establecerNuevaContrasena` responde `ErrorEnlaceCaducado`.
+- **"Lo pasado no se toca" se aplica boton a boton, y hay que repasarlos todos**
+  (2026-10-12). La regla vive en `PlanningSemanal.esEditable`, pero cada accion
+  de la pantalla tiene que consultarla por su cuenta, asi que olvidarse de una
+  no da ningun error: deja un boton que invita a algo imposible. Se quedaron dos
+  sin gatear hasta que se vieron en uso: **copiar lo que hizo el cliente a lo
+  planificado** (rellenaba los campos y luego no habia donde guardar) y
+  **"Añadir ejercicio"** de un bloque (abria el formulario de algo que el
+  trigger iba a rechazar). El criterio es **deshabilitar, no esconder**, con el
+  motivo en el tooltip cuando quepa: un boton que desaparece se lee como que la
+  funcion no existe. Lo vigila `editor_semana_pasada_test.dart`.
+- **El filtro por tipo y el muscular se cruzan, no se sustituyen** (2026-10-12).
+  Pulsar "Fortalecimiento" y "Hombro" da los ejercicios de fortalecimiento de
+  hombro, que es justo la consulta útil para un cliente lesionado. Se barajo
+  hacerlos excluyentes para que la combinacion no diera nunca una lista vacia,
+  y se descarto: la lista vacia ya se explica sola y ofrece "Quitar filtros".
+  Solo se ofrecen los chips de Cardio y Fortalecimiento: Fuerza es la mayor
+  parte de la biblioteca y los grupos musculares ya sirven para recorrerla.
+- **Un ejercicio de series nace con 3x8** (2026-10-12), y cada serie añadida
+  hereda peso, repeticiones y RIR de la anterior. Las constantes viven en el
+  dominio (`seriesPorDefecto`, `repeticionesPorDefecto`), no en la pantalla:
+  es una regla de planificacion. Al **editar** no se toca nada, se ensena lo
+  guardado.
+- **El cliente entra siempre por la semana en curso** (2026-10-12). Si no tiene
+  planning de esta semana se le ensena la semana vacia, no el planning mas
+  cercano: antes se caia en el mas reciente de la lista, que llega ordenada por
+  fecha descendente, y el cliente abria la app directamente en la semana que
+  viene en cuanto el entrenador se la dejaba montada.
 - **La invitación manda sobre el tipo de enlace** (2026-10-12). Un cliente
   invitado rescatado con un enlace de **recuperación** sigue sin tener
   contraseña, así que el estado lo decide el metadato `debe_fijar_contrasena` y no

@@ -132,6 +132,7 @@ Future<FacetasBiblioteca> facetasBiblioteca(
 
   final porGrupo = <GrupoMuscular, int>{};
   final musculos = <Musculo>{};
+  final tipos = <TipoEjercicio>{};
   var haySinClasificar = false;
 
   for (final ejercicio in visibles) {
@@ -139,12 +140,14 @@ Future<FacetasBiblioteca> facetasBiblioteca(
       porGrupo[grupo] = (porGrupo[grupo] ?? 0) + 1;
     }
     musculos.addAll(ejercicio.musculos);
+    tipos.add(ejercicio.tipo);
     haySinClasificar = haySinClasificar || !ejercicio.estaClasificado;
   }
 
   return FacetasBiblioteca(
     ejerciciosPorGrupo: porGrupo,
     musculosConEjercicios: musculos,
+    tiposConEjercicios: tipos,
     haySinClasificar: haySinClasificar,
   );
 }

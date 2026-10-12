@@ -17,6 +17,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/wi
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/fila_de_serie.dart';
 
 /// CU-08 (anadir ejercicio a un bloque) y CU-12 (editarlo).
 ///
@@ -51,7 +52,7 @@ class _EstadoFormularioEjercicioPlanificado
   late final TextEditingController _orden;
   late final TextEditingController _descanso;
   late final TextEditingController _minutos;
-  late List<_FilaSerie> _series;
+  late List<CamposDeSerie> _series;
 
   @override
   void initState() {
@@ -67,12 +68,14 @@ class _EstadoFormularioEjercicioPlanificado
     _minutos = TextEditingController(
       text: _sinDecimalSobrante(previo?.minutosPlanificados),
     );
+    // Al editar se ensena exactamente lo guardado. Al crear, el formulario
+    // abre ya con lo de siempre (3x8), que es lo que Aimar acaba poniendo.
     _series = previo != null && previo.series.isNotEmpty
         ? [
             for (final s in previo.series)
-              _FilaSerie.desde(DatosSerie.desdeSerie(s)),
+              CamposDeSerie.desde(DatosSerie.desdeSerie(s)),
           ]
-        : [_FilaSerie.nueva(1)];
+        : [for (var i = 0; i < seriesPorDefecto; i++) CamposDeSerie.nueva()];
   }
 
   static String _sinDecimalSobrante(double? valor) {
@@ -234,8 +237,10 @@ class _EstadoFormularioEjercicioPlanificado
               errorRepeticiones: estado.errorDelCampo('repeticiones'),
               errorPeso: estado.errorDelCampo('peso'),
               errorRir: estado.errorDelCampo('rir'),
+              // La serie nueva hereda lo de la anterior: las series de un
+              // ejercicio casi siempre repiten peso y repeticiones.
               onAnadirSerie: () => setState(() {
-                _series.add(_FilaSerie.nueva(_series.length + 1));
+                _series.add(CamposDeSerie.comoLaAnterior(_series.last));
               }),
               onQuitarSerie: (indice) => setState(() {
                 _series.removeAt(indice).dispose();
@@ -480,7 +485,7 @@ class _CamposFuerza extends StatelessWidget {
   });
 
   final TextEditingController descanso;
-  final List<_FilaSerie> series;
+  final List<CamposDeSerie> series;
   final bool habilitado;
   final String? errorDescanso;
   final String? errorSeries;
@@ -536,120 +541,18 @@ class _CamposFuerza extends StatelessWidget {
         ],
         const SizedBox(height: 8),
         for (var i = 0; i < series.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 28,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 18),
-                    child: Text('${i + 1}', style: textos.labelLarge),
-                  ),
-                ),
-                Expanded(
-                  child: TextField(
-                    key: Key('campo_peso_$i'),
-                    controller: series[i].peso,
-                    enabled: habilitado,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                    ],
-                    onChanged: (_) => onCambio(),
-                    decoration: InputDecoration(
-                      labelText: 'Peso',
-                      isDense: true,
-                      errorText: i == 0 ? errorPeso : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    key: Key('campo_reps_$i'),
-                    controller: series[i].repeticiones,
-                    enabled: habilitado,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => onCambio(),
-                    decoration: InputDecoration(
-                      labelText: 'Reps *',
-                      isDense: true,
-                      errorText: i == 0 ? errorRepeticiones : null,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    key: Key('campo_rir_$i'),
-                    controller: series[i].rir,
-                    enabled: habilitado,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (_) => onCambio(),
-                    decoration: InputDecoration(
-                      labelText: 'RIR',
-                      isDense: true,
-                      helperText: i == 0 ? '0-10' : null,
-                      errorText: i == 0 ? errorRir : null,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  key: Key('quitar_serie_$i'),
-                  tooltip: 'Quitar serie',
-                  icon: const Icon(Icons.remove_circle_outline, size: 20),
-                  // Siempre debe quedar al menos una serie.
-                  onPressed: habilitado && series.length > 1
-                      ? () => onQuitarSerie(i)
-                      : null,
-                ),
-              ],
-            ),
+          FilaDeSerie(
+            numero: i + 1,
+            campos: series[i],
+            habilitado: habilitado,
+            onCambio: onCambio,
+            // Siempre debe quedar al menos una serie.
+            onQuitar: series.length > 1 ? () => onQuitarSerie(i) : null,
+            errorPeso: errorPeso,
+            errorRepeticiones: errorRepeticiones,
+            errorRir: errorRir,
           ),
       ],
     );
-  }
-}
-
-/// Los tres controladores de texto de una fila de serie.
-class _FilaSerie {
-  _FilaSerie({
-    required this.repeticiones,
-    required this.peso,
-    required this.rir,
-  });
-
-  factory _FilaSerie.nueva(int numero) => _FilaSerie(
-    repeticiones: TextEditingController(),
-    peso: TextEditingController(),
-    rir: TextEditingController(),
-  );
-
-  factory _FilaSerie.desde(DatosSerie datos) => _FilaSerie(
-    repeticiones: TextEditingController(text: datos.repeticiones.toString()),
-    peso: TextEditingController(
-      text: datos.peso == null
-          ? ''
-          : (datos.peso == datos.peso!.roundToDouble()
-                ? datos.peso!.toStringAsFixed(0)
-                : datos.peso!.toStringAsFixed(2)),
-    ),
-    rir: TextEditingController(text: datos.rir?.toString() ?? ''),
-  );
-
-  final TextEditingController repeticiones;
-  final TextEditingController peso;
-  final TextEditingController rir;
-
-  void dispose() {
-    repeticiones.dispose();
-    peso.dispose();
-    rir.dispose();
   }
 }

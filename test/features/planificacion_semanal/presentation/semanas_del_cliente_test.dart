@@ -166,4 +166,38 @@ void main() {
 
     expect(find.text('Todavía no tienes ninguna semana'), findsOneWidget);
   });
+
+  // El fallo: el cliente abria la app y aparecia en la semana que viene, porque
+  // sin planning de hoy se cogia el mas reciente de la lista, que llega
+  // ordenada de mas nueva a mas vieja.
+  testWidgets('con la semana que viene ya montada, se entra por la de hoy', (
+    tester,
+  ) async {
+    final siguiente = estaSemana.siguiente;
+    await montar(tester, lista: [deLaSemana(siguiente, id: 'p-siguiente')]);
+
+    expect(find.text('Semana del ${estaSemana.etiqueta}'), findsOneWidget);
+    expect(find.text('Semana sin planning'), findsOneWidget);
+    expect(find.text('Sesion de p-siguiente'), findsNothing);
+  });
+
+  testWidgets('tampoco se cuela la semana pasada', (tester) async {
+    await montar(
+      tester,
+      lista: [deLaSemana(estaSemana.anterior, id: 'p-ayer')],
+    );
+
+    expect(find.text('Semana del ${estaSemana.etiqueta}'), findsOneWidget);
+    expect(find.text('Semana sin planning'), findsOneWidget);
+  });
+
+  testWidgets('y la que viene sigue estando a una flecha', (tester) async {
+    final siguiente = estaSemana.siguiente;
+    await montar(tester, lista: [deLaSemana(siguiente, id: 'p-siguiente')]);
+
+    await tester.tap(find.byKey(const Key('semana_siguiente')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sesion de p-siguiente'), findsOneWidget);
+  });
 }

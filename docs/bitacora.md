@@ -2210,4 +2210,130 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   lo cubre el camino de pedir otro enlace.
 - "Reenviar invitación" desde la ficha del cliente queda como comodidad, no como
   necesidad. Implica Edge Function nueva: sin empezar.
+
+**Hecho (segunda tanda del día):**
+
+- **El cliente entra por la semana en curso.** `_planningQueTocaVer` caía en
+  `activos.firstOrNull` cuando no había planning de hoy, y la lista llega
+  ordenada por `fecha_inicio` descendente: con la semana siguiente ya montada, el
+  cliente abría la app y apareciía planificando el futuro. Ahora, sin planning de
+  hoy, se enseña la semana en curso vacía, con su navegador. Tres tests.
+- **Chips de Cardio y Fortalecimiento** en la biblioteca y en el filtro
+  compartido (panel del planning y formulario de CU-08). **Se combinan** con el
+  filtro muscular. Facetas nuevas (`tiposConEjercicios`) para no ofrecer un chip
+  sin ejercicios detrás, e icono opcional en `ChipFiltro`, porque comparten fila
+  con los grupos musculares y filtran otra cosa. Cuatro tests.
+- **La tira de días del entrenador queda fija** al bajar la página. Comprobado
+  que el test falla sin el arreglo: compara la posición del chip antes y después
+  de arrastrar.
+- **3x8 por defecto** al añadir un ejercicio de series, y la serie nueva hereda
+  lo escrito en la anterior. Al editar no cambia nada.
+- **La fila de serie es ahora un widget** (`presentation/widgets/fila_de_serie.dart`),
+  con `CamposDeSerie` (los tres controladores y su `dispose`) separado de
+  `FilaDeSerie` (lo que se pinta). Estaba escrita a mano dentro del formulario.
+  **No se ha tocado la cuadrícula del editor del entrenador**: es otra fila
+  —sin etiquetas, sin botón de quitar y con la columna de "la última vez" al
+  lado— y unificarlas saldría un widget con seis banderas.
+
+**Pendiente / notas (segunda tanda):**
+
+- `flutter test` **462**, `dart analyze --fatal-infos` limpio.
+- Del plan de siete puntos quedan: **duplicar un día** (migración nueva) y
+  **mover días** (el grande: `orden` es identidad, no presentación). Sin empezar,
+  a la espera de su visto bueno.
+- `jwt_expiry` a 600 en producción, decidido por él: acota a diez minutos el
+  acceso de un cliente recién dado de baja que ya tuviera la sesión abierta. El
+  arreglo de fondo —que RLS mire `clientes.estado`— queda planteado y **sin
+  hacer**: toca políticas, y no se toca sin aprobarlo.
+- Descartado el botón "Me han dado de alta y no tengo contraseña" del login.
+
+**Corregido (tercera tanda):**
+
+- **En una semana pasada se podía pulsar "copiar a lo planificado".** Los campos
+  se rellenaban con lo que hizo el cliente y después no había forma de guardar
+  —el botón de guardar sí estaba deshabilitado—, así que parecía que el cambio
+  se había perdido. Ahora sale deshabilitado, como editar y eliminar, con el
+  motivo en el tooltip. La referencia **se sigue viendo**: consultar lo de la
+  semana pasada es el motivo de abrirla.
+- **Y el mismo fallo en "Añadir ejercicio"** de cada bloque, encontrado al
+  repasar el archivo: en una semana pasada abría el formulario de un ejercicio
+  que los triggers iban a rechazar. También deshabilitado.
+- Repasados los demás botones de esa pantalla uno por uno: el resto ya consultaba
+  `esEditable` (el panel de biblioteca incluido, por `puedeEditar`).
+- Tres tests nuevos en `editor_semana_pasada_test.dart`, y comprobado que los dos
+  que importan fallan sin el arreglo. El tercero vigila que las celdas de series
+  sigan deshabilitadas, que ya lo estaban.
+
+**Pendiente / notas (tercera tanda):**
+
+- `flutter test` **465**, `dart analyze --fatal-infos` limpio.
+
+**Hecho (cuarta tanda):**
+
+- **X en el buscador de ejercicios** para borrar lo escrito de un toque, en los
+  dos sitios que usan `CampoBusqueda` (la biblioteca y el filtro del panel y del
+  formulario de CU-08). Solo aparece con algo escrito. Lo importante no es la X
+  sino que **avisa al filtro**: vive en un provider, así que limpiar solo el
+  controlador dejaría el campo vacío y la lista recortada por un texto que ya no
+  se ve. Dos tests.
+- **"Añadir serie" en la pantalla de planificación**, debajo de la cuadrícula de
+  cada ejercicio. Antes obligaba a abrir el formulario del ejercicio, siendo lo
+  que más se toca al montar la semana. La fila nueva **hereda** peso, reps y RIR
+  de la anterior, igual que en el formulario, y **no guarda**: queda como cambio
+  pendiente ("Sin guardar") y lo guarda el botón de siempre, que ya hace una
+  llamada atómica por ejercicio. Deshabilitado en una semana pasada, como el
+  resto. Tres tests, uno de ellos verificando que las dos series llegan al
+  repositorio al guardar.
+- Quitar una serie **sigue estando solo en el formulario**: no se ha tocado.
+
+**Pendiente / notas (cuarta tanda):**
+
+- `flutter test` **470**, `dart analyze --fatal-infos` limpio.
+
+**Hecho (quinta tanda):**
+
+- **La vista del planning de un cliente pasa a ser de resultados y de solo
+  consulta** (`/entrenador/clientes/:id/plannings/:planningId`). El entrenador no
+  tenía dónde ver lo que hacen sus clientes el mismo día: lo único que lo
+  enseñaba era la columna de referencia del editor, y para llegar a ella había
+  que ponerse a planificar la semana siguiente. Ahora:
+  - **un día a la vez**, con tira de chips, en vez de la semana entera de corrido;
+  - por ejercicio, **lo planificado al lado de lo que hizo** (serie a serie,
+    emparejando por número y enseñando las que sobran de cualquiera de los dos
+    lados, porque plan y realizado son independientes por regla de dominio), o
+    los minutos en Cardio, con su estado (Registrado / Pendiente);
+  - **sin acciones de escritura sobre el contenido**: añadir, editar, borrar y
+    reordenar sesiones, bloques y ejercicios desaparecen de aquí. Se quedan las
+    del planning entero, que no editan el plan y no tienen otro sitio: archivar o
+    reactivar, cambiar el objetivo y eliminarlo. Si también quieres esas fuera, es
+    quitar tres botones.
+- **Botón "Visualizar resultados de la sesión"** a la derecha del nombre del día
+  en el editor, que abre esa vista **por el día que se está planificando**
+  (`?dia=N`, igual que ya hacía el cliente al terminar un ejercicio).
+- **Quitar una serie desde la cuadrícula del editor**, con confirmación. Avisa
+  si el cliente ya registró esa serie: lo que hizo **no se borra** (vive en
+  `series_realizadas`, otra tabla), pero se queda sin plan enfrente con el que
+  compararlo. La última serie no se puede quitar: un ejercicio que va por series
+  necesita al menos una, y es mejor deshabilitar que fallar al guardar.
+- **`TarjetaSesion` borrado** (368 líneas). Era lo que pintaba la semana en esa
+  vista con sus diez callbacks de escritura; sin edición ya no tenía uso, y el
+  editor tiene su propia pintura. En su sitio, dos widgets nuevos:
+  `ResultadosDeSesion` y `ChipsDeDias`, este último compartido con el editor,
+  que tenía su propia copia de la tira.
+- `arrastre_planning_test.dart` colgaba de `TarjetaSesion`: reescrito contra
+  `ListaArrastrable`, que es el widget que presta el arrastre de verdad (CU-11 y
+  CU-12 siguen funcionando en el editor). Así no se cae cada vez que cambia la
+  pantalla que lo usa.
+
+**Pendiente / notas (quinta tanda):**
+
+- `flutter test` **476**, `dart analyze --fatal-infos` limpio.
+- **Sospecha de rendimiento sin confirmar**, a propósito del aviso
+  `'requestAnimationFrame' handler took 245ms`: cada tecla en una celda de series
+  llama a `onCambiarSeries`, que hace `setState` en
+  `_PantallaPlanificacionEntrenadorState`, o sea **repinta la pantalla entera**
+  del editor (incluido el panel de biblioteca) en cada pulsación. Encaja con el
+  síntoma. El arreglo sería sacar el mapa de pendientes del `State` a un provider
+  o un `ValueNotifier` y que solo se suscriban el botón de guardar y la fila. Sin
+  medir y sin tocar.
 - Todo sin commitear: los commits los hace él.

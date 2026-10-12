@@ -60,12 +60,18 @@ class ChipFiltro extends StatelessWidget {
     required this.etiqueta,
     required this.activo,
     required this.onPulsar,
+    this.icono,
     super.key,
   });
 
   final String etiqueta;
   final bool activo;
   final VoidCallback onPulsar;
+
+  /// Icono delante de la etiqueta. Lo llevan los chips de **tipo** de
+  /// ejercicio, que comparten fila con los de grupo muscular y filtran otra
+  /// cosa: sin la marca, "Cardio" se lee como un grupo mas.
+  final IconData? icono;
 
   @override
   Widget build(BuildContext context) {
@@ -83,12 +89,25 @@ class ChipFiltro extends StatelessWidget {
             borderRadius: BorderRadius.circular(Tokens.radioPastilla),
             border: Border.all(color: activo ? Tokens.acento : Tokens.borde),
           ),
-          child: Text(
-            etiqueta,
-            style: textos.bodyMedium?.copyWith(
-              color: activo ? Tokens.acento : Tokens.textoSuave,
-              fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icono case final dibujo?) ...[
+                Icon(
+                  dibujo,
+                  size: 15,
+                  color: activo ? Tokens.acento : Tokens.textoSuave,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                etiqueta,
+                style: textos.bodyMedium?.copyWith(
+                  color: activo ? Tokens.acento : Tokens.textoSuave,
+                  fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -321,14 +340,37 @@ class CampoBusqueda extends StatelessWidget {
   final String pista;
   final Key? clave;
 
+  /// `ValueListenableBuilder` sobre el controlador: hace falta para que la X
+  /// aparezca y desaparezca al teclear. Quien escribe en el filtro es Riverpod,
+  /// no este widget, asi que sin escuchar al controlador no se repintaria.
   @override
-  Widget build(BuildContext context) => TextField(
-    key: clave,
-    controller: controlador,
-    onChanged: onCambio,
-    decoration: InputDecoration(
-      hintText: pista,
-      prefixIcon: const Icon(Icons.search, color: Tokens.textoSuave),
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: controlador,
+    builder: (context, valor, _) => TextField(
+      key: clave,
+      controller: controlador,
+      onChanged: onCambio,
+      decoration: InputDecoration(
+        hintText: pista,
+        prefixIcon: const Icon(Icons.search, color: Tokens.textoSuave),
+        // Solo con algo escrito: una X siempre visible invita a pulsarla
+        // cuando no hay nada que borrar.
+        suffixIcon: valor.text.isEmpty
+            ? null
+            : IconButton(
+                key: const Key('limpiar_busqueda'),
+                tooltip: 'Borrar la busqueda',
+                icon: const Icon(Icons.close, size: 18),
+                color: Tokens.textoSuave,
+                // El `onCambio` es obligatorio, no decorativo: el filtro vive
+                // en un provider y solo se entera por aqui. Sin el, el campo
+                // se quedaria vacio y la lista seguiria recortada.
+                onPressed: () {
+                  controlador.clear();
+                  onCambio('');
+                },
+              ),
+      ),
     ),
   );
 }

@@ -102,6 +102,19 @@ abstract final class Rutas {
     String planningId,
   ) => '${planningsDeCliente(idCliente)}/$planningId';
 
+  /// Los resultados de un dia concreto de la semana de un cliente.
+  ///
+  /// Es la misma pantalla, abierta por el dia que interesa: asi el boton del
+  /// editor ("Visualizar resultados de la sesion") cae en el dia que se estaba
+  /// planificando y no en el primero.
+  static String resultadosDeLaSesion({
+    required String idCliente,
+    required String planningId,
+    required int orden,
+  }) =>
+      '${planningDeClienteConcreto(idCliente, planningId)}'
+      '?$paramDia=$orden';
+
   /// Registro del resultado de una sesión (CU-20) y de un ejercicio suelto.
   static const String sesiones = 'sesiones';
   static const String unaSesion = ':idSesion';

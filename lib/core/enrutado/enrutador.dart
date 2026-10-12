@@ -130,6 +130,11 @@ GoRouter enrutador(Ref ref) {
                         path: Rutas.unPlanning,
                         builder: (context, state) => PantallaPlanning(
                           planningId: state.pathParameters['planningId']!,
+                          // `?dia=`: con que dia abrir. Lo pone el boton de
+                          // "Visualizar resultados de la sesion" del editor.
+                          diaInicial: int.tryParse(
+                            state.uri.queryParameters[Rutas.paramDia] ?? '',
+                          ),
                         ),
                         routes: [
                           GoRoute(

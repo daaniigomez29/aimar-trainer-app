@@ -9,7 +9,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_e
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/tarjeta_sesion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/resultados_de_sesion.dart';
 
 import '../../planificacion_semanal/ayudas_planificacion.dart';
 
@@ -70,7 +70,7 @@ void main() {
     expect(find.byIcon(Icons.fitness_center), findsOneWidget);
   });
 
-  testWidgets('la sesión planificada pinta la foto de cada ejercicio', (
+  testWidgets('la vista de resultados pinta la foto de cada ejercicio', (
     tester,
   ) async {
     final sesion = sesionDePrueba(
@@ -86,22 +86,7 @@ void main() {
       ],
     );
 
-    await montar(
-      tester,
-      TarjetaSesion(
-        sesion: sesion,
-        planning: planningDePrueba(sesiones: [sesion]),
-        puedeEditar: true,
-        onAnadirBloque: () {},
-        onEditarSesion: () {},
-        onEliminarSesion: () {},
-        onEditarBloque: (_) {},
-        onEliminarBloque: (_) {},
-        onAnadirEjercicio: (_) {},
-        onEditarEjercicio: (_, _) {},
-        onEliminarEjercicio: (_) {},
-      ),
-    );
+    await montar(tester, ResultadosDeSesion(sesion: sesion));
 
     expect(find.byType(MiniaturaEjercicio), findsOneWidget);
     verify(() => repositorio.urlPublicaDeImagen('ej-1.png')).called(1);

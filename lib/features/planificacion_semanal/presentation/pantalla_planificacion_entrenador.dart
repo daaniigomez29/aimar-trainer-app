@@ -626,24 +626,59 @@ class _Planning extends ConsumerWidget {
             planning.sesionesOrdenadas.firstOrNull;
         final escritorio = esEscritorio(context);
 
-        final principal = ListView(
-          padding: const EdgeInsets.all(Tokens.margenPantalla),
+        // La tira de dias **no se va con el scroll**: es el mando para cambiar
+        // de dia, y un dia con tres bloques es mas largo que la pantalla, asi
+        // que irse abajo obligaba a subir del todo solo para pasar al Dia 2.
+        //
+        // Va en un `Column` con la lista dentro de un `Expanded`, y la tira ya
+        // trae altura acotada (`SizedBox(height: 44)`): sin eso, un hijo sin
+        // acotar dentro de un `Column` revienta (trampa 27).
+        final principal = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _PestanasDeSesion(
-              planning: planning,
-              elegida: sesion?.orden,
-              onElegir: onElegirSesion,
-            ),
-            const SizedBox(height: 18),
-            if (sesion == null)
-              _SemanaVacia(planning: planning, onSesionCreada: onElegirSesion)
-            else
-              _Sesion(
-                sesion: sesion,
-                planning: planning,
-                pendientes: pendientes,
-                onCambiarSeries: onCambiarSeries,
+            Container(
+              // Opaca y con una linea debajo: transparente, el contenido se
+              // veria pasar por detras de los chips al desplazar.
+              decoration: const BoxDecoration(
+                color: Tokens.fondo,
+                border: Border(bottom: BorderSide(color: Tokens.borde)),
               ),
+              padding: const EdgeInsets.fromLTRB(
+                Tokens.margenPantalla,
+                Tokens.margenPantalla,
+                Tokens.margenPantalla,
+                10,
+              ),
+              child: _PestanasDeSesion(
+                planning: planning,
+                elegida: sesion?.orden,
+                onElegir: onElegirSesion,
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  Tokens.margenPantalla,
+                  18,
+                  Tokens.margenPantalla,
+                  Tokens.margenPantalla,
+                ),
+                children: [
+                  if (sesion == null)
+                    _SemanaVacia(
+                      planning: planning,
+                      onSesionCreada: onElegirSesion,
+                    )
+                  else
+                    _Sesion(
+                      sesion: sesion,
+                      planning: planning,
+                      pendientes: pendientes,
+                      onCambiarSeries: onCambiarSeries,
+                    ),
+                ],
+              ),
+            ),
           ],
         );
 
@@ -866,6 +901,20 @@ class _Sesion extends ConsumerWidget {
                 ],
               ),
             ),
+            // A la derecha del nombre del dia: lo que el cliente hizo se
+            // consulta en su propia pantalla, no aqui. Aqui se planifica.
+            IconButton(
+              key: Key('ver_resultados_${sesion.id}'),
+              tooltip: 'Visualizar resultados de la sesión',
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              onPressed: () => context.go(
+                Rutas.resultadosDeLaSesion(
+                  idCliente: planning.clienteId,
+                  planningId: planning.id,
+                  orden: sesion.orden,
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Editar sesión',
               icon: const Icon(Icons.edit_outlined, size: 18),
@@ -1047,12 +1096,16 @@ class _Bloque extends ConsumerWidget {
           const SizedBox(height: 8),
           TextButton.icon(
             key: Key('anadir_ejercicio_${bloque.id}'),
-            onPressed: () => context.go(
-              Rutas.nuevoEjercicioEnBloque(
-                Rutas.planningEnEdicion(planning.id),
-                bloque.id,
-              ),
-            ),
+            // Mismo caso que el boton de copiar: en una semana pasada abria el
+            // formulario para nada, porque guardarlo lo rechazan los triggers.
+            onPressed: !planning.esEditable
+                ? null
+                : () => context.go(
+                    Rutas.nuevoEjercicioEnBloque(
+                      Rutas.planningEnEdicion(planning.id),
+                      bloque.id,
+                    ),
+                  ),
             icon: const Icon(Icons.add, size: 16),
             label: const Text('Añadir ejercicio'),
           ),
@@ -1140,6 +1193,16 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
       ),
   ];
 
+  /// `null` en una semana que ya no se edita, para que el boton salga
+  /// deshabilitado como los de editar y eliminar.
+  ///
+  /// POR QUE: en una semana pasada se seguia pudiendo pulsar. Rellenaba los
+  /// campos con lo que el cliente hizo y despues no habia forma de guardar
+  /// —el boton de guardar si estaba deshabilitado—, asi que parecia que el
+  /// cambio se habia perdido.
+  VoidCallback? get _copiarSiSePuede =>
+      widget.planning.esEditable ? _copiarDeLaReferencia : null;
+
   /// Vuelca lo que el cliente hizo la ultima vez sobre lo planificado.
   ///
   /// Es el punto de partida del entrenador, no el resultado: deja los campos
@@ -1183,6 +1246,57 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
       fila.dispose();
     }
     super.dispose();
+  }
+
+  /// Anade una serie a la cuadricula, heredando lo de la anterior.
+  ///
+  /// POR QUE AQUI: anadir una serie obligaba a abrir el formulario del
+  /// ejercicio, y es lo que mas se toca al planificar la semana; el resto de la
+  /// cuadricula ya se edita en linea. No guarda: queda como cambio pendiente y
+  /// se guarda con el boton de siempre, igual que si se hubiera teclado un peso.
+  ///
+  /// La serie nueva copia peso, repeticiones y RIR de la ultima, por el mismo
+  /// motivo que en el formulario: las series de un ejercicio casi siempre
+  /// repiten, y corregir encima es menos trabajo que rellenar de cero.
+  void _anadirSerie() {
+    final ultima = _filas.lastOrNull;
+    setState(() {
+      _filas = [
+        ..._filas,
+        _FilaSerie(
+          numero: (ultima?.numero ?? 0) + 1,
+          peso: TextEditingController(text: ultima?.peso.text ?? ''),
+          reps: TextEditingController(
+            text: ultima?.reps.text ?? '$repeticionesPorDefecto',
+          ),
+          rir: TextEditingController(text: ultima?.rir.text ?? ''),
+        ),
+      ];
+    });
+    _avisarCambio();
+  }
+
+  /// Quita una fila de la cuadricula, preguntando antes.
+  ///
+  /// Como al anadir, no guarda: queda pendiente. Y **siempre debe quedar una
+  /// serie**, que es lo que exige `DatosEjercicioPlanificado.validar` para un
+  /// ejercicio que va por series; por eso el boton de la ultima que queda sale
+  /// deshabilitado en lugar de dar un error al guardar.
+  Future<void> _quitarSerie(_FilaSerie fila) async {
+    final confirmado = await confirmarQuitarSerie(
+      context: context,
+      numeroSerie: fila.numero,
+      conRegistroDelCliente: widget.ejercicio.seriesRealizadas.any(
+        (s) => s.numeroSerie == fila.numero,
+      ),
+    );
+    if (!confirmado || !mounted) return;
+
+    setState(() {
+      _filas = [..._filas]..remove(fila);
+    });
+    fila.dispose();
+    _avisarCambio();
   }
 
   void _avisarCambio() => widget.onCambiarSeries([
@@ -1325,7 +1439,7 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                             child: _CabeceraReferencia(
                               referencia: referencia!,
                               ejercicioId: widget.ejercicio.id,
-                              onCopiar: _copiarDeLaReferencia,
+                              onCopiar: _copiarSiSePuede,
                             ),
                           ),
                         ],
@@ -1394,6 +1508,25 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                                 ),
                               ),
                             ],
+                            IconButton(
+                              key: Key(
+                                'quitar_plan_${widget.ejercicio.id}_${fila.numero}',
+                              ),
+                              tooltip: _filas.length > 1
+                                  ? 'Quitar esta serie'
+                                  : 'Un ejercicio de series necesita al menos '
+                                        'una',
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                size: 16,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              onPressed:
+                                  widget.planning.esEditable &&
+                                      _filas.length > 1
+                                  ? () => _quitarSerie(fila)
+                                  : null,
+                            ),
                           ],
                         ),
                       ),
@@ -1442,16 +1575,31 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                         child: _ReferenciaCompacta(
                           referencia: referencia!,
                           ejercicioId: widget.ejercicio.id,
-                          onCopiar: _copiarDeLaReferencia,
+                          onCopiar: _copiarSiSePuede,
                         ),
                       ),
                   ],
                 );
               },
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 36),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: Key('anadir_serie_${widget.ejercicio.id}'),
+                  onPressed: widget.planning.esEditable ? _anadirSerie : null,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Añadir serie'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ),
             if (widget.series != null)
               Padding(
-                padding: const EdgeInsets.only(top: 6, left: 44),
+                padding: const EdgeInsets.only(left: 44),
                 child: Text(
                   'Sin guardar',
                   style: textos.labelSmall?.copyWith(color: Tokens.secundario),
@@ -1505,7 +1653,9 @@ class _CabeceraReferencia extends StatelessWidget {
 
   final ReferenciaAnterior referencia;
   final String ejercicioId;
-  final VoidCallback onCopiar;
+
+  /// `null` deja el boton deshabilitado y con el motivo en el tooltip.
+  final VoidCallback? onCopiar;
 
   @override
   Widget build(BuildContext context) {
@@ -1522,7 +1672,9 @@ class _CabeceraReferencia extends StatelessWidget {
         ),
         IconButton(
           key: Key('copiar_anterior_$ejercicioId'),
-          tooltip: 'Copiar a lo planificado',
+          tooltip: onCopiar == null
+              ? 'Esta semana ya no se puede editar'
+              : 'Copiar a lo planificado',
           icon: const Icon(Icons.west, size: 16),
           visualDensity: VisualDensity.compact,
           onPressed: onCopiar,
@@ -1542,7 +1694,7 @@ class _ReferenciaCompacta extends StatelessWidget {
 
   final ReferenciaAnterior referencia;
   final String ejercicioId;
-  final VoidCallback onCopiar;
+  final VoidCallback? onCopiar;
 
   @override
   Widget build(BuildContext context) {

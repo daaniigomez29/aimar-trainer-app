@@ -14,7 +14,9 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/tarjeta_ejercicio.dart';
 
 /// Biblioteca de ejercicios (`docs/ui-design.md`, 6.4).
@@ -249,6 +251,7 @@ class _FiltrosMusculares extends ConsumerWidget {
         SizedBox(
           height: 44,
           child: ListView(
+            key: const Key('fila_filtros_tipo_y_grupo'),
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
               horizontal: Tokens.margenPantalla,
@@ -256,12 +259,37 @@ class _FiltrosMusculares extends ConsumerWidget {
             children: [
               ChipFiltro(
                 etiqueta: 'Todos',
-                activo: filtro.grupo == null && !filtro.soloSinClasificar,
+                activo:
+                    filtro.grupo == null &&
+                    filtro.tipo == null &&
+                    !filtro.soloSinClasificar,
                 onPulsar: () {
                   notificador.alternarSinClasificar(solo: false);
+                  notificador.cambiarTipo(null);
                   notificador.cambiarGrupo(null);
                 },
               ),
+              // Cardio y Fortalecimiento, no Fuerza: la fuerza es la mayor
+              // parte de la biblioteca y los grupos musculares ya sirven para
+              // recorrerla, asi que su chip no descartaria casi nada.
+              //
+              // **Se cruzan con el filtro muscular**, no lo sustituyen:
+              // "fortalecimiento de hombro" es justo la consulta util para un
+              // cliente lesionado. Si la combinacion no da nada, la lista vacia
+              // lo dice y ofrece quitar los filtros.
+              for (final tipo in facetas.tipos)
+                if (tipo != TipoEjercicio.fuerza) ...[
+                  const SizedBox(width: 8),
+                  ChipFiltro(
+                    key: Key('tipo_${tipo.name}'),
+                    etiqueta: tipo.etiqueta,
+                    icono: tipo.icono,
+                    activo: filtro.tipo == tipo,
+                    onPulsar: () => notificador.cambiarTipo(
+                      filtro.tipo == tipo ? null : tipo,
+                    ),
+                  ),
+                ],
               for (final grupo in facetas.grupos) ...[
                 const SizedBox(width: 8),
                 ChipFiltro(

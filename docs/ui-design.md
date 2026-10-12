@@ -89,6 +89,12 @@ Sección "Cómo te avisamos": notificaciones en el dispositivo (interruptor) y c
  
 ### 6.6 Planificación semanal — entrenador, escritorio
 Barra superior: marca, selector de cliente, navegación de semana, botón "Guardar cambios". Barra lateral de navegación. Área principal: pestañas de día, bloques de ejercicios con series editables (kg/reps/RIR) en cuadrícula. Panel fijo a la derecha con la biblioteca de ejercicios (buscador, filtros, lista con botón "+" para añadir a la sesión).
+
+El buscador de ejercicios lleva una **X para borrar lo escrito**, que solo aparece cuando hay algo que borrar.
+
+Cada ejercicio de la cuadrícula tiene debajo **"Añadir serie"**: la fila nueva hereda lo de la anterior y queda pendiente de guardar.
+
+Las **pestañas de día no se desplazan con el contenido**: quedan fijas arriba, sobre fondo opaco y con una línea de separación. Son el mando con el que se cambia de día, y un día con varios bloques es más largo que la pantalla: si se van con el scroll, hay que subir del todo para pasar al Día 2.
  
 ### 6.7 Planificación semanal — entrenador, móvil
 Misma información que la vista de escritorio en una sola columna. El panel de biblioteca **no se muestra inline**: un botón flotante "+" abre un modal (hoja inferior) con buscador, filtros y lista de ejercicios para añadir. Barra de navegación inferior del entrenador.
