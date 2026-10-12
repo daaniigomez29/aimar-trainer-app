@@ -57,7 +57,19 @@ class _PantallaRegistroEjercicioState
   /// Series ya confirmadas en esta pantalla, por numero. Se rellena en
   /// `_prepararEjercicio`, no en la declaracion: al encadenar ejercicios hay
   /// que rehacerla.
+  ///
+  /// Es lo que enciende el check verde, y se **vacia al editar** esa serie: a
+  /// partir de ahi lo que hay escrito ya no es lo guardado.
   final Map<int, DatosSerieRealizada> _confirmadas = {};
+
+  /// Series que han llegado a guardarse alguna vez en esta pantalla.
+  ///
+  /// POR QUE NO VALE `_confirmadas` PARA ESTO: desde que el check se apaga al
+  /// editar, "sin check" ya no significa "no registrada". Y lo que decide si
+  /// una serie de mas se puede quitar es si existe en la base de datos, no si
+  /// el check esta encendido: `series_realizadas` no tiene `delete`, asi que
+  /// quitarla de la pantalla la dejaria registrada y sin verse.
+  final Set<int> _guardadas = {};
 
   final _minutos = TextEditingController();
 
@@ -105,6 +117,10 @@ class _PantallaRegistroEjercicioState
       campos.dispose();
     }
     _campos.clear();
+
+    _guardadas
+      ..clear()
+      ..addAll(widget.ejercicio.seriesRealizadas.map((s) => s.numeroSerie));
 
     _confirmadas
       ..clear()
@@ -187,7 +203,24 @@ class _PantallaRegistroEjercicioState
         );
     if (!mounted || resultado.esFallo) return;
 
-    setState(() => _confirmadas[numero] = serie);
+    setState(() {
+      _confirmadas[numero] = serie;
+      _guardadas.add(numero);
+    });
+  }
+
+  /// Apaga el check de una serie ya confirmada en cuanto se toca uno de sus
+  /// campos.
+  ///
+  /// POR QUE: confirmar guarda, pero despues el cliente corrige un peso y el
+  /// check seguia verde, diciendo que lo que se ve es lo que esta guardado
+  /// cuando ya no lo era. Apagarlo es la senal de "esto lo has cambiado y falta
+  /// confirmarlo". Lo guardado antes **no se pierde**: sigue en la base de
+  /// datos hasta que se vuelva a confirmar, o se guarde con el boton de
+  /// "Guardar y siguiente", que recoge lo escrito aunque no tenga check.
+  void _alEditarSerie(int numero) {
+    if (!_confirmadas.containsKey(numero)) return;
+    setState(() => _confirmadas.remove(numero));
   }
 
   /// Guarda de golpe lo que haya escrito y pasa al siguiente ejercicio.
@@ -230,11 +263,12 @@ class _PantallaRegistroEjercicioState
         );
     if (!mounted || resultado.esFallo) return;
 
-    setState(
-      () => _confirmadas
+    setState(() {
+      _confirmadas
         ..clear()
-        ..addAll(pendientes),
-    );
+        ..addAll(pendientes);
+      _guardadas.addAll(pendientes.keys);
+    });
     _siguiente();
   }
 
@@ -385,6 +419,7 @@ class _PantallaRegistroEjercicioState
                   planificada: _planificadaDe(numero),
                   confirmada: _confirmadas.containsKey(numero),
                   habilitado: !estado.enCurso,
+                  onEditar: () => _alEditarSerie(numero),
                   onConfirmar: () => _confirmarSerie(numero),
                   onQuitar: !estado.enCurso && _sePuedeQuitar(numero)
                       ? () => _quitarSerie(numero)
@@ -471,7 +506,7 @@ class _PantallaRegistroEjercicioState
   bool _sePuedeQuitar(int numero) =>
       numero == _totalSeries &&
       numero > widget.ejercicio.series.length &&
-      !_confirmadas.containsKey(numero);
+      !_guardadas.contains(numero);
 
   void _quitarSerie(int numero) {
     setState(() => _campos.remove(numero)?.dispose());
@@ -615,6 +650,7 @@ class _TarjetaSerie extends StatelessWidget {
     required this.planificada,
     required this.confirmada,
     required this.habilitado,
+    required this.onEditar,
     required this.onConfirmar,
     this.onQuitar,
   });
@@ -624,6 +660,10 @@ class _TarjetaSerie extends StatelessWidget {
   final SeriePlanificada? planificada;
   final bool confirmada;
   final bool habilitado;
+
+  /// Se avisa en cuanto se toca cualquiera de los tres campos, para que la
+  /// pantalla apague el check si estaba encendido.
+  final VoidCallback onEditar;
   final VoidCallback onConfirmar;
 
   /// Solo llega en la serie de mas que todavia se puede deshacer; ver
@@ -670,6 +710,7 @@ class _TarjetaSerie extends StatelessWidget {
                   controlador: campos.peso,
                   clave: Key('peso_serie_$numero'),
                   habilitado: habilitado,
+                  onCambio: onEditar,
                   decimal: true,
                 ),
               ),
@@ -680,6 +721,7 @@ class _TarjetaSerie extends StatelessWidget {
                   controlador: campos.repeticiones,
                   clave: Key('reps_serie_$numero'),
                   habilitado: habilitado,
+                  onCambio: onEditar,
                 ),
               ),
               const SizedBox(width: 10),
@@ -689,6 +731,7 @@ class _TarjetaSerie extends StatelessWidget {
                   controlador: campos.rir,
                   clave: Key('rir_serie_$numero'),
                   habilitado: habilitado,
+                  onCambio: onEditar,
                 ),
               ),
               const SizedBox(width: 10),
@@ -718,6 +761,7 @@ class _CampoSerie extends StatelessWidget {
     required this.controlador,
     required this.clave,
     required this.habilitado,
+    required this.onCambio,
     this.decimal = false,
   });
 
@@ -725,6 +769,10 @@ class _CampoSerie extends StatelessWidget {
   final TextEditingController controlador;
   final Key clave;
   final bool habilitado;
+
+  /// Se avisa en cada tecla: es lo que apaga el check de una serie ya
+  /// confirmada.
+  final VoidCallback onCambio;
   final bool decimal;
 
   @override
@@ -740,6 +788,7 @@ class _CampoSerie extends StatelessWidget {
           key: clave,
           controller: controlador,
           enabled: habilitado,
+          onChanged: (_) => onCambio(),
           textAlign: TextAlign.center,
           style: textos.titleMedium,
           keyboardType: TextInputType.numberWithOptions(decimal: decimal),

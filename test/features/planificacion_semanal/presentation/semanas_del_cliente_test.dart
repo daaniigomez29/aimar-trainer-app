@@ -16,6 +16,7 @@ import 'package:aimar_trainer_app/features/clientes/domain/dia_semana.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/estado_cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente_repositorio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/data/planning_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning_repositorio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
@@ -199,5 +200,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sesion de p-siguiente'), findsOneWidget);
+  });
+
+  group('el botón del día dice por dónde va', () {
+    /// Una semana con un dia de dos ejercicios, registrados los que se diga.
+    PlanningSemanal conRegistrados(int cuantos) => planningDePrueba(
+      id: 'p-hoy',
+      fechaInicio: estaSemana.lunes,
+      sesiones: [
+        sesionDePrueba(
+          planningId: 'p-hoy',
+          nombre: 'Sesion de hoy',
+          bloques: [
+            bloqueDePrueba(
+              ejercicios: [
+                for (var i = 1; i <= 2; i++)
+                  ejercicioPlanificadoDePrueba(
+                    id: 'ep-$i',
+                    orden: i,
+                    estadoRegistro: i <= cuantos
+                        ? EstadoRegistro.registrado
+                        : EstadoRegistro.pendiente,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    /// El boton esta al final de la pantalla: con el alto por defecto no se
+    /// construye y los finders dirian que no existe.
+    Future<void> montarEntero(WidgetTester tester, PlanningSemanal semana) {
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      return montar(tester, lista: [semana]);
+    }
+
+    // "Continuar" en un dia que no ha empezado era mentira, y de las que
+    // desaniman: parece que te has dejado algo a medias sin haber tocado nada.
+    testWidgets('sin nada registrado, invita a comenzar', (tester) async {
+      await montarEntero(tester, conRegistrados(0));
+
+      expect(find.text('Comenzar entrenamiento'), findsOneWidget);
+    });
+
+    testWidgets('con algo registrado, invita a continuar', (tester) async {
+      await montarEntero(tester, conRegistrados(1));
+
+      expect(find.text('Continuar entrenamiento'), findsOneWidget);
+    });
+
+    testWidgets('con todo registrado, ofrece repasar', (tester) async {
+      await montarEntero(tester, conRegistrados(2));
+
+      expect(find.text('Revisar la sesión'), findsOneWidget);
+    });
   });
 }

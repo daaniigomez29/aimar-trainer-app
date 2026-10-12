@@ -2336,4 +2336,35 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   síntoma. El arreglo sería sacar el mapa de pendientes del `State` a un provider
   o un `ValueNotifier` y que solo se suscriban el botón de guardar y la fila. Sin
   medir y sin tocar.
+
+**Hecho (sexta tanda):**
+
+- **Añadir un ejercicio desde el panel de la biblioteca crea 3x8**, como el
+  formulario de CU-08. Creaba **una** serie de 10 repeticiones, así que el atajo
+  salía más caro que el camino largo. Usa las mismas constantes de dominio.
+- **El check verde del cliente se apaga al corregir esa serie.** Confirmar
+  guarda, pero después el cliente cambiaba un peso y el check seguía verde:
+  la pantalla decía que lo que se ve es lo guardado cuando ya no lo era.
+  - Lo guardado **no se pierde**: sigue en la base de datos hasta que se vuelva a
+    confirmar, y "Guardar y siguiente" recoge lo escrito aunque no tenga check.
+  - Hizo falta separar dos cosas que antes eran la misma: el check
+    (`_confirmadas`, que ahora se vacía al editar) y **si la serie existe en la
+    base de datos** (`_guardadas`, nuevo). Lo segundo es lo que decide si una
+    serie de más se puede quitar, porque `series_realizadas` no tiene `delete`
+    (trampa 15): sin separarlo, apagar el check habría dejado quitar de la
+    pantalla una serie que sigue registrada.
+
+**Pendiente / notas (sexta tanda):**
+
+- El botón grande del día dice **"Comenzar entrenamiento"** mientras la sesión no
+  tenga ningún ejercicio registrado; "Continuar" solo cuando de verdad hay algo
+  empezado, y "Revisar la sesión" cuando no queda nada pendiente. "Continuar" en
+  un día sin tocar era mentira, y de las que desaniman.
+- **Tutorial de instalación de la PWA** en las dos pantallas de configuración,
+  la del cliente y la de ajustes del entrenador: pasos para iPhone (obligatorio
+  Safari) y para Android, plegado por defecto. Es una PWA, no hay ficha en
+  ninguna tienda que lo explique, y en iPhone el **push no existe** hasta que la
+  app está instalada; por eso en la pantalla del cliente va justo debajo de los
+  avisos, donde se entiende por qué importa.
+- `flutter test` **486**, `dart analyze --fatal-infos` limpio.
 - Todo sin commitear: los commits los hace él.

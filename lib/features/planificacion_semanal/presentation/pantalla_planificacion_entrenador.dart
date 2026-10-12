@@ -1945,7 +1945,9 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final orden = bloque.ejercicios.length + 1;
     // Valores de partida razonables, que el entrenador ajusta en la cuadricula.
     // Cardio necesita minutos si o si (lo exige un trigger); lo que va por
-    // series (Fuerza y Fortalecimiento), al menos una serie.
+    // series (Fuerza y Fortalecimiento), las mismas que propone el formulario
+    // de CU-08: anadir desde aqui y anadir desde alli tienen que dar lo mismo,
+    // o el atajo sale mas caro que el camino largo.
     final vaPorMinutos = ejercicio.tipo.vaPorMinutos;
 
     final resultado = await ref
@@ -1960,7 +1962,13 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
             minutos: vaPorMinutos ? 20 : null,
             series: vaPorMinutos
                 ? const []
-                : const [DatosSerie(numeroSerie: 1, repeticiones: 10)],
+                : [
+                    for (var i = 1; i <= seriesPorDefecto; i++)
+                      DatosSerie(
+                        numeroSerie: i,
+                        repeticiones: repeticionesPorDefecto,
+                      ),
+                  ],
           ),
           planningId: widget.planningId,
         );

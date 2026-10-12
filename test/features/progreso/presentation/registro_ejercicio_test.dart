@@ -9,6 +9,7 @@ import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repo
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
+import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/progreso/data/progreso_repositorio_supabase.dart';
@@ -488,5 +489,86 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('mi planning'), findsOneWidget);
+  });
+
+  group('el check se apaga al corregir', () {
+    /// El check es un `Material` verde alrededor del boton: es lo que ve el
+    /// cliente, asi que es lo que se mira.
+    bool confirmada(WidgetTester tester, int numero) =>
+        tester
+            .widget<Material>(
+              find
+                  .ancestor(
+                    of: find.byKey(Key('confirmar_serie_$numero')),
+                    matching: find.byType(Material),
+                  )
+                  .first,
+            )
+            .color ==
+        Tokens.exito;
+
+    // El fallo: confirmaba, corregia el peso y el check seguia verde. La
+    // pantalla decia que lo que se ve es lo que esta guardado, y ya no lo era.
+    testWidgets('tocar una serie confirmada la desmarca', (tester) async {
+      await montar(tester, deFuerza());
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+      expect(confirmada(tester, 1), isTrue);
+
+      await tester.enterText(find.byKey(const Key('peso_serie_1')), '65');
+      await tester.pumpAndSettle();
+
+      expect(confirmada(tester, 1), isFalse);
+    });
+
+    testWidgets('solo se desmarca la que se toca', (tester) async {
+      await montar(tester, deFuerza());
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirmar_serie_2')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('reps_serie_2')), '12');
+      await tester.pumpAndSettle();
+
+      expect(confirmada(tester, 1), isTrue);
+      expect(confirmada(tester, 2), isFalse);
+    });
+
+    testWidgets('al volver a confirmar se envía el valor corregido', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('reps_serie_1')), '7');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+
+      expect(confirmada(tester, 1), isTrue);
+      expect(ultimoEnviado().series.single.repeticiones, 7);
+    });
+
+    // Una serie de mas ya registrada no se puede quitar aunque se le apague el
+    // check: `series_realizadas` no tiene `delete`, asi que quitarla de la
+    // pantalla la dejaria guardada y sin verse.
+    testWidgets('una serie de más ya guardada no se puede quitar', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+      await tester.tap(find.byKey(const Key('boton_serie_extra')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('reps_serie_3')), '6');
+      await tester.tap(find.byKey(const Key('confirmar_serie_3')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('reps_serie_3')), '5');
+      await tester.pumpAndSettle();
+
+      expect(confirmada(tester, 3), isFalse);
+      expect(find.byKey(const Key('quitar_serie_3')), findsNothing);
+    });
   });
 }

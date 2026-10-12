@@ -4,8 +4,9 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-09, con la taxonomía muscular (grupo, músculo
-principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
+Última actualización: 2026-10-12. La app está **en producción**: Vercel sirve
+la PWA, el pipeline despliega a Supabase en cada push a `dev` y a `main`, y hay
+clientes reales dados de alta.
 
 ## Fases
 
@@ -17,10 +18,10 @@ principal y secundarios) y el tercer tipo de ejercicio, Fortalecimiento.
 | 4 | Planificación semanal (CU-05 a CU-16) | Hecha y verificada |
 | 5 | Progreso del cliente (CU-20, CU-21, medidas, check-in) | Hecha y verificada |
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
-| — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Pendiente** |
+| — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Hecho y en uso** |
 
 Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **434**,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **476**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -627,12 +628,12 @@ Decisiones que quedaron sin cerrar:
   secas y Resend devolvía `validation_error` 422. El valor correcto es del tipo
   `Aimar Trainer <no-reply@mail.aimartrainer.es>`. No hace falta redesplegar: los
   secretos se leen en cada ejecución.
-- **Bucket de Storage** de las fotos de progreso: `fotos-progreso` ya está
-  declarado en `config.toml` y **creado y verificado en local** (privado, 20 MiB,
-  png/jpeg), con sus **políticas ya escritas** (migración
-  `20261003090200_politicas_storage_fotos_progreso.sql`) y verificadas. Falta solo
-  crearlo en la nube cuando haya proyecto. El detalle está en `architecture.md`,
-  sección "Almacenamiento de ficheros".
+- **Bucket de Storage** de las fotos de progreso: `fotos-progreso` está declarado
+  en `config.toml`, creado y verificado en local (privado, 20 MiB, png/jpeg), con
+  sus políticas en la migración
+  `20261003090200_politicas_storage_fotos_progreso.sql`, y **ya creado también en
+  la nube**. El detalle está en `architecture.md`, sección "Almacenamiento de
+  ficheros". Nada pendiente.
 - **Resend ya tiene dominio verificado** (`mail.aimartrainer.es`) y las dos
   variables puestas en la nube. En local las invitaciones se siguen entregando en
   Mailpit vía `CORREO_DEV_URL`.
@@ -667,18 +668,21 @@ Decisiones que quedaron sin cerrar:
   una petición normal, pero `auth.role()` devuelve `NULL` si la sesión no trae los
   claims. Queda por unificar doc y código.
 
-## Lo que queda: desplegar
+## Despliegue: en producción y funcionando
 
-Las seis fases del ERS están implementadas y verificadas **en local**. Lo que falta
-no es funcionalidad, es puesta en producción.
+Las seis fases del ERS están implementadas, y la aplicación **está desplegada y
+en uso**: Vercel sirve la PWA, el pipeline aplica migraciones y publica Edge
+Functions, y hay clientes reales dados de alta que reciben su invitación y
+entran. Lo que queda abierto está al final de esta sección y es poco.
 
-El **pipeline ya está escrito**: el job `desplegar` de `.github/workflows/ci.yml`
+El **pipeline**: el job `desplegar` de `.github/workflows/ci.yml`
 aplica las migraciones (`supabase db push`) y publica las Edge Functions
 (`supabase functions deploy`) en cada push a `dev` y a `main`, después de que
 pasen análisis, tests y las comprobaciones de Deno. El proyecto al que va lo
 decide el **Environment** de GitHub, que se llama como la rama (`main`, `dev`),
 porque los secretos son suyos. Mientras un entorno no tenga secretos, el job se
-salta solo y lo dice en el resumen, en vez de poner la rama en rojo.
+salta solo y lo dice en el resumen, en vez de poner la rama en rojo. **`main` y
+`dev` ya los tienen**, así que ahí el job despliega de verdad.
 
 **El despliegue lo lleva Actions, no la integración del panel de Supabase.** Ese
 proyecto tenía la integración de GitHub conectada a `main` (branching con
@@ -699,43 +703,48 @@ integración de GitHub), los secretos de las funciones y los de Vault (son
 valores, no código: se ponen una vez a mano y no tienen por qué pasar por un log
 de CI) y el seed (es solo local).
 
-Queda por hacer:
+Ya en marcha y comprobado en producción:
 
-1. **Desconectar la integración de GitHub** en el panel del proyecto, para que
-   el despliegue no se haga por duplicado.
-2. **Crear los tres secretos del entorno `main`**, apuntando al proyecto que ya
-   existe (`app-aimar-trainer-dev`, ref `aihlqyyeqrybhrawxkut`, eu-west-1).
-   Después, crear los buckets
-   `fotos-progreso` e `imagenes-ejercicios` desde el panel: sus políticas sí
-   viajan en migración, pero los buckets en sí los crea `config.toml`, que es
-   cosa de local.
-3. **Los dos secretos de Vault** del job de recordatorios, con la URL real de la
-   función y un `secreto_cron` largo y aleatorio. La migración del job crea
-   `pg_cron` y `pg_net` y la función que los lee, pero no los secretos: sin
-   ellos el job se dispara y no llega a ninguna parte. (Se podrían automatizar
-   con la sección `[db.vault]` de `config.toml`, que `db push` aplica antes de
-   las migraciones; está sin decidir.)
-4. **Secretos de las Edge Functions**: `supabase secrets set` con
-   `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `APP_BASE_URL`, `SECRETO_CRON` (el
-   mismo que el de Vault) y un par VAPID **propio de producción** (el de local no
-   vale).
-5. **Resend con dominio verificado**. Hasta entonces, las invitaciones y los
-   recordatorios solo llegan a Mailpit en local.
-6. **Vercel**: la configuración ya está en `vercel.json`, que solo apunta a dos
-   scripts (`scripts/vercel_install.sh` instala el SDK de Flutter 3.47.5;
-   `scripts/vercel_build.sh` compila con los `--dart-define` leídos de las
-   variables de entorno) y publica `build/web`. Los comandos van en scripts
-   porque el schema de Vercel **no admite más de 256 caracteres** en
-   `installCommand` ni en `buildCommand`. Los dos están probados en un contenedor
-   Linux limpio. Falta importar el repo en Vercel,
-   crear allí las cuatro variables (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
-   `APP_ENV`, `VAPID_PUBLIC_KEY`) y, una vez haya dominio, **apuntarlo en los
-   sitios que dependen de él**: `APP_BASE_URL` de las Edge Functions y las *Redirect
-   URLs* de Auth en el panel de Supabase, o los enlaces de invitación y de
-   recuperación no llevarán a ninguna parte.
-7. **Proyecto aparte para pruebas** (opcional): crearlo, rellenar el Environment `produccion` (y,
-   si se quiere, exigirle revisores para que el despliegue a `main` espere
-   aprobación).
-8. **Probar el push de verdad** con un navegador real: es lo único de CU-22 que no
-   se puede cerrar en local (ver la nota de la bitácora sobre la rama de
-   suscripción caducada).
+- **Environments `main` y `dev`** con sus tres secretos, apuntando al proyecto
+  `app-aimar-trainer-dev` (ref `aihlqyyeqrybhrawxkut`, eu-west-1). El job
+  `desplegar` corre de verdad en los dos.
+- **Vercel** sirve la PWA. La configuración vive en `vercel.json`, que apunta a
+  dos scripts (`scripts/vercel_install.sh` instala el SDK de Flutter 3.47.5;
+  `scripts/vercel_build.sh` compila con los `--dart-define` leídos de las
+  variables de entorno) y publica `build/web`. Los comandos van en scripts porque
+  el schema de Vercel **no admite más de 256 caracteres** en `installCommand` ni
+  en `buildCommand`.
+- **Secretos de las Edge Functions** puestos: las invitaciones salen desde el
+  dominio propio con Resend y los enlaces vuelven a la app, así que
+  `RESEND_API_KEY`, `RESEND_FROM_EMAIL` y `APP_BASE_URL` están bien, y las
+  *Redirect URLs* de Auth también.
+- **Resend con dominio verificado** (`mail.aimartrainer.es`), por API para las
+  invitaciones y como **SMTP de Auth** para la recuperación (ver trampa 34).
+- **Altas de clientes reales** funcionando de punta a punta: `crear-cliente`,
+  correo, elección de contraseña y entrada a la app.
+- **Los dos secretos de Vault** del job de recordatorios y `SECRETO_CRON` en las
+  funciones, con el mismo valor. La migración crea `pg_cron`, `pg_net` y la
+  función que los lee; los valores se pusieron a mano, que es lo correcto: no
+  tienen por qué pasar por un log de CI.
+- **Par VAPID propio de producción**: `VAPID_PUBLIC_KEY` en Vercel y la privada
+  en las Edge Functions. El de local no valía.
+- **Buckets `fotos-progreso` e `imagenes-ejercicios`** creados en el panel. Sus
+  políticas viajan en migración; los buckets en sí los crea `config.toml`, que es
+  cosa de local, por eso había que crearlos a mano en la nube.
+- **La integración de GitHub del panel de Supabase, desconectada**. Aplicaba
+  migraciones por su cuenta sin mirar el CI; con las dos activas cada push
+  desplegaba dos veces. Ahora el despliegue lo lleva solo Actions.
+
+La puesta en producción **está cerrada**. Lo único que sigue abierto:
+
+1. **Probar el push de verdad** con un navegador real: es lo único de CU-22 que
+   no se puede cerrar en local (ver la nota de la bitácora sobre la rama de
+   suscripción caducada). Con el par VAPID de producción ya puesto, se puede
+   hacer cuando se quiera.
+2. **Comprobar que el recordatorio llega**: el job de `pg_cron` ya tiene sus
+   secretos, pero si algo no cuadrara fallaría **en silencio** (se dispara y no
+   llega a ninguna parte). La señal de que va bien es que un cliente reciba el
+   correo de "empieza una semana nueva" el día que arranca su planning.
+3. **Proyecto aparte para pruebas** (opcional): crearlo, rellenar un Environment
+   propio y, si se quiere, exigirle revisores para que el despliegue a `main`
+   espere aprobación.

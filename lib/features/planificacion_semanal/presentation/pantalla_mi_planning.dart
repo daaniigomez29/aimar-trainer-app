@@ -262,9 +262,7 @@ class _SemanaState extends ConsumerState<_Semana> {
               const SizedBox(height: Tokens.separacionBloques),
               if (sesion != null && planning.estado.esActivo)
                 BotonCta(
-                  etiqueta: _siguientePendiente(sesion) == null
-                      ? 'Revisar la sesión'
-                      : 'Continuar entrenamiento',
+                  etiqueta: _etiquetaDelBoton(sesion),
                   onPulsar: () => _abrirSesion(context, planning, sesion),
                 ),
             ],
@@ -294,6 +292,20 @@ class _SemanaState extends ConsumerState<_Semana> {
       ),
     );
   }
+}
+
+/// Lo que pone el boton grande del dia, segun por donde vaya el cliente.
+///
+/// "Continuar" en una sesion que no ha empezado era mentira, y de las que
+/// desaniman: parece que te has dejado algo a medias cuando todavia no has
+/// tocado nada.
+String _etiquetaDelBoton(SesionEntrenamiento sesion) {
+  if (_siguientePendiente(sesion) == null) return 'Revisar la sesión';
+
+  final empezada = sesion.bloques
+      .expand((b) => b.ejercicios)
+      .any((e) => e.estadoRegistro.estaRegistrado);
+  return empezada ? 'Continuar entrenamiento' : 'Comenzar entrenamiento';
 }
 
 EjercicioPlanificado? _siguientePendiente(SesionEntrenamiento sesion) => sesion
