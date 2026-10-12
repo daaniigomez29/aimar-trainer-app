@@ -102,6 +102,19 @@ abstract final class Rutas {
     String planningId,
   ) => '${planningsDeCliente(idCliente)}/$planningId';
 
+  /// Los resultados de un dia concreto de la semana de un cliente.
+  ///
+  /// Es la misma pantalla, abierta por el dia que interesa: asi el boton del
+  /// editor ("Visualizar resultados de la sesion") cae en el dia que se estaba
+  /// planificando y no en el primero.
+  static String resultadosDeLaSesion({
+    required String idCliente,
+    required String planningId,
+    required int orden,
+  }) =>
+      '${planningDeClienteConcreto(idCliente, planningId)}'
+      '?$paramDia=$orden';
+
   /// Registro del resultado de una sesión (CU-20) y de un ejercicio suelto.
   static const String sesiones = 'sesiones';
   static const String unaSesion = ':idSesion';
@@ -178,5 +191,16 @@ abstract final class Rutas {
   static const String ajustesEntrenador = '$inicioEntrenador/$ajustes';
 
   /// Rutas accesibles sin sesion.
-  static const Set<String> publicas = {login, recuperarContrasena};
+  /// Rutas que se pintan **sin sesion**.
+  ///
+  /// `restablecerContrasena` esta aqui porque es donde aterriza el enlace del
+  /// correo, y ese enlace puede llegar ya gastado: sin sesion, esa pantalla es
+  /// la que lo explica y ofrece pedir otro. Mandarla al login dejaba sin salida
+  /// a un cliente invitado, que alli no tiene ninguna contrasena que escribir.
+  /// No abre nada: fijar la contrasena sigue exigiendo la sesion del enlace.
+  static const Set<String> publicas = {
+    login,
+    recuperarContrasena,
+    restablecerContrasena,
+  };
 }

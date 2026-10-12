@@ -321,4 +321,137 @@ void main() {
     expect(find.text(const ErrorConexion().mensaje), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
   });
+
+  group('chips de tipo', () {
+    // Cardio y Fortalecimiento **se cruzan** con el filtro muscular: para un
+    // cliente lesionado, "fortalecimiento de hombro" es la consulta util, no
+    // "todo el fortalecimiento" ni "todo el hombro".
+    final biblioteca = [
+      _ejercicio(id: 'e-1', nombre: 'Press banca'),
+      _ejercicio(
+        id: 'e-2',
+        nombre: 'Cinta',
+        tipo: TipoEjercicio.cardio,
+        musculoPrincipal: null,
+      ),
+      _ejercicio(
+        id: 'e-3',
+        nombre: 'Rotacion externa',
+        tipo: TipoEjercicio.fortalecimiento,
+        musculoPrincipal: Musculo.deltoidesPosterior,
+      ),
+      _ejercicio(
+        id: 'e-4',
+        nombre: 'Sentadilla a una pierna',
+        tipo: TipoEjercicio.fortalecimiento,
+        musculoPrincipal: Musculo.cuadriceps,
+      ),
+    ];
+
+    testWidgets('filtran por tipo sin tocar el resto', (tester) async {
+      await montar(tester, rol: RolUsuario.entrenador, biblioteca: biblioteca);
+
+      await tester.tap(find.byKey(const Key('tipo_cardio')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cinta'), findsOneWidget);
+      expect(find.text('Press banca'), findsNothing);
+      expect(find.text('Rotacion externa'), findsNothing);
+    });
+
+    testWidgets('se combinan con el grupo muscular', (tester) async {
+      await montar(tester, rol: RolUsuario.entrenador, biblioteca: biblioteca);
+
+      await tester.tap(find.byKey(const Key('tipo_fortalecimiento')));
+      await tester.pumpAndSettle();
+      // Los dos de fortalecimiento, de hombro y de pierna.
+      expect(find.text('Rotacion externa'), findsOneWidget);
+      expect(find.text('Sentadilla a una pierna'), findsOneWidget);
+
+      // La fila de chips es horizontal y perezosa: con la fuente de los tests
+      // "Hombro" no llega a construirse hasta que se desplaza.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('grupo_hombro')),
+        120,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('fila_filtros_tipo_y_grupo')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(find.byKey(const Key('grupo_hombro')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rotacion externa'), findsOneWidget);
+      expect(find.text('Sentadilla a una pierna'), findsNothing);
+      // Y no se cuela el press de banca por ser tambien de otro grupo.
+      expect(find.text('Press banca'), findsNothing);
+    });
+
+    testWidgets('"Todos" los suelta, tambien el de tipo', (tester) async {
+      await montar(tester, rol: RolUsuario.entrenador, biblioteca: biblioteca);
+      await tester.tap(find.byKey(const Key('tipo_cardio')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Todos'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Press banca'), findsOneWidget);
+      expect(find.text('Cinta'), findsOneWidget);
+    });
+
+    testWidgets('sin ejercicios de ese tipo no se ofrece el chip', (
+      tester,
+    ) async {
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [_ejercicio(id: 'e-1')],
+      );
+
+      expect(find.byKey(const Key('tipo_cardio')), findsNothing);
+      expect(find.byKey(const Key('tipo_fortalecimiento')), findsNothing);
+    });
+  });
+
+  group('la X del buscador', () {
+    // La X solo borra el campo si ademas avisa al filtro, que vive en un
+    // provider: si no, el buscador quedaria vacio y la lista seguiria
+    // recortada por un texto que ya no se ve en ninguna parte.
+    testWidgets('no esta hasta que hay algo escrito', (tester) async {
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [_ejercicio(id: 'e-1')],
+      );
+
+      expect(find.byKey(const Key('limpiar_busqueda')), findsNothing);
+
+      await tester.enterText(find.byKey(const Key('campo_busqueda')), 'x');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('limpiar_busqueda')), findsOneWidget);
+    });
+
+    testWidgets('borra lo escrito y devuelve la lista entera', (tester) async {
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [
+          _ejercicio(id: 'e-1', nombre: 'Press banca'),
+          _ejercicio(id: 'e-2', nombre: 'Sentadilla'),
+        ],
+      );
+
+      await tester.enterText(find.byKey(const Key('campo_busqueda')), 'sent');
+      await tester.pumpAndSettle();
+      expect(find.text('Press banca'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('limpiar_busqueda')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Press banca'), findsOneWidget);
+      expect(find.text('Sentadilla'), findsOneWidget);
+      expect(find.byKey(const Key('limpiar_busqueda')), findsNothing);
+    });
+  });
 }

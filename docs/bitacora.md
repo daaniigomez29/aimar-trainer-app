@@ -2128,3 +2128,212 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   bitacora, que se queda con **los dos lados**: su entrada del 8 y las del 9 y
   el 11.
 - Todo sin commitear: los commits los hace el.
+
+### 2026-10-12
+
+**Corregido:**
+
+- **Un cliente invitado podía quedarse sin forma de fijar su contraseña.** Pinchaba
+  el enlace del correo, se salía de la pantalla antes de elegirla (o instalaba la
+  PWA) y, al volver a pulsar el botón del correo, la app se quedaba cargando sin
+  fin. Tres causas encadenadas, las tres arregladas:
+  1. Los enlaces de Auth son de **un solo uso**: GoTrue borra el token al
+     canjearlo y al segundo intento redirige con
+     `#error=access_denied&error_code=otp_expired`. Eso **no llega como evento**,
+     lo reporta el SDK como error del stream de `onAuthStateChange`, y
+     `ControladorSesion` escuchaba sin `onError`: el estado se quedaba en
+     `SesionDesconocida` y el enrutador aparcaba en la pantalla de carga. Ahora
+     hay `onError`, y además se lee el error de la URL de arranque
+     (`errorDeEnlaceDeCorreo`, con su test), así que el motivo se sabe sin
+     depender de ningún evento.
+  2. `/restablecer-contrasena` no era ruta pública, así que sin sesión el
+     enrutador mandaba al login, donde un invitado no tiene ninguna contraseña
+     que escribir. Ahora es pública y, sin sesión, esa pantalla explica que el
+     enlace ya no vale y **ofrece pedir otro** ahi mismo (campo de correo +
+     botón), reutilizando CU-24. Repetible cuantas veces quiera: el enlace sigue
+     siendo de un solo uso —es la credencial de la cuenta y viaja en su buzón—,
+     lo que no tiene límite es pedir uno nuevo.
+  3. Un invitado rescatado por un enlace de **recuperación** veía "Nueva
+     contraseña" y un "Volver al acceso" que no le servía de nada. El estado lo
+     decide ahora el metadato `debe_fijar_contrasena`, no el evento
+     `passwordRecovery`.
+- Tope de espera (10 s) en la consulta del perfil: mientras no volvía, el estado
+  seguía en `SesionDesconocida` y la pantalla de carga no se iba. Sale por
+  `TimeoutException`, que ya se traducía a `ErrorConexion`.
+- Los errores de Auth del stream se **traducen en el repositorio** (como los de
+  cualquier otro método): ninguna `AuthException` sale de `data/`, ni por el
+  valor ni por el error.
+- El correo de invitación avisa de que el enlace se usa una sola vez y de elegir
+  la contraseña antes de cerrar la página o instalar la app. **Toca
+  `crear-cliente`: hay que redesplegar las funciones.**
+- Un test de dominio con fecha fija (`2026-10-05`) se puso rojo solo al llegar el
+  lunes 12: `esEditable` mira si la semana ya pasó. Pasa a calcular la semana en
+  curso, que es lo que ya hacía la ayuda de tests. Es la trampa 28, otra vez.
+
+**Hecho:**
+
+- **Resend como SMTP de Auth** (en el panel, no en `config.toml`, para que local
+  siga entregando en Mailpit). Sin eso, el correo de recuperación lo manda el
+  servicio integrado de Supabase, que es de pruebas: remitente de Supabase y dos
+  correos por hora. Verificado en producción con una cuenta real, y verificado de
+  paso **lo que faltaba por saber**: un usuario invitado que nunca confirmó su
+  cuenta **sí** recibe el correo de recuperación. Por eso el cliente puede
+  rescatarse solo y no hace falta una Edge Function de "reenviar invitación".
+- Documentado en `architecture.md` que el correo va por **dos caminos**: API de
+  Resend para invitaciones y recordatorios, SMTP de Auth para la recuperación.
+  El doc decía "Resend: invitaciones, recuperación, recordatorios" sin matizar, y
+  eso era verdad a medias.
+- Trampas 32, 33 y 34 en `estado-actual.md`; decisiones nuevas (ruta pública,
+  campo de correo libre, la invitación manda sobre el tipo de enlace); CU-17 y
+  CU-24 actualizados en `requirements.md`.
+
+**Pendiente / notas:**
+
+- `flutter test` **452**, `dart analyze --fatal-infos` limpio, `deno fmt --check`
+  y `deno check` limpios. SQL sin tocar.
+- **Subir el límite de envíos** en Authentication → Rate Limits: sigue en 2/hora,
+  que era el del servicio integrado, y con dos intentos del cliente se agota. De
+  10 a 20 es razonable; el captcha de Auth (`[auth.captcha]`, comentado en
+  `config.toml`) es el escalón siguiente si alguna vez hay abuso.
+- **Comprobado**: un cliente **dado de baja** no puede volver a entrar por un
+  enlace de recuperación; la operación da error. El baneo de Auth también cierra
+  esa puerta, no solo el login.
+- **Pero el baneo no es inmediato**: el cliente que ya tiene la sesión abierta
+  sigue entrando a todo hasta que caduque su token, incluso recargando. Es el
+  siguiente asunto a tratar; sin empezar.
+- Descartado el botón "Me han dado de alta y no tengo contraseña" en el login: no
+  añade nada, porque esos casos ya se resuelven con el correo inicial y, si
+  caduca, pidiendo otro enlace con su correo.
+- En iOS, una PWA añadida a la pantalla de inicio tiene **su propio
+  almacenamiento**, separado del de Safari: al instalarla, la sesión del enlace
+  no viaja y la app abre sin sesión. En Android lo comparten. No se puede evitar;
+  lo cubre el camino de pedir otro enlace.
+- "Reenviar invitación" desde la ficha del cliente queda como comodidad, no como
+  necesidad. Implica Edge Function nueva: sin empezar.
+
+**Hecho (segunda tanda del día):**
+
+- **El cliente entra por la semana en curso.** `_planningQueTocaVer` caía en
+  `activos.firstOrNull` cuando no había planning de hoy, y la lista llega
+  ordenada por `fecha_inicio` descendente: con la semana siguiente ya montada, el
+  cliente abría la app y apareciía planificando el futuro. Ahora, sin planning de
+  hoy, se enseña la semana en curso vacía, con su navegador. Tres tests.
+- **Chips de Cardio y Fortalecimiento** en la biblioteca y en el filtro
+  compartido (panel del planning y formulario de CU-08). **Se combinan** con el
+  filtro muscular. Facetas nuevas (`tiposConEjercicios`) para no ofrecer un chip
+  sin ejercicios detrás, e icono opcional en `ChipFiltro`, porque comparten fila
+  con los grupos musculares y filtran otra cosa. Cuatro tests.
+- **La tira de días del entrenador queda fija** al bajar la página. Comprobado
+  que el test falla sin el arreglo: compara la posición del chip antes y después
+  de arrastrar.
+- **3x8 por defecto** al añadir un ejercicio de series, y la serie nueva hereda
+  lo escrito en la anterior. Al editar no cambia nada.
+- **La fila de serie es ahora un widget** (`presentation/widgets/fila_de_serie.dart`),
+  con `CamposDeSerie` (los tres controladores y su `dispose`) separado de
+  `FilaDeSerie` (lo que se pinta). Estaba escrita a mano dentro del formulario.
+  **No se ha tocado la cuadrícula del editor del entrenador**: es otra fila
+  —sin etiquetas, sin botón de quitar y con la columna de "la última vez" al
+  lado— y unificarlas saldría un widget con seis banderas.
+
+**Pendiente / notas (segunda tanda):**
+
+- `flutter test` **462**, `dart analyze --fatal-infos` limpio.
+- Del plan de siete puntos quedan: **duplicar un día** (migración nueva) y
+  **mover días** (el grande: `orden` es identidad, no presentación). Sin empezar,
+  a la espera de su visto bueno.
+- `jwt_expiry` a 600 en producción, decidido por él: acota a diez minutos el
+  acceso de un cliente recién dado de baja que ya tuviera la sesión abierta. El
+  arreglo de fondo —que RLS mire `clientes.estado`— queda planteado y **sin
+  hacer**: toca políticas, y no se toca sin aprobarlo.
+- Descartado el botón "Me han dado de alta y no tengo contraseña" del login.
+
+**Corregido (tercera tanda):**
+
+- **En una semana pasada se podía pulsar "copiar a lo planificado".** Los campos
+  se rellenaban con lo que hizo el cliente y después no había forma de guardar
+  —el botón de guardar sí estaba deshabilitado—, así que parecía que el cambio
+  se había perdido. Ahora sale deshabilitado, como editar y eliminar, con el
+  motivo en el tooltip. La referencia **se sigue viendo**: consultar lo de la
+  semana pasada es el motivo de abrirla.
+- **Y el mismo fallo en "Añadir ejercicio"** de cada bloque, encontrado al
+  repasar el archivo: en una semana pasada abría el formulario de un ejercicio
+  que los triggers iban a rechazar. También deshabilitado.
+- Repasados los demás botones de esa pantalla uno por uno: el resto ya consultaba
+  `esEditable` (el panel de biblioteca incluido, por `puedeEditar`).
+- Tres tests nuevos en `editor_semana_pasada_test.dart`, y comprobado que los dos
+  que importan fallan sin el arreglo. El tercero vigila que las celdas de series
+  sigan deshabilitadas, que ya lo estaban.
+
+**Pendiente / notas (tercera tanda):**
+
+- `flutter test` **465**, `dart analyze --fatal-infos` limpio.
+
+**Hecho (cuarta tanda):**
+
+- **X en el buscador de ejercicios** para borrar lo escrito de un toque, en los
+  dos sitios que usan `CampoBusqueda` (la biblioteca y el filtro del panel y del
+  formulario de CU-08). Solo aparece con algo escrito. Lo importante no es la X
+  sino que **avisa al filtro**: vive en un provider, así que limpiar solo el
+  controlador dejaría el campo vacío y la lista recortada por un texto que ya no
+  se ve. Dos tests.
+- **"Añadir serie" en la pantalla de planificación**, debajo de la cuadrícula de
+  cada ejercicio. Antes obligaba a abrir el formulario del ejercicio, siendo lo
+  que más se toca al montar la semana. La fila nueva **hereda** peso, reps y RIR
+  de la anterior, igual que en el formulario, y **no guarda**: queda como cambio
+  pendiente ("Sin guardar") y lo guarda el botón de siempre, que ya hace una
+  llamada atómica por ejercicio. Deshabilitado en una semana pasada, como el
+  resto. Tres tests, uno de ellos verificando que las dos series llegan al
+  repositorio al guardar.
+- Quitar una serie **sigue estando solo en el formulario**: no se ha tocado.
+
+**Pendiente / notas (cuarta tanda):**
+
+- `flutter test` **470**, `dart analyze --fatal-infos` limpio.
+
+**Hecho (quinta tanda):**
+
+- **La vista del planning de un cliente pasa a ser de resultados y de solo
+  consulta** (`/entrenador/clientes/:id/plannings/:planningId`). El entrenador no
+  tenía dónde ver lo que hacen sus clientes el mismo día: lo único que lo
+  enseñaba era la columna de referencia del editor, y para llegar a ella había
+  que ponerse a planificar la semana siguiente. Ahora:
+  - **un día a la vez**, con tira de chips, en vez de la semana entera de corrido;
+  - por ejercicio, **lo planificado al lado de lo que hizo** (serie a serie,
+    emparejando por número y enseñando las que sobran de cualquiera de los dos
+    lados, porque plan y realizado son independientes por regla de dominio), o
+    los minutos en Cardio, con su estado (Registrado / Pendiente);
+  - **sin acciones de escritura sobre el contenido**: añadir, editar, borrar y
+    reordenar sesiones, bloques y ejercicios desaparecen de aquí. Se quedan las
+    del planning entero, que no editan el plan y no tienen otro sitio: archivar o
+    reactivar, cambiar el objetivo y eliminarlo. Si también quieres esas fuera, es
+    quitar tres botones.
+- **Botón "Visualizar resultados de la sesión"** a la derecha del nombre del día
+  en el editor, que abre esa vista **por el día que se está planificando**
+  (`?dia=N`, igual que ya hacía el cliente al terminar un ejercicio).
+- **Quitar una serie desde la cuadrícula del editor**, con confirmación. Avisa
+  si el cliente ya registró esa serie: lo que hizo **no se borra** (vive en
+  `series_realizadas`, otra tabla), pero se queda sin plan enfrente con el que
+  compararlo. La última serie no se puede quitar: un ejercicio que va por series
+  necesita al menos una, y es mejor deshabilitar que fallar al guardar.
+- **`TarjetaSesion` borrado** (368 líneas). Era lo que pintaba la semana en esa
+  vista con sus diez callbacks de escritura; sin edición ya no tenía uso, y el
+  editor tiene su propia pintura. En su sitio, dos widgets nuevos:
+  `ResultadosDeSesion` y `ChipsDeDias`, este último compartido con el editor,
+  que tenía su propia copia de la tira.
+- `arrastre_planning_test.dart` colgaba de `TarjetaSesion`: reescrito contra
+  `ListaArrastrable`, que es el widget que presta el arrastre de verdad (CU-11 y
+  CU-12 siguen funcionando en el editor). Así no se cae cada vez que cambia la
+  pantalla que lo usa.
+
+**Pendiente / notas (quinta tanda):**
+
+- `flutter test` **476**, `dart analyze --fatal-infos` limpio.
+- **Sospecha de rendimiento sin confirmar**, a propósito del aviso
+  `'requestAnimationFrame' handler took 245ms`: cada tecla en una celda de series
+  llama a `onCambiarSeries`, que hace `setState` en
+  `_PantallaPlanificacionEntrenadorState`, o sea **repinta la pantalla entera**
+  del editor (incluido el panel de biblioteca) en cada pulsación. Encaja con el
+  síntoma. El arreglo sería sacar el mapa de pendientes del `State` a un provider
+  o un `ValueNotifier` y que solo se suscriban el botón de guardar y la fila. Sin
+  medir y sin tocar.
+- Todo sin commitear: los commits los hace él.

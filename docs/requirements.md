@@ -22,7 +22,10 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-06** — Añadir sesiones de entrenamiento (numeradas: Día 1, Día 2…) dentro de un planning.
 - **RF-07** — Añadir bloques de entrenamiento dentro de una sesión (tipo: calentamiento/fuerza/cardio/movilidad/otro).
 - **RF-08** — Añadir ejercicios de la biblioteca a un bloque, con series/reps/peso/descanso (Fuerza y Fortalecimiento) o minutos (Cardio). Al añadirlo se elige **a qué bloque** de la sesión va.
-- **RF-08.1** — Buscar un ejercicio de la biblioteca por nombre y filtrarlo por grupo muscular y por músculo, tanto en la biblioteca como al añadirlo a un bloque. El filtro por un músculo incluye los ejercicios que lo trabajan de forma **secundaria**, detrás de los que lo tienen como principal.
+- **RF-08.1** — Buscar un ejercicio de la biblioteca por nombre y filtrarlo por grupo muscular, por músculo y por **tipo** (Cardio, Fortalecimiento), tanto en la biblioteca como al añadirlo a un bloque. El filtro por un músculo incluye los ejercicios que lo trabajan de forma **secundaria**, detrás de los que lo tienen como principal. Tipo y músculo **se combinan**: "fortalecimiento de hombro" es la consulta útil para un cliente lesionado.
+- **RF-08.2** — Al añadir a un bloque un ejercicio que va por series, el formulario propone **tres series de ocho repeticiones**, y cada serie que se añade después hereda el peso, las repeticiones y el RIR de la anterior. Son valores de partida, no una restricción: se corrigen o se quitan.
+- **RF-12.1** — El entrenador añade y quita series de un ejercicio **desde la propia pantalla de planificación**, sin abrir su formulario; quedan como cambio pendiente y se guardan con el botón de guardar, igual que el resto de la cuadrícula. Quitar pide confirmación, y avisa si el cliente ya había registrado esa serie. Un ejercicio que va por series conserva siempre al menos una.
+- **RF-21.1** — El entrenador consulta **lo que el cliente hizo** en una semana (lo planificado al lado de lo realizado, un día a la vez) en la vista del planning del cliente. Esa vista es de **solo consulta**: el plan se modifica en la pantalla de planificación, que tiene un botón por día para abrir sus resultados.
 - **RF-06.1** — Duplicar un planning en otra semana, copiando sesiones, bloques, ejercicios y series **planificadas**; nunca lo registrado por el cliente. Los ejercicios dados de baja se omiten y se informa de cuántos.
 - **RF-06.2** — El entrenador solo crea, modifica, borra y duplica plannings de la semana en curso o posteriores. Las semanas terminadas son de solo lectura, salvo archivarlas y salvo el registro del cliente.
 - **RF-09 a RF-12** — Editar planning, sesión, bloque y ejercicio dentro de un bloque, respectivamente.
@@ -111,6 +114,12 @@ postcondición, excepciones.
 - Secuencia: solicita alta → pide datos personales y objetivos → valida sin correo duplicado (activos) → crea ficha y cuenta de acceso vía Edge Function → envía invitación por correo → notifica al alta.
 - Postcondición: cliente registrado, invitación pendiente de aceptar.
 - Excepciones: datos incompletos o correo duplicado → error, vuelta a introducir datos.
+- **El enlace de la invitación es de un solo uso y caduca.** Si el cliente lo
+  vuelve a pulsar después de haberlo canjeado (porque se salió de la pantalla sin
+  elegir contraseña, o instaló la PWA), el sistema lo explica y le ofrece pedir
+  un enlace nuevo escribiendo su correo, en la misma pantalla, cuantas veces
+  haga falta. El correo lo avisa. Nunca se le lleva a una pantalla donde no
+  pueda hacer nada: sin contraseña fijada, el acceso no es una opción para él.
 
 **CU-18 Dar de baja cliente**
 - Secuencia: selecciona cliente, solicita baja → confirmación → confirma → desactiva ficha (lógico), conserva histórico y bloquea acceso en Auth → notifica.
@@ -144,7 +153,12 @@ postcondición, excepciones.
 
 **CU-24 Recuperar contraseña**
 - Secuencia: "He olvidado mi contraseña" → pide correo → valida cuenta existente → envía enlace de restablecimiento → el actor fija nueva contraseña → notifica éxito.
-- Excepciones: correo no existente → mensaje genérico (no confirma si la cuenta existe, por seguridad); enlace caducado → error, vuelta al inicio.
+- Excepciones: correo no existente → mensaje genérico (no confirma si la cuenta existe, por seguridad); enlace caducado o ya usado → se explica y se ofrece pedir otro desde la misma pantalla.
+- Sirve además como **rescate de una invitación perdida** (CU-17): un cliente
+  invitado que nunca llegó a fijar su contraseña recibe igualmente el enlace de
+  recuperación, y al llegar con él la pantalla le habla de elegir su primera
+  contraseña, no de cambiar una que no tiene. El acceso del login tiene una
+  entrada con sus palabras ("me han dado de alta y no tengo contraseña").
 
 ## Fuera de alcance (explícito)
 

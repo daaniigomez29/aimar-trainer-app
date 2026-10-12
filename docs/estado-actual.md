@@ -245,11 +245,79 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 31. **`deno check` solo miraba dos de las tres funciones.** `enviar-recordatorios`
     se añadió en la fase 6 y no se incluyó en el paso del CI, así que su código no
     pasaba por el comprobador de tipos. Ya están las tres.
+32. **Los enlaces de correo de Auth son de un solo uso, y su fallo no llega como
+    evento.** GoTrue borra el token al canjearlo: pinchar dos veces el enlace de
+    invitación no puede funcionar. Al segundo intento redirige a la app con
+    `#error=access_denied&error_code=otp_expired`, y el SDK reporta eso como
+    **error del stream** de `onAuthStateChange` (`notifyException`), no como
+    evento. `ControladorSesion` escuchaba sin `onError`, así que el estado no se
+    movía de `SesionDesconocida` y el enrutador aparcaba en la pantalla de carga:
+    spinner infinito y un cliente sin forma de fijar su contraseña (2026-10-12).
+    Tres defensas: `onError`, leer el error de la URL de arranque
+    (`errorDeEnlaceDeCorreo`) y un tope de espera en la consulta del perfil.
+33. **Un `Timer` vivo dentro de un provider revienta 75 tests de widget.**
+    `_verifyInvariants` de `flutter_test` falla con `!timersPending` si al
+    terminar el test queda alguno pendiente, y un `keepAlive` que arranca un
+    temporizador de 8 s en su `build` lo deja en **todos** los tests que montan
+    la app. Un tope de espera va en la petición (`Future.timeout`, que se cancela
+    al completarse), no en un temporizador suelto.
+34. **Los correos de Auth no los manda Resend por su API, sino el SMTP del
+    proyecto.** `resetPasswordForEmail` lo envía GoTrue; las invitaciones y los
+    recordatorios los manda una Edge Function con la API de Resend. Sin SMTP
+    propio configurado en el panel, la recuperación sale del servicio integrado
+    de Supabase: remitente de Supabase, límite de 2 correos/hora y pensado solo
+    para pruebas. Resuelto el 2026-10-12 poniendo Resend como SMTP de Auth
+    (`smtp.resend.com`, usuario `resend`, clave la API key, remitente del dominio
+    verificado).
 
 ## Decisiones tomadas (no reabrir sin motivo)
 
 - **CU-24 mantiene el mensaje genérico** cuando el correo no está registrado: no se
-  confirma si una cuenta existe. Decisión confirmada explícitamente.
+  confirma si una cuenta existe. Decisión confirmada explícitamente. De ahí que
+  pedir un enlace sea un **campo de correo libre**, también en la pantalla donde
+  aterriza un enlace gastado: el enlace va al buzón de su dueño, así que poner el
+  correo de otra persona no da acceso a nada; lo único que se arriesga es
+  mandarle un correo que no ha pedido, y de eso se encarga el límite de envíos de
+  GoTrue. No se añade superficie nueva: ese mismo campo ya era público en
+  `/recuperar-contrasena`, a un clic del login.
+- **`/restablecer-contrasena` es ruta pública** (2026-10-12). Es donde aterriza el
+  enlace del correo, y ese enlace puede llegar ya gastado: sin sesión, esa
+  pantalla es la que lo explica y ofrece pedir otro. Mandar al login a un cliente
+  invitado lo dejaba sin salida, porque allí no tiene ninguna contraseña que
+  escribir. No abre nada: fijar la contraseña sigue exigiendo la sesión del
+  enlace, y sin ella `establecerNuevaContrasena` responde `ErrorEnlaceCaducado`.
+- **"Lo pasado no se toca" se aplica boton a boton, y hay que repasarlos todos**
+  (2026-10-12). La regla vive en `PlanningSemanal.esEditable`, pero cada accion
+  de la pantalla tiene que consultarla por su cuenta, asi que olvidarse de una
+  no da ningun error: deja un boton que invita a algo imposible. Se quedaron dos
+  sin gatear hasta que se vieron en uso: **copiar lo que hizo el cliente a lo
+  planificado** (rellenaba los campos y luego no habia donde guardar) y
+  **"Añadir ejercicio"** de un bloque (abria el formulario de algo que el
+  trigger iba a rechazar). El criterio es **deshabilitar, no esconder**, con el
+  motivo en el tooltip cuando quepa: un boton que desaparece se lee como que la
+  funcion no existe. Lo vigila `editor_semana_pasada_test.dart`.
+- **El filtro por tipo y el muscular se cruzan, no se sustituyen** (2026-10-12).
+  Pulsar "Fortalecimiento" y "Hombro" da los ejercicios de fortalecimiento de
+  hombro, que es justo la consulta útil para un cliente lesionado. Se barajo
+  hacerlos excluyentes para que la combinacion no diera nunca una lista vacia,
+  y se descarto: la lista vacia ya se explica sola y ofrece "Quitar filtros".
+  Solo se ofrecen los chips de Cardio y Fortalecimiento: Fuerza es la mayor
+  parte de la biblioteca y los grupos musculares ya sirven para recorrerla.
+- **Un ejercicio de series nace con 3x8** (2026-10-12), y cada serie añadida
+  hereda peso, repeticiones y RIR de la anterior. Las constantes viven en el
+  dominio (`seriesPorDefecto`, `repeticionesPorDefecto`), no en la pantalla:
+  es una regla de planificacion. Al **editar** no se toca nada, se ensena lo
+  guardado.
+- **El cliente entra siempre por la semana en curso** (2026-10-12). Si no tiene
+  planning de esta semana se le ensena la semana vacia, no el planning mas
+  cercano: antes se caia en el mas reciente de la lista, que llega ordenada por
+  fecha descendente, y el cliente abria la app directamente en la semana que
+  viene en cuanto el entrenador se la dejaba montada.
+- **La invitación manda sobre el tipo de enlace** (2026-10-12). Un cliente
+  invitado rescatado con un enlace de **recuperación** sigue sin tener
+  contraseña, así que el estado lo decide el metadato `debe_fijar_contrasena` y no
+  el evento `passwordRecovery`. Si no, la pantalla le hablaba de "contraseña
+  nueva" y le ofrecía "Volver al acceso", que para él no lleva a ninguna parte.
 - **`riverpod_lint` se activa por el bloque `plugins:`** de `analysis_options.yaml`,
   sin `custom_lint` (que ya no interviene en la versión 3.x).
 - **`SUPABASE_PUBLISHABLE_KEY`** es el nombre en la app y en `config/*.json`. Dentro

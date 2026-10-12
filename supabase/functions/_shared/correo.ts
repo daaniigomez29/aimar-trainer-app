@@ -147,7 +147,14 @@ async function _entregarEnMailpit({
   }
 }
 
-/** Cuerpo del correo de invitación (CU-17, paso 6). */
+/** Cuerpo del correo de invitación (CU-17, paso 6).
+ *
+ * El aviso de que el enlace es de **un solo uso** no es decoración: GoTrue
+ * borra el token al canjearlo, así que si el cliente se sale de la pantalla
+ * sin elegir contraseña, volver a pulsar el botón no puede funcionar. Pasó el
+ * 2026-10-12. La app ya le ofrece pedir otro enlace, pero mejor que no llegue
+ * a necesitarlo.
+ */
 export function correoDeInvitacion({
   nombre,
   enlace,
@@ -163,6 +170,10 @@ export function correoDeInvitacion({
     "vez y elegir tu contraseña, abre este enlace:",
     "",
     enlace,
+    "",
+    "El enlace se puede usar una sola vez, así que elige la contraseña",
+    "antes de cerrar la página o de instalar la aplicación. Si deja de",
+    "funcionar, la propia app te deja pedir uno nuevo.",
     "",
     "Si no esperabas este correo, puedes ignorarlo.",
   ].join("\n");
@@ -184,6 +195,11 @@ export function correoDeInvitacion({
     <p style="font-size: 13px; color: #555555;">
       Si el botón no funciona, copia este enlace en tu navegador:<br />
       ${escaparHtml(enlace)}
+    </p>
+    <p style="font-size: 13px; color: #555555;">
+      <strong>El enlace se puede usar una sola vez</strong>, así que elige la
+      contraseña antes de cerrar la página o de instalar la aplicación. Si deja
+      de funcionar, la propia app te deja pedir uno nuevo.
     </p>
     <p style="font-size: 13px; color: #555555;">
       Si no esperabas este correo, puedes ignorarlo.

@@ -15,6 +15,7 @@ import 'package:aimar_trainer_app/features/autenticacion/domain/autenticacion_re
 import 'package:aimar_trainer_app/features/autenticacion/domain/perfil.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/data/planning_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning_repositorio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_planning.dart';
@@ -45,6 +46,7 @@ void main() {
     WidgetTester tester, {
     required PlanningSemanal planning,
     RolUsuario rol = RolUsuario.entrenador,
+    int? dia,
   }) async {
     // Una semana entera no cabe en los 600 px de alto por defecto, y un ListView
     // solo construye lo visible: sin esto los ultimos dias "no existen" para los
@@ -76,7 +78,9 @@ void main() {
         // Con ruta real: la pantalla construye las rutas de lo que abre a
         // partir de aquella por la que se ha llegado.
         child: appConRutas(
-          rutaInicial: Rutas.planningDelCliente(planning.id),
+          rutaInicial:
+              '${Rutas.planningDelCliente(planning.id)}'
+              '${dia == null ? '' : '?${Rutas.paramDia}=$dia'}',
           rutas: [
             GoRoute(
               path: Rutas.planningCliente,
@@ -86,6 +90,9 @@ void main() {
                   path: Rutas.unPlanning,
                   builder: (_, estado) => PantallaPlanning(
                     planningId: estado.pathParameters['planningId']!,
+                    diaInicial: int.tryParse(
+                      estado.uri.queryParameters[Rutas.paramDia] ?? '',
+                    ),
                   ),
                 ),
               ],
@@ -111,27 +118,44 @@ void main() {
     ],
   );
 
-  testWidgets('la semana muestra todas sus sesiones', (tester) async {
-    await montar(tester, planning: semanaConCuatroSesiones());
-
-    expect(find.text('Empuje'), findsOneWidget);
-    expect(find.text('ggg'), findsOneWidget);
-    expect(find.text('kk'), findsOneWidget);
-    expect(find.text('jjjj'), findsOneWidget);
-  });
-
-  testWidgets('las sesiones van numeradas y se puede añadir la siguiente', (
+  // Un dia a la vez, con la tira de chips para cambiar: antes se pintaba la
+  // semana entera de corrido y habia que bajar buscando el dia.
+  testWidgets('se ve un día a la vez, y se cambia con los chips', (
     tester,
   ) async {
     await montar(tester, planning: semanaConCuatroSesiones());
 
-    expect(find.text('Día 1'), findsOneWidget);
-    expect(find.text('Día 4'), findsOneWidget);
-    // El boton propone el numero que toca, no un dia de la semana.
-    expect(find.text('Añadir día 5'), findsOneWidget);
+    expect(find.text('Empuje'), findsOneWidget);
+    expect(find.text('jjjj'), findsNothing);
+    // Los cuatro dias estan en la tira.
+    expect(find.byKey(const Key('dia_4')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('dia_4')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('jjjj'), findsOneWidget);
+    expect(find.text('Empuje'), findsNothing);
   });
 
-  testWidgets('una sesión hecha muestra cuando se hizo', (tester) async {
+  // Es como llega el boton "Visualizar resultados de la sesion" del editor.
+  testWidgets('la URL puede pedir con qué día abrir', (tester) async {
+    await montar(tester, planning: semanaConCuatroSesiones(), dia: 3);
+
+    expect(find.text('kk'), findsOneWidget);
+    expect(find.text('Empuje'), findsNothing);
+  });
+
+  // Planificar es del editor. Aqui se consulta, y punto.
+  testWidgets('no se ofrece tocar el contenido de la semana', (tester) async {
+    await montar(tester, planning: semanaConCuatroSesiones());
+
+    expect(find.textContaining('Añadir día'), findsNothing);
+    expect(find.textContaining('Añadir bloque'), findsNothing);
+    expect(find.textContaining('Añadir ejercicio'), findsNothing);
+    expect(find.byType(ReorderableListView), findsNothing);
+  });
+
+  testWidgets('una sesión hecha muestra cuándo se hizo', (tester) async {
     await montar(
       tester,
       planning: planningDePrueba(
@@ -148,6 +172,53 @@ void main() {
     );
 
     expect(find.textContaining('Hecha el 08/10'), findsOneWidget);
+  });
+
+  // Lo que faltaba: el entrenador no tenia donde ver lo que hizo el cliente sin
+  // ponerse a planificar la semana siguiente.
+  testWidgets('se ve lo planificado al lado de lo que hizo el cliente', (
+    tester,
+  ) async {
+    await montar(
+      tester,
+      planning: planningDePrueba(
+        sesiones: [
+          sesionDePrueba(
+            id: 's-1',
+            orden: 1,
+            nombre: 'Empuje',
+            bloques: [
+              bloqueDePrueba(
+                ejercicios: [
+                  ejercicioPlanificadoDePrueba(
+                    estadoRegistro: EstadoRegistro.registrado,
+                    series: [serieDePrueba(peso: 60, repeticiones: 10)],
+                  ).copyWith(
+                    seriesRealizadas: [
+                      SerieRealizada(
+                        id: 'sr-1',
+                        ejercicioPlanificadoId: 'ep-1',
+                        numeroSerie: 1,
+                        repeticionesRealizadas: 9,
+                        fechaHoraRegistro: DateTime.utc(2026, 10, 8),
+                        pesoReal: 62.5,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    expect(find.text('60 kg · 10 reps'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('serie_hecha_ep-1_1'))).data,
+      '62.5 kg · 9 reps',
+    );
+    expect(find.text('Registrado'), findsOneWidget);
   });
 
   testWidgets('el cliente ve la semana sin acciones de escritura', (

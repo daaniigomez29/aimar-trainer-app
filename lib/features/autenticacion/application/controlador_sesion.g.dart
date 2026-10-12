@@ -50,7 +50,7 @@ final class ControladorSesionProvider
   }
 }
 
-String _$controladorSesionHash() => r'a21c6de46a79c804a634a39d46b5e07c5f21df44';
+String _$controladorSesionHash() => r'6a3de1a117b4eaa945ab55520101071d49ea3bb0';
 
 /// Unica fuente de verdad sobre la sesion: escucha los eventos de Auth, resuelve
 /// el perfil y expone el [EstadoSesion] que usa el enrutador para decidir la

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/enrutador.dart';
+import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/perfil.dart';
@@ -44,6 +45,34 @@ void main() {
       expect(
         destinoDeLaRedireccion(const SesionCerrada(), Rutas.cargando),
         Rutas.login,
+      );
+    });
+  });
+
+  group('destinoDeLaRedireccion · enlace del correo ya gastado', () {
+    // Los enlaces de invitacion y recuperacion son de un solo uso. Al volver a
+    // pinchar uno, la salida es pedir otro, y eso se ofrece en la pantalla de
+    // fijar la contrasena: al login no se manda, porque un cliente invitado no
+    // tiene alli ninguna contrasena que escribir.
+    const enlaceMuerto = SesionEnlaceInvalido(ErrorEnlaceCaducado());
+
+    test('lleva a la pantalla que ofrece pedir otro enlace', () {
+      expect(
+        destinoDeLaRedireccion(enlaceMuerto, Rutas.cargando),
+        Rutas.restablecerContrasena,
+      );
+      // Tambien desde la URL con la que redirige GoTrue, que para el
+      // enrutador no es ninguna ruta conocida.
+      expect(
+        destinoDeLaRedireccion(enlaceMuerto, 'error=access_denied'),
+        Rutas.restablecerContrasena,
+      );
+    });
+
+    test('y no la saca de ahi', () {
+      expect(
+        destinoDeLaRedireccion(enlaceMuerto, Rutas.restablecerContrasena),
+        isNull,
       );
     });
   });

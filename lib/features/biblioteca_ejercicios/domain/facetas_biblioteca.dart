@@ -1,5 +1,6 @@
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 
 /// Las opciones de filtrado que **tienen sentido ofrecer** ahora mismo, sacadas
 /// de la biblioteca real.
@@ -12,12 +13,14 @@ class FacetasBiblioteca {
   const FacetasBiblioteca({
     required this.ejerciciosPorGrupo,
     required this.musculosConEjercicios,
+    required this.tiposConEjercicios,
     required this.haySinClasificar,
   });
 
   static const FacetasBiblioteca vacias = FacetasBiblioteca(
     ejerciciosPorGrupo: {},
     musculosConEjercicios: {},
+    tiposConEjercicios: {},
     haySinClasificar: false,
   );
 
@@ -32,6 +35,8 @@ class FacetasBiblioteca {
 
   final Set<Musculo> musculosConEjercicios;
 
+  final Set<TipoEjercicio> tiposConEjercicios;
+
   /// Si existe algun ejercicio sin clasificar, para ofrecer su pestana.
   final bool haySinClasificar;
 
@@ -39,6 +44,10 @@ class FacetasBiblioteca {
   /// aparicion en la biblioteca).
   List<GrupoMuscular> get grupos =>
       GrupoMuscular.values.where(ejerciciosPorGrupo.containsKey).toList();
+
+  /// Tipos con algun ejercicio, en el orden del enum.
+  List<TipoEjercicio> get tipos =>
+      TipoEjercicio.values.where(tiposConEjercicios.contains).toList();
 
   /// Musculos de ese grupo con algun ejercicio, en el orden de la taxonomia.
   List<Musculo> musculosDe(GrupoMuscular grupo) =>

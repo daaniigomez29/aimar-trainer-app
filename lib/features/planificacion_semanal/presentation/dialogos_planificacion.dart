@@ -389,6 +389,31 @@ Future<bool> moverEjercicio({
   return resultado.esExito;
 }
 
+/// Quitar una serie de la cuadricula del editor.
+///
+/// No toca la base de datos: la serie desaparece de lo que se va a guardar, y
+/// se guarda con el boton de siempre. Se pregunta porque el resto de la
+/// cuadricula se edita sin confirmar nada —se teclea encima y se corrige— y
+/// quitar una fila entera no se deshace tecleando.
+///
+/// Si el cliente **ya registro** esa serie, se avisa: lo que hizo no se borra
+/// (vive en `series_realizadas`, que es otra tabla y no se toca desde aqui),
+/// pero se queda sin la serie planificada enfrente con la que compararlo.
+Future<bool> confirmarQuitarSerie({
+  required BuildContext context,
+  required int numeroSerie,
+  required bool conRegistroDelCliente,
+}) => _confirmar(
+  context: context,
+  titulo: 'Quitar la serie $numeroSerie',
+  mensaje: conRegistroDelCliente
+      ? 'El cliente ya registró esta serie. Lo que hizo se conserva, pero se '
+            'quedará sin serie planificada con la que compararlo.'
+      : 'Se quitará la serie $numeroSerie de lo planificado. El cambio se '
+            'aplica al guardar.',
+  textoBoton: 'Quitar',
+);
+
 Future<bool> _confirmar({
   required BuildContext context,
   required String titulo,

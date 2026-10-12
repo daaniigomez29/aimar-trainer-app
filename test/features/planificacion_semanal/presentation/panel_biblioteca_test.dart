@@ -175,4 +175,46 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Día 2 · Día 2'), findsOneWidget);
   });
+
+  // La tira de dias es el mando para cambiar de dia. Un dia con varios bloques
+  // es mas largo que la pantalla, asi que si se va con el scroll hay que subir
+  // del todo solo para pasar al Dia 2.
+  testWidgets('la tira de días se queda fija al bajar la página', (
+    tester,
+  ) async {
+    planning = planningDePrueba(
+      sesiones: [
+        sesionDePrueba(
+          orden: 1,
+          nombre: 'Día 1',
+          bloques: [
+            for (var i = 1; i <= 4; i++)
+              bloqueDePrueba(
+                id: 'b-$i',
+                orden: i,
+                ejercicios: [
+                  ejercicioPlanificadoDePrueba(
+                    id: 'ep-$i',
+                    bloqueId: 'b-$i',
+                    series: [serieDePrueba(ejercicioPlanificadoId: 'ep-$i')],
+                  ),
+                ],
+              ),
+          ],
+        ),
+        sesionDePrueba(id: 's-2', orden: 2, nombre: 'Día 2'),
+      ],
+    );
+
+    await montar(tester);
+    final chip = find.text('Día 1');
+    final antes = tester.getTopLeft(chip.first);
+
+    // Arrastre en la zona del editor, a la izquierda del panel lateral.
+    await tester.dragFrom(const Offset(400, 400), const Offset(0, -260));
+    await tester.pumpAndSettle();
+
+    expect(chip, findsWidgets);
+    expect(tester.getTopLeft(chip.first), antes);
+  });
 }

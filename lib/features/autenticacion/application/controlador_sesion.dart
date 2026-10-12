@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:aimar_trainer_app/core/diagnostico/registro.dart';
+import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/autenticacion/data/url_de_arranque.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/autenticacion_repositorio.dart';
+import 'package:aimar_trainer_app/features/autenticacion/domain/enlace_de_correo.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
 
 part 'controlador_sesion.g.dart';
@@ -20,12 +24,27 @@ class ControladorSesion extends _$ControladorSesion {
   @override
   EstadoSesion build() {
     final repositorio = ref.watch(autenticacionRepositorioProvider);
-    _suscripcion = repositorio.cambiosDeAutenticacion.listen(_alRecibirEvento);
+    _suscripcion = repositorio.cambiosDeAutenticacion.listen(
+      _alRecibirEvento,
+      // Un enlace de correo gastado llega como **error** del stream, no como
+      // evento: el SDK lo reporta con `notifyException`. Sin este `onError` el
+      // fallo se quedaba sin atender, el estado no se movia de
+      // `SesionDesconocida` y el enrutador aparcaba en la pantalla de carga
+      // para siempre (fallo del 2026-10-12).
+      onError: _alFallarAutenticacion,
+    );
     ref.onDispose(() {
       _suscripcion?.cancel();
       _suscripcion = null;
     });
-    return const SesionDesconocida();
+
+    // Si la URL de arranque ya trae el motivo, se sabe sin esperar a nadie.
+    final errorDelEnlace = errorDeEnlaceDeCorreo(
+      ref.watch(urlDeArranqueProvider),
+    );
+    return errorDelEnlace == null
+        ? const SesionDesconocida()
+        : SesionEnlaceInvalido(errorDelEnlace);
   }
 
   Future<void> _alRecibirEvento(EventoAutenticacion evento) async {
@@ -33,7 +52,14 @@ class ControladorSesion extends _$ControladorSesion {
       case EventoAutenticacion.sesionCerrada:
         state = const SesionCerrada();
       case EventoAutenticacion.recuperacionContrasena:
-        state = const SesionRecuperandoContrasena();
+        // Un cliente invitado rescatado con un enlace de recuperacion sigue sin
+        // tener contrasena, asi que **manda la invitacion** y no el tipo de
+        // enlace por el que ha entrado. Si no, la pantalla le habla de
+        // "contraseña nueva" y le ofrece volver al acceso, donde no tiene nada
+        // que escribir.
+        state = ref.read(autenticacionRepositorioProvider).debeFijarContrasena
+            ? const SesionDebeFijarContrasena()
+            : const SesionRecuperandoContrasena();
       case EventoAutenticacion.sesionIniciada:
       case EventoAutenticacion.usuarioActualizado:
         await refrescarPerfil();
@@ -46,11 +72,30 @@ class ControladorSesion extends _$ControladorSesion {
     }
   }
 
+  /// Un fallo de Auth que no viene acompanado de ningun evento: el enlace del
+  /// correo ya gastado, un token que no se puede renovar, la red caida al
+  /// arrancar.
+  void _alFallarAutenticacion(Object error, StackTrace traza) {
+    Registro.fallo(error, traza, contexto: 'el flujo de autenticación');
+
+    // Con sesion viva no se saca a nadie de donde esta: un refresco que falla
+    // sin cobertura lo cuenta la pantalla que no pueda cargar, no esta.
+    if (state is SesionActiva) return;
+    state = SesionEnlaceInvalido(
+      // El repositorio ya los traduce; el `else` es por si algun dia llega algo
+      // sin traducir, para no acabar otra vez en un estado sin salida.
+      error is ErrorApp ? error : const ErrorInesperado(),
+    );
+  }
+
   /// Vuelve a leer el perfil de la sesion actual y recalcula el estado.
   Future<void> refrescarPerfil() async {
     final repositorio = ref.read(autenticacionRepositorioProvider);
     if (repositorio.idUsuarioActual == null) {
-      state = const SesionCerrada();
+      // No se pisa el motivo si ya se conoce: cuando el enlace falla, el SDK
+      // emite ademas `initialSession` sin sesion, y un `SesionCerrada` encima
+      // mandaria al login en lugar de a "pide otro enlace".
+      if (state is! SesionEnlaceInvalido) state = const SesionCerrada();
       return;
     }
     // Antes de resolver el perfil: un cliente recien invitado no tiene contrasena,

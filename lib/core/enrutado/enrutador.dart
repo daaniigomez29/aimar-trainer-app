@@ -130,6 +130,11 @@ GoRouter enrutador(Ref ref) {
                         path: Rutas.unPlanning,
                         builder: (context, state) => PantallaPlanning(
                           planningId: state.pathParameters['planningId']!,
+                          // `?dia=`: con que dia abrir. Lo pone el boton de
+                          // "Visualizar resultados de la sesion" del editor.
+                          diaInicial: int.tryParse(
+                            state.uri.queryParameters[Rutas.paramDia] ?? '',
+                          ),
                         ),
                         routes: [
                           GoRoute(
@@ -364,6 +369,16 @@ String? _destino(EstadoSesion estado, String rutaActual) {
       // Sesion sin resolver: se espera en la pantalla de carga, salvo que el
       // usuario venga del enlace del correo (no hay que interrumpirlo).
       return rutaActual == Rutas.restablecerContrasena ? null : Rutas.cargando;
+
+    // El enlace del correo ya no vale. Se va a la pantalla de fijar la
+    // contrasena, que es la que lo cuenta y ofrece pedir otro, **aunque no haya
+    // sesion**. La URL con la que ha llegado no sirve de ruta: GoTrue redirige
+    // con el error en el fragmento (`#error=...`), que para el enrutador no es
+    // ninguna ruta conocida.
+    case SesionEnlaceInvalido():
+      return rutaActual == Rutas.restablecerContrasena
+          ? null
+          : Rutas.restablecerContrasena;
 
     // Invitacion aceptada sin contrasena y recuperacion acaban en la misma
     // pantalla; solo cambia el texto que se muestra.
