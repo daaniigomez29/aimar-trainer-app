@@ -111,6 +111,12 @@ postcondición, excepciones.
 - Secuencia: solicita alta → pide datos personales y objetivos → valida sin correo duplicado (activos) → crea ficha y cuenta de acceso vía Edge Function → envía invitación por correo → notifica al alta.
 - Postcondición: cliente registrado, invitación pendiente de aceptar.
 - Excepciones: datos incompletos o correo duplicado → error, vuelta a introducir datos.
+- **El enlace de la invitación es de un solo uso y caduca.** Si el cliente lo
+  vuelve a pulsar después de haberlo canjeado (porque se salió de la pantalla sin
+  elegir contraseña, o instaló la PWA), el sistema lo explica y le ofrece pedir
+  un enlace nuevo escribiendo su correo, en la misma pantalla, cuantas veces
+  haga falta. El correo lo avisa. Nunca se le lleva a una pantalla donde no
+  pueda hacer nada: sin contraseña fijada, el acceso no es una opción para él.
 
 **CU-18 Dar de baja cliente**
 - Secuencia: selecciona cliente, solicita baja → confirmación → confirma → desactiva ficha (lógico), conserva histórico y bloquea acceso en Auth → notifica.
@@ -144,7 +150,12 @@ postcondición, excepciones.
 
 **CU-24 Recuperar contraseña**
 - Secuencia: "He olvidado mi contraseña" → pide correo → valida cuenta existente → envía enlace de restablecimiento → el actor fija nueva contraseña → notifica éxito.
-- Excepciones: correo no existente → mensaje genérico (no confirma si la cuenta existe, por seguridad); enlace caducado → error, vuelta al inicio.
+- Excepciones: correo no existente → mensaje genérico (no confirma si la cuenta existe, por seguridad); enlace caducado o ya usado → se explica y se ofrece pedir otro desde la misma pantalla.
+- Sirve además como **rescate de una invitación perdida** (CU-17): un cliente
+  invitado que nunca llegó a fijar su contraseña recibe igualmente el enlace de
+  recuperación, y al llegar con él la pantalla le habla de elegir su primera
+  contraseña, no de cambiar una que no tiene. El acceso del login tiene una
+  entrada con sus palabras ("me han dado de alta y no tengo contraseña").
 
 ## Fuera de alcance (explícito)
 

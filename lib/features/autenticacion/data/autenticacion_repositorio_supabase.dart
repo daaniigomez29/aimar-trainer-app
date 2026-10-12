@@ -34,6 +34,16 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
 
   static const String _tablaPerfiles = 'perfiles';
 
+  /// Tope de espera al resolver el perfil.
+  ///
+  /// POR QUE EXISTE: mientras esa consulta no vuelva, `ControladorSesion` sigue
+  /// en `SesionDesconocida` y el enrutador aparca en la pantalla de carga. Una
+  /// peticion que se queda colgada (cobertura que va y viene, el movil que
+  /// despierta de la suspension) dejaba un spinner sin final. Con el tope sale
+  /// por `TimeoutException`, que ya se traduce a `ErrorConexion`, y el usuario
+  /// acaba en el login pudiendo reintentar.
+  static const Duration _esperaMaximaPerfil = Duration(seconds: 10);
+
   final SupabaseClient cliente;
   final ConfiguracionApp configuracion;
 
@@ -49,12 +59,31 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
   bool get debeFijarContrasena =>
       _auth.currentUser?.userMetadata?[_claveDebeFijarContrasena] == true;
 
+  /// Eventos de Auth, ya traducidos al dominio.
+  ///
+  /// Los **fallos** de Auth no viajan como evento sino como error del stream
+  /// (asi reporta el SDK un enlace de correo gastado o un token que no se puede
+  /// renovar). Se traducen aqui igual que los de cualquier otro metodo: ninguna
+  /// `AuthException` sale de esta clase, ni por el valor ni por el error.
   @override
   Stream<EventoAutenticacion> get cambiosDeAutenticacion => _auth
       .onAuthStateChange
       .map((estado) => _traducirEvento(estado.event))
       .where((evento) => evento != null)
-      .cast<EventoAutenticacion>();
+      .cast<EventoAutenticacion>()
+      .transform(
+        StreamTransformer<
+          EventoAutenticacion,
+          EventoAutenticacion
+        >.fromHandlers(
+          handleError: (error, traza, destino) => destino.addError(
+            error is AuthException
+                ? _traducirErrorAuth(error)
+                : _traducirErrorGenerico(error, traza),
+            traza,
+          ),
+        ),
+      );
 
   @override
   Future<Result<Perfil>> iniciarSesion({
@@ -106,7 +135,8 @@ class AutenticacionRepositorioSupabase implements AutenticacionRepositorio {
           .from(_tablaPerfiles)
           .select()
           .eq('id', idUsuario)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(_esperaMaximaPerfil);
       if (fila == null) {
         return const Failure(ErrorPerfilSinRol());
       }

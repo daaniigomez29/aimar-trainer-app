@@ -215,6 +215,20 @@ Dos decisiones que importan:
 
 - Proveedor único de correo: Resend, con dominio propio verificado (puede ser un
   subdominio del dominio web existente de Aimar).
+- **Pero por dos caminos distintos, y conviene no confundirlos:**
+  - *Invitaciones y recordatorios*: los manda una Edge Function llamando a la
+    **API de Resend** (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`), con plantilla
+    propia. El enlace de la invitación se obtiene con `generateLink`, que lo
+    devuelve **sin enviar nada**.
+  - *Recuperación de contraseña*: la manda **GoTrue**, no la app, porque la
+    dispara `resetPasswordForEmail`. Usa el **SMTP del proyecto**, configurado en
+    el panel (Authentication → Emails → SMTP Settings) apuntando también a
+    Resend: `smtp.resend.com`, usuario `resend`, contraseña la API key y
+    remitente del dominio verificado. Sin ese SMTP, Supabase usa su servicio
+    integrado, que es solo para pruebas (remitente de Supabase y dos correos por
+    hora), y el correo no llega a un cliente real. Es la única salida que tiene
+    un cliente que ha perdido el enlace de su invitación, así que no es opcional.
+    El límite por hora se ajusta en Authentication → Rate Limits.
 - Un job de pg_cron invoca diariamente una Edge Function que identifica:
   clientes cuyo planning **arranca hoy** (se les resume cuántas sesiones trae la
   semana), y clientes cuyo `diaControlPreferido` es el día actual. El primer aviso

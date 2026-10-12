@@ -1,3 +1,4 @@
+import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/perfil.dart';
 
 /// Estado de sesion sobre el que decide el enrutador.
@@ -10,10 +11,31 @@ class SesionDesconocida extends EstadoSesion {
   const SesionDesconocida();
 }
 
-/// No hay sesion. `error` acompana el motivo cuando el cierre no fue voluntario
-/// (por ejemplo, cuenta sin perfil o dada de baja).
+/// No hay sesion y no hay nada que explicar: o nunca la hubo, o se cerro.
+///
+/// Cuando si hay un motivo que contar —se ha llegado por un enlace de correo
+/// que ya no vale— el estado es [SesionEnlaceInvalido], que lo lleva dentro.
 class SesionCerrada extends EstadoSesion {
   const SesionCerrada();
+}
+
+/// Se ha llegado por un enlace de correo de Auth que ya no sirve: gastado
+/// (son de un solo uso) o caducado.
+///
+/// Es distinto de [SesionCerrada] por lo que hay que hacer a continuacion: aqui
+/// no se manda al login —un cliente invitado no tiene contrasena que escribir
+/// alli— sino a pedir otro enlace, contando [error].
+class SesionEnlaceInvalido extends EstadoSesion {
+  const SesionEnlaceInvalido(this.error);
+
+  final ErrorApp error;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SesionEnlaceInvalido && other.error == error;
+
+  @override
+  int get hashCode => Object.hash(SesionEnlaceInvalido, error);
 }
 
 /// Sesion valida con rol conocido.

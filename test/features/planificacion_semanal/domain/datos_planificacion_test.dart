@@ -5,6 +5,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_eje
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 
 import '../ayudas_planificacion.dart';
 
@@ -295,9 +296,20 @@ void main() {
     });
 
     test('un planning archivado no es editable', () {
-      expect(planning.esEditable, isTrue);
+      // Con la semana **en curso**, no con la fija del grupo: `esEditable`
+      // mira si la semana ya paso, asi que una fecha fija aqui hace que el
+      // test se ponga rojo solo al llegar el lunes siguiente. Paso el
+      // 2026-10-12.
+      expect(planningDePrueba().esEditable, isTrue);
       expect(
         planningDePrueba(estado: EstadoPlanning.archivado).esEditable,
+        isFalse,
+      );
+    });
+
+    test('una semana que ya ha pasado no se toca', () {
+      expect(
+        planningDePrueba(fechaInicio: Semana.deHoy().anterior.lunes).esEditable,
         isFalse,
       );
     });

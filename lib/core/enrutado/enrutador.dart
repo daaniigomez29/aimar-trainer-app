@@ -365,6 +365,16 @@ String? _destino(EstadoSesion estado, String rutaActual) {
       // usuario venga del enlace del correo (no hay que interrumpirlo).
       return rutaActual == Rutas.restablecerContrasena ? null : Rutas.cargando;
 
+    // El enlace del correo ya no vale. Se va a la pantalla de fijar la
+    // contrasena, que es la que lo cuenta y ofrece pedir otro, **aunque no haya
+    // sesion**. La URL con la que ha llegado no sirve de ruta: GoTrue redirige
+    // con el error en el fragmento (`#error=...`), que para el enrutador no es
+    // ninguna ruta conocida.
+    case SesionEnlaceInvalido():
+      return rutaActual == Rutas.restablecerContrasena
+          ? null
+          : Rutas.restablecerContrasena;
+
     // Invitacion aceptada sin contrasena y recuperacion acaban en la misma
     // pantalla; solo cambia el texto que se muestra.
     case SesionDebeFijarContrasena():

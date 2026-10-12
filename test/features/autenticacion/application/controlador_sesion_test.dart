@@ -9,6 +9,7 @@ import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/estado_sesion.dart';
 import 'package:aimar_trainer_app/features/autenticacion/data/autenticacion_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/autenticacion/data/url_de_arranque.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/autenticacion_repositorio.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/perfil.dart';
 import 'package:aimar_trainer_app/features/autenticacion/domain/rol_usuario.dart';
@@ -26,21 +27,27 @@ void main() {
   late StreamController<EventoAutenticacion> eventos;
   late ProviderContainer contenedor;
 
+  /// Contenedor con el repositorio falso y la URL de arranque que se indique.
+  /// Por defecto, una URL limpia: la app abierta con normalidad.
+  ProviderContainer contenedorCon({String url = 'https://app.es/'}) {
+    final nuevo = ProviderContainer(
+      overrides: [
+        autenticacionRepositorioProvider.overrideWithValue(repositorio),
+        urlDeArranqueProvider.overrideWithValue(Uri.parse(url)),
+      ],
+    );
+    addTearDown(nuevo.dispose);
+    return nuevo;
+  }
+
   setUp(() {
     repositorio = RepositorioFalso();
     eventos = StreamController<EventoAutenticacion>.broadcast();
     when(() => repositorio.cambiosDeAutenticacion)
         .thenAnswer((_) => eventos.stream);
     when(() => repositorio.debeFijarContrasena).thenReturn(false);
-    contenedor = ProviderContainer(
-      overrides: [
-        autenticacionRepositorioProvider.overrideWithValue(repositorio),
-      ],
-    );
-    addTearDown(() {
-      contenedor.dispose();
-      eventos.close();
-    });
+    contenedor = contenedorCon();
+    addTearDown(eventos.close);
   });
 
   /// Deja que el evento recorra el stream y que se resuelva el perfil.
@@ -201,5 +208,111 @@ void main() {
         SesionActiva(_perfilCliente),
       );
     });
+  });
+
+  /// El fallo del 2026-10-12: el cliente pierde la pantalla de fijar su
+  /// contrasena, vuelve a pinchar el enlace del correo —que es de un solo uso—
+  /// y la app se queda cargando para siempre, sin forma de establecerla.
+  group('enlace de correo que ya no vale', () {
+    test('el error de la URL de arranque se sabe sin esperar eventos', () {
+      final conError = contenedorCon(
+        url: 'https://app.es/#error=access_denied&error_code=otp_expired',
+      );
+
+      expect(
+        conError.read(controladorSesionProvider),
+        const SesionEnlaceInvalido(ErrorEnlaceCaducado()),
+      );
+    });
+
+    test(
+      'un fallo de Auth sin evento mueve el estado, no lo deja colgado',
+      () async {
+        contenedor.listen(controladorSesionProvider, (_, _) {});
+
+        // Asi reporta el SDK un enlace gastado: error del stream, no evento.
+        eventos.addError(const ErrorEnlaceCaducado(), StackTrace.empty);
+        await procesarEventos();
+
+        expect(
+          contenedor.read(controladorSesionProvider),
+          const SesionEnlaceInvalido(ErrorEnlaceCaducado()),
+        );
+      },
+    );
+
+    test('el initialSession sin sesión no borra el motivo', () async {
+      // El SDK emite ademas `initialSession` sin sesion. Si eso dejara un
+      // `SesionCerrada` encima, el enrutador mandaria al login, donde un
+      // invitado no tiene ninguna contrasena que escribir.
+      final conError = contenedorCon(
+        url: 'https://app.es/#error=access_denied&error_code=otp_expired',
+      );
+      when(() => repositorio.idUsuarioActual).thenReturn(null);
+      conError.listen(controladorSesionProvider, (_, _) {});
+
+      eventos.add(EventoAutenticacion.sesionIniciada);
+      await procesarEventos();
+
+      expect(
+        conError.read(controladorSesionProvider),
+        isA<SesionEnlaceInvalido>(),
+      );
+    });
+
+    test('un enlace válido después del fallo sí abre sesión', () async {
+      final conError = contenedorCon(
+        url: 'https://app.es/#error=access_denied&error_code=otp_expired',
+      );
+      when(() => repositorio.idUsuarioActual).thenReturn('id-invitado');
+      when(() => repositorio.debeFijarContrasena).thenReturn(true);
+      conError.listen(controladorSesionProvider, (_, _) {});
+
+      eventos.add(EventoAutenticacion.sesionIniciada);
+      await procesarEventos();
+
+      expect(
+        conError.read(controladorSesionProvider),
+        isA<SesionDebeFijarContrasena>(),
+      );
+    });
+
+    test(
+      'con sesión activa, un fallo de Auth no saca a nadie de la app',
+      () async {
+        when(() => repositorio.idUsuarioActual).thenReturn('id-cliente');
+        when(() => repositorio.perfilDeLaSesion())
+            .thenAnswer((_) async => Success(_perfilCliente));
+        contenedor.listen(controladorSesionProvider, (_, _) {});
+        eventos.add(EventoAutenticacion.sesionIniciada);
+        await procesarEventos();
+
+        // Por ejemplo un refresco de token que falla sin cobertura.
+        eventos.addError(const ErrorConexion(), StackTrace.empty);
+        await procesarEventos();
+
+        expect(
+          contenedor.read(controladorSesionProvider),
+          SesionActiva(_perfilCliente),
+        );
+      },
+    );
+  });
+
+  test('un invitado rescatado por recuperación sigue siendo invitado', () async {
+    // Llega por un enlace de recuperacion (GoTrue emite `passwordRecovery`),
+    // pero no tiene contrasena todavia: manda la invitacion. Si no, la pantalla
+    // le habla de "contraseña nueva" y le ofrece volver al acceso, que para el
+    // no lleva a ninguna parte.
+    when(() => repositorio.debeFijarContrasena).thenReturn(true);
+    contenedor.listen(controladorSesionProvider, (_, _) {});
+
+    eventos.add(EventoAutenticacion.recuperacionContrasena);
+    await procesarEventos();
+
+    expect(
+      contenedor.read(controladorSesionProvider),
+      isA<SesionDebeFijarContrasena>(),
+    );
   });
 }

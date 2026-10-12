@@ -178,5 +178,16 @@ abstract final class Rutas {
   static const String ajustesEntrenador = '$inicioEntrenador/$ajustes';
 
   /// Rutas accesibles sin sesion.
-  static const Set<String> publicas = {login, recuperarContrasena};
+  /// Rutas que se pintan **sin sesion**.
+  ///
+  /// `restablecerContrasena` esta aqui porque es donde aterriza el enlace del
+  /// correo, y ese enlace puede llegar ya gastado: sin sesion, esa pantalla es
+  /// la que lo explica y ofrece pedir otro. Mandarla al login dejaba sin salida
+  /// a un cliente invitado, que alli no tiene ninguna contrasena que escribir.
+  /// No abre nada: fijar la contrasena sigue exigiendo la sesion del enlace.
+  static const Set<String> publicas = {
+    login,
+    recuperarContrasena,
+    restablecerContrasena,
+  };
 }

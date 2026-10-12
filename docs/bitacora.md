@@ -2128,3 +2128,86 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   bitacora, que se queda con **los dos lados**: su entrada del 8 y las del 9 y
   el 11.
 - Todo sin commitear: los commits los hace el.
+
+### 2026-10-12
+
+**Corregido:**
+
+- **Un cliente invitado podía quedarse sin forma de fijar su contraseña.** Pinchaba
+  el enlace del correo, se salía de la pantalla antes de elegirla (o instalaba la
+  PWA) y, al volver a pulsar el botón del correo, la app se quedaba cargando sin
+  fin. Tres causas encadenadas, las tres arregladas:
+  1. Los enlaces de Auth son de **un solo uso**: GoTrue borra el token al
+     canjearlo y al segundo intento redirige con
+     `#error=access_denied&error_code=otp_expired`. Eso **no llega como evento**,
+     lo reporta el SDK como error del stream de `onAuthStateChange`, y
+     `ControladorSesion` escuchaba sin `onError`: el estado se quedaba en
+     `SesionDesconocida` y el enrutador aparcaba en la pantalla de carga. Ahora
+     hay `onError`, y además se lee el error de la URL de arranque
+     (`errorDeEnlaceDeCorreo`, con su test), así que el motivo se sabe sin
+     depender de ningún evento.
+  2. `/restablecer-contrasena` no era ruta pública, así que sin sesión el
+     enrutador mandaba al login, donde un invitado no tiene ninguna contraseña
+     que escribir. Ahora es pública y, sin sesión, esa pantalla explica que el
+     enlace ya no vale y **ofrece pedir otro** ahi mismo (campo de correo +
+     botón), reutilizando CU-24. Repetible cuantas veces quiera: el enlace sigue
+     siendo de un solo uso —es la credencial de la cuenta y viaja en su buzón—,
+     lo que no tiene límite es pedir uno nuevo.
+  3. Un invitado rescatado por un enlace de **recuperación** veía "Nueva
+     contraseña" y un "Volver al acceso" que no le servía de nada. El estado lo
+     decide ahora el metadato `debe_fijar_contrasena`, no el evento
+     `passwordRecovery`.
+- Tope de espera (10 s) en la consulta del perfil: mientras no volvía, el estado
+  seguía en `SesionDesconocida` y la pantalla de carga no se iba. Sale por
+  `TimeoutException`, que ya se traducía a `ErrorConexion`.
+- Los errores de Auth del stream se **traducen en el repositorio** (como los de
+  cualquier otro método): ninguna `AuthException` sale de `data/`, ni por el
+  valor ni por el error.
+- El correo de invitación avisa de que el enlace se usa una sola vez y de elegir
+  la contraseña antes de cerrar la página o instalar la app. **Toca
+  `crear-cliente`: hay que redesplegar las funciones.**
+- Un test de dominio con fecha fija (`2026-10-05`) se puso rojo solo al llegar el
+  lunes 12: `esEditable` mira si la semana ya pasó. Pasa a calcular la semana en
+  curso, que es lo que ya hacía la ayuda de tests. Es la trampa 28, otra vez.
+
+**Hecho:**
+
+- **Resend como SMTP de Auth** (en el panel, no en `config.toml`, para que local
+  siga entregando en Mailpit). Sin eso, el correo de recuperación lo manda el
+  servicio integrado de Supabase, que es de pruebas: remitente de Supabase y dos
+  correos por hora. Verificado en producción con una cuenta real, y verificado de
+  paso **lo que faltaba por saber**: un usuario invitado que nunca confirmó su
+  cuenta **sí** recibe el correo de recuperación. Por eso el cliente puede
+  rescatarse solo y no hace falta una Edge Function de "reenviar invitación".
+- Documentado en `architecture.md` que el correo va por **dos caminos**: API de
+  Resend para invitaciones y recordatorios, SMTP de Auth para la recuperación.
+  El doc decía "Resend: invitaciones, recuperación, recordatorios" sin matizar, y
+  eso era verdad a medias.
+- Trampas 32, 33 y 34 en `estado-actual.md`; decisiones nuevas (ruta pública,
+  campo de correo libre, la invitación manda sobre el tipo de enlace); CU-17 y
+  CU-24 actualizados en `requirements.md`.
+
+**Pendiente / notas:**
+
+- `flutter test` **452**, `dart analyze --fatal-infos` limpio, `deno fmt --check`
+  y `deno check` limpios. SQL sin tocar.
+- **Subir el límite de envíos** en Authentication → Rate Limits: sigue en 2/hora,
+  que era el del servicio integrado, y con dos intentos del cliente se agota. De
+  10 a 20 es razonable; el captcha de Auth (`[auth.captcha]`, comentado en
+  `config.toml`) es el escalón siguiente si alguna vez hay abuso.
+- **Comprobado**: un cliente **dado de baja** no puede volver a entrar por un
+  enlace de recuperación; la operación da error. El baneo de Auth también cierra
+  esa puerta, no solo el login.
+- **Pero el baneo no es inmediato**: el cliente que ya tiene la sesión abierta
+  sigue entrando a todo hasta que caduque su token, incluso recargando. Es el
+  siguiente asunto a tratar; sin empezar.
+- Descartado el botón "Me han dado de alta y no tengo contraseña" en el login: no
+  añade nada, porque esos casos ya se resuelven con el correo inicial y, si
+  caduca, pidiendo otro enlace con su correo.
+- En iOS, una PWA añadida a la pantalla de inicio tiene **su propio
+  almacenamiento**, separado del de Safari: al instalarla, la sesión del enlace
+  no viaja y la app abre sin sesión. En Android lo comparten. No se puede evitar;
+  lo cubre el camino de pedir otro enlace.
+- "Reenviar invitación" desde la ficha del cliente queda como comodidad, no como
+  necesidad. Implica Edge Function nueva: sin empezar.
+- Todo sin commitear: los commits los hace él.
