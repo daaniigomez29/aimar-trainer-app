@@ -20,8 +20,8 @@ clientes reales dados de alta.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Hecho y en uso** |
 
-Verificación actual: `supabase db reset` aplica **24 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **476**,
+Verificación actual: `supabase db reset` aplica **25 migraciones** limpias,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **495**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -297,6 +297,25 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   trigger iba a rechazar). El criterio es **deshabilitar, no esconder**, con el
   motivo en el tooltip cuando quepa: un boton que desaparece se lee como que la
   funcion no existe. Lo vigila `editor_semana_pasada_test.dart`.
+- **El peso "por lado" es un campo del ejercicio, no del ejercicio planificado**
+  (2026-10-14, pedido el 09). `ejercicios.peso_por_lado`, `boolean not null
+  default false`. Es una **etiqueta, no una operación**: el peso se guarda tal
+  cual y nunca se multiplica; multiplicarlo volvería incomparable todo el
+  histórico ya registrado. Descripcion del ejercicio y de cómo se carga, no de
+  una semana, así que no hay que copiarlo en `guardar_ejercicio_planificado`,
+  `duplicar_planning` ni `duplicar_sesion`, y llega gratis a las pantallas
+  porque la consulta del planning ya incrusta `ejercicios(*)`.
+  - **El cliente no marca nada**: ve "7,5 kg por lado" y registra con la misma
+    convención, así que `series_realizadas` no necesita su propia marca.
+  - **Lo que se acepta a cambio**: la app no versiona los ejercicios, de modo que
+    desmarcarlo cambia también cómo se lee el histórico de ese ejercicio. Es el
+    mismo comportamiento que ya tenían el nombre o la clasificación muscular
+    —renombrar renombra todo el histórico—, con la diferencia de que aquí lo
+    que cambia no es la etiqueta de un texto sino cómo se interpreta un número.
+    Se asume porque el motivo realista para desmarcarlo es haberlo marcado por
+    error, y ahí propagarlo es lo correcto. La interfaz **pregunta al quitar la
+    marca**, no al ponerla. Descartado versionar los ejercicios: desproporcionado
+    para una biblioteca pequeña y un solo entrenador.
 - **El filtro por tipo y el muscular se cruzan, no se sustituyen** (2026-10-12).
   Pulsar "Fortalecimiento" y "Hombro" da los ejercicios de fortalecimiento de
   hombro, que es justo la consulta útil para un cliente lesionado. Se barajo
@@ -599,20 +618,6 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
 
 Decisiones que quedaron sin cerrar:
 
-- **Peso "por lado" vs. total (pedido el 2026-10-09, sin empezar).** El entrenador
-  quiere marcar que el peso de una serie es por lado, para que al cliente le
-  aparezca `Plan: 9 kg por lado × 8`. Propuesta sobre la mesa, a falta de dos
-  decisiones suyas:
-  1. ¿El **cliente** también lo marca al registrar lo que hizo? (Recomendado sí,
-     heredando lo que puso el entrenador: lo planificado y lo realizado son
-     independientes, y hoy no podría decir que lo hizo con otro reparto.)
-  2. ¿Checkbox **por serie** o uno por ejercicio que las marque todas?
-  Lo decidido del diseño: la marca va en `series_planificadas` (y en
-  `series_realizadas` si entra lo del cliente), como `boolean peso_por_lado not
-  null default false`; **es una etiqueta, no una operación** —el peso se guarda
-  tal cual, no se multiplica, o el histórico y las gráficas dejarían de ser
-  comparables con lo ya registrado. Implica migración y toca el dominio, así que
-  no se empieza sin su visto bueno.
 - **Guardas de `dar-de-baja-cliente` (incidente del 2026-10-07, sin aplicar).** La
   cuenta del entrenador acabó baneada en producción porque **tiene ficha en
   `clientes`**: `clientes.id` ES el id de Auth, la función banea ese id y solo

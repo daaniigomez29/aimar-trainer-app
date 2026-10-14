@@ -255,10 +255,8 @@ void main() {
 
   // Anadir desde el panel de la biblioteca y anadir desde el formulario de
   // CU-08 tienen que dar lo mismo: el atajo no puede salir mas caro que el
-  // camino largo. Antes el panel creaba **una** serie de 10 repeticiones.
-  testWidgets('desde el panel, el ejercicio nace con tres series de ocho', (
-    tester,
-  ) async {
+  // camino largo. Por eso se afirma con las constantes y no con un numero.
+  testWidgets('desde el panel, nace con las series de partida', (tester) async {
     when(() => ejercicios.listar()).thenAnswer(
       (_) async => Success([ejercicioDePrueba(id: 'ej-2', nombre: 'Remo')]),
     );
@@ -279,7 +277,9 @@ void main() {
       datos.series.every((s) => s.repeticiones == repeticionesPorDefecto),
       isTrue,
     );
-    expect(datos.series.map((s) => s.numeroSerie), [1, 2, 3]);
+    expect(datos.series.map((s) => s.numeroSerie), [
+      for (var i = 1; i <= seriesPorDefecto; i++) i,
+    ]);
   });
 }
 

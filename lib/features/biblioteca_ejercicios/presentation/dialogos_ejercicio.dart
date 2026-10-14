@@ -161,6 +161,25 @@ void _avisar({
   );
 }
 
+/// Al **quitar** la marca de "peso por lado", no al ponerla.
+///
+/// POR QUE SE PREGUNTA: la app no versiona los ejercicios, asi que la ficha
+/// describe el presente y el historico la refleja. Quitar la marca hace que
+/// registros que ya existian dejen de leerse "por lado". Los numeros guardados
+/// no cambian —es solo la etiqueta—, pero que un cambio alcance al pasado
+/// merece un clic de confirmacion y no un descuido.
+Future<bool> confirmarQuitarPesoPorLado(BuildContext context) async =>
+    await _confirmarAviso(
+      context: context,
+      titulo: 'Quitar "peso por lado"',
+      mensaje:
+          'Este ejercicio dejará de mostrarse como "por lado", también en lo '
+          'que el cliente ya tiene registrado. Los pesos guardados no cambian: '
+          'solo cambia la etiqueta con la que se leen.',
+      textoBoton: 'Quitar la marca',
+    ) ??
+    false;
+
 Future<bool?> _confirmarAviso({
   required BuildContext context,
   required String titulo,

@@ -106,6 +106,13 @@ class _Contenido extends ConsumerWidget {
               avatar: Icon(ejercicio.tipo.icono, size: 18),
               label: Text(ejercicio.tipo.etiqueta),
             ),
+            // Es dato de la ficha, no decoracion: quien planifica tiene que
+            // saber si los kg que escribe son de un lado o del total.
+            if (ejercicio.pesoPorLado)
+              const Chip(
+                avatar: Icon(Icons.swap_horiz, size: 18),
+                label: Text('Kg por lado'),
+              ),
             if (ejercicio.estado.estaEliminado)
               const Chip(
                 avatar: Icon(Icons.block, size: 18),

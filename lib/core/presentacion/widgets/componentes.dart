@@ -244,7 +244,16 @@ class BotonCta extends StatelessWidget {
           : Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(etiqueta),
+                // Flexible: hay etiquetas largas ("Guardar y comenzar el
+                // bloque Calentamiento") y en un movil estrecho un `Text`
+                // suelto dentro de una `Row` desborda en vez de recortarse.
+                Flexible(
+                  child: Text(
+                    etiqueta,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 if (icono != null) ...[
                   const SizedBox(width: 8),
                   Icon(icono, size: 18),

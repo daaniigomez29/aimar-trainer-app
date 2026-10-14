@@ -11,6 +11,7 @@ import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
 import 'package:aimar_trainer_app/features/progreso/data/progreso_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/datos_progreso.dart';
@@ -569,6 +570,68 @@ void main() {
 
       expect(confirmada(tester, 3), isFalse);
       expect(find.byKey(const Key('quitar_serie_3')), findsNothing);
+    });
+  });
+
+  group('el botón anuncia el bloque que empieza', () {
+    /// Dos bloques, un ejercicio cada uno: el primero cierra su bloque.
+    SesionEntrenamiento conDosBloques() => sesionDePrueba(
+      bloques: [
+        bloqueDePrueba(
+          id: 'b-1',
+          orden: 1,
+          tipo: TipoBloque.calentamiento,
+          ejercicios: [deFuerza()],
+        ),
+        bloqueDePrueba(
+          id: 'b-2',
+          orden: 2,
+          ejercicios: [
+            ejercicioPlanificadoDePrueba(id: 'ep-2', bloqueId: 'b-2'),
+          ],
+        ),
+      ],
+    );
+
+    testWidgets('al cerrar un bloque, lo dice', (tester) async {
+      await montar(tester, deFuerza(), sesion: conDosBloques());
+
+      expect(find.text('Guardar y comenzar el bloque Fuerza'), findsOneWidget);
+    });
+
+    testWidgets('dentro del mismo bloque, el texto de siempre', (tester) async {
+      final primero = deFuerza();
+      await montar(
+        tester,
+        primero,
+        sesion: sesionDePrueba(
+          bloques: [
+            bloqueDePrueba(
+              ejercicios: [
+                primero,
+                ejercicioPlanificadoDePrueba(id: 'ep-2'),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Guardar y siguiente ejercicio'), findsOneWidget);
+    });
+
+    testWidgets('en el último ejercicio del día, termina', (tester) async {
+      final unico = deFuerza();
+      await montar(
+        tester,
+        unico,
+        sesion: sesionDePrueba(
+          bloques: [
+            bloqueDePrueba(ejercicios: [unico]),
+          ],
+        ),
+      );
+
+      expect(find.text('Terminar ejercicio'), findsOneWidget);
     });
   });
 }

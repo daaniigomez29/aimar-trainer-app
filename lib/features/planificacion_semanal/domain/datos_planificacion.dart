@@ -171,15 +171,15 @@ class DatosBloque {
 /// Con cuantas series nace un ejercicio de fuerza recien anadido a un bloque, y
 /// con cuantas repeticiones cada una.
 ///
-/// Es lo que Aimar pone casi siempre, asi que el formulario abre con el trabajo
-/// hecho y solo se corrige lo que se salga. Antes abria con **una** serie vacia
-/// y habia que pulsar "anadir serie" dos veces en cada ejercicio de cada bloque
-/// de cada dia.
+/// Volvio a **una** el 2026-10-14, a peticion de Aimar: estuvo en tres entre el
+/// 12 y el 14 de octubre. Las series varian demasiado entre ejercicios como para
+/// que tres sea el punto de partida util, y quitar las que sobran sale mas caro
+/// que anadir la que falta.
 ///
 /// Viven en el dominio y no en la pantalla porque son una regla de
 /// planificacion, no un detalle de la interfaz: el dia que el criterio cambie,
 /// se cambia aqui.
-const int seriesPorDefecto = 3;
+const int seriesPorDefecto = 1;
 const int repeticionesPorDefecto = 8;
 
 /// Una serie tal como se introduce en el formulario, antes de existir en la base

@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RegistroProgreso {
 
- String get clienteId; String get ejercicioId; String get ejercicioNombre; TipoEjercicio get ejercicioTipo; String get sesionId; DateTime get fecha; int? get numeroSerie; int? get repeticionesRealizadas; double? get pesoReal; int? get rirReal; double? get minutosRealizados;
+ String get clienteId; String get ejercicioId; String get ejercicioNombre; TipoEjercicio get ejercicioTipo; String get sesionId; DateTime get fecha; int? get numeroSerie; int? get repeticionesRealizadas; double? get pesoReal; int? get rirReal; double? get minutosRealizados;/// Si el peso de ese ejercicio se cuenta por lado. Lo trae la vista desde
+/// `ejercicios`, y **no cambia ningun calculo**: la grafica se dibuja con
+/// los numeros guardados, igual que siempre. Solo sirve para decirlo.
+ bool get pesoPorLado;
 /// Create a copy of RegistroProgreso
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $RegistroProgresoCopyWith<RegistroProgreso> get copyWith => _$RegistroProgresoCo
 @override
 bool operator ==(Object other) {
   final _this = this as RegistroProgreso;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegistroProgreso&&(identical(other.clienteId, _this.clienteId) || other.clienteId == _this.clienteId)&&(identical(other.ejercicioId, _this.ejercicioId) || other.ejercicioId == _this.ejercicioId)&&(identical(other.ejercicioNombre, _this.ejercicioNombre) || other.ejercicioNombre == _this.ejercicioNombre)&&(identical(other.ejercicioTipo, _this.ejercicioTipo) || other.ejercicioTipo == _this.ejercicioTipo)&&(identical(other.sesionId, _this.sesionId) || other.sesionId == _this.sesionId)&&(identical(other.fecha, _this.fecha) || other.fecha == _this.fecha)&&(identical(other.numeroSerie, _this.numeroSerie) || other.numeroSerie == _this.numeroSerie)&&(identical(other.repeticionesRealizadas, _this.repeticionesRealizadas) || other.repeticionesRealizadas == _this.repeticionesRealizadas)&&(identical(other.pesoReal, _this.pesoReal) || other.pesoReal == _this.pesoReal)&&(identical(other.rirReal, _this.rirReal) || other.rirReal == _this.rirReal)&&(identical(other.minutosRealizados, _this.minutosRealizados) || other.minutosRealizados == _this.minutosRealizados));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegistroProgreso&&(identical(other.clienteId, _this.clienteId) || other.clienteId == _this.clienteId)&&(identical(other.ejercicioId, _this.ejercicioId) || other.ejercicioId == _this.ejercicioId)&&(identical(other.ejercicioNombre, _this.ejercicioNombre) || other.ejercicioNombre == _this.ejercicioNombre)&&(identical(other.ejercicioTipo, _this.ejercicioTipo) || other.ejercicioTipo == _this.ejercicioTipo)&&(identical(other.sesionId, _this.sesionId) || other.sesionId == _this.sesionId)&&(identical(other.fecha, _this.fecha) || other.fecha == _this.fecha)&&(identical(other.numeroSerie, _this.numeroSerie) || other.numeroSerie == _this.numeroSerie)&&(identical(other.repeticionesRealizadas, _this.repeticionesRealizadas) || other.repeticionesRealizadas == _this.repeticionesRealizadas)&&(identical(other.pesoReal, _this.pesoReal) || other.pesoReal == _this.pesoReal)&&(identical(other.rirReal, _this.rirReal) || other.rirReal == _this.rirReal)&&(identical(other.minutosRealizados, _this.minutosRealizados) || other.minutosRealizados == _this.minutosRealizados)&&(identical(other.pesoPorLado, _this.pesoPorLado) || other.pesoPorLado == _this.pesoPorLado));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as RegistroProgreso;
-  return Object.hash(runtimeType,_this.clienteId,_this.ejercicioId,_this.ejercicioNombre,_this.ejercicioTipo,_this.sesionId,_this.fecha,_this.numeroSerie,_this.repeticionesRealizadas,_this.pesoReal,_this.rirReal,_this.minutosRealizados);
+  return Object.hash(runtimeType,_this.clienteId,_this.ejercicioId,_this.ejercicioNombre,_this.ejercicioTipo,_this.sesionId,_this.fecha,_this.numeroSerie,_this.repeticionesRealizadas,_this.pesoReal,_this.rirReal,_this.minutosRealizados,_this.pesoPorLado);
 }
 
 @override
 String toString() {
   final _this = this as RegistroProgreso;
-  return 'RegistroProgreso(clienteId: ${_this.clienteId}, ejercicioId: ${_this.ejercicioId}, ejercicioNombre: ${_this.ejercicioNombre}, ejercicioTipo: ${_this.ejercicioTipo}, sesionId: ${_this.sesionId}, fecha: ${_this.fecha}, numeroSerie: ${_this.numeroSerie}, repeticionesRealizadas: ${_this.repeticionesRealizadas}, pesoReal: ${_this.pesoReal}, rirReal: ${_this.rirReal}, minutosRealizados: ${_this.minutosRealizados})';
+  return 'RegistroProgreso(clienteId: ${_this.clienteId}, ejercicioId: ${_this.ejercicioId}, ejercicioNombre: ${_this.ejercicioNombre}, ejercicioTipo: ${_this.ejercicioTipo}, sesionId: ${_this.sesionId}, fecha: ${_this.fecha}, numeroSerie: ${_this.numeroSerie}, repeticionesRealizadas: ${_this.repeticionesRealizadas}, pesoReal: ${_this.pesoReal}, rirReal: ${_this.rirReal}, minutosRealizados: ${_this.minutosRealizados}, pesoPorLado: ${_this.pesoPorLado})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $RegistroProgresoCopyWith<$Res>  {
   factory $RegistroProgresoCopyWith(RegistroProgreso value, $Res Function(RegistroProgreso) _then) = _$RegistroProgresoCopyWithImpl;
 @useResult
 $Res call({
- String clienteId, String ejercicioId, String ejercicioNombre, TipoEjercicio ejercicioTipo, String sesionId, DateTime fecha, int? numeroSerie, int? repeticionesRealizadas, double? pesoReal, int? rirReal, double? minutosRealizados
+ String clienteId, String ejercicioId, String ejercicioNombre, TipoEjercicio ejercicioTipo, String sesionId, DateTime fecha, int? numeroSerie, int? repeticionesRealizadas, double? pesoReal, int? rirReal, double? minutosRealizados, bool pesoPorLado
 });
 
 
@@ -71,7 +74,7 @@ class _$RegistroProgresoCopyWithImpl<$Res>
 
 /// Create a copy of RegistroProgreso
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? clienteId = null,Object? ejercicioId = null,Object? ejercicioNombre = null,Object? ejercicioTipo = null,Object? sesionId = null,Object? fecha = null,Object? numeroSerie = freezed,Object? repeticionesRealizadas = freezed,Object? pesoReal = freezed,Object? rirReal = freezed,Object? minutosRealizados = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? clienteId = null,Object? ejercicioId = null,Object? ejercicioNombre = null,Object? ejercicioTipo = null,Object? sesionId = null,Object? fecha = null,Object? numeroSerie = freezed,Object? repeticionesRealizadas = freezed,Object? pesoReal = freezed,Object? rirReal = freezed,Object? minutosRealizados = freezed,Object? pesoPorLado = null,}) {
   return _then(RegistroProgreso(
 clienteId: null == clienteId ? _self.clienteId : clienteId // ignore: cast_nullable_to_non_nullable
 as String,ejercicioId: null == ejercicioId ? _self.ejercicioId : ejercicioId // ignore: cast_nullable_to_non_nullable
@@ -84,7 +87,8 @@ as int?,repeticionesRealizadas: freezed == repeticionesRealizadas ? _self.repeti
 as int?,pesoReal: freezed == pesoReal ? _self.pesoReal : pesoReal // ignore: cast_nullable_to_non_nullable
 as double?,rirReal: freezed == rirReal ? _self.rirReal : rirReal // ignore: cast_nullable_to_non_nullable
 as int?,minutosRealizados: freezed == minutosRealizados ? _self.minutosRealizados : minutosRealizados // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,pesoPorLado: null == pesoPorLado ? _self.pesoPorLado : pesoPorLado // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -169,10 +173,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados,  bool pesoPorLado)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RegistroProgreso() when $default != null:
-return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados);case _:
+return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados,_that.pesoPorLado);case _:
   return orElse();
 
 }
@@ -190,10 +194,10 @@ return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ej
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados,  bool pesoPorLado)  $default,) {final _that = this;
 switch (_that) {
 case _RegistroProgreso():
-return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados);case _:
+return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados,_that.pesoPorLado);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -210,10 +214,10 @@ return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ej
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String clienteId,  String ejercicioId,  String ejercicioNombre,  TipoEjercicio ejercicioTipo,  String sesionId,  DateTime fecha,  int? numeroSerie,  int? repeticionesRealizadas,  double? pesoReal,  int? rirReal,  double? minutosRealizados,  bool pesoPorLado)?  $default,) {final _that = this;
 switch (_that) {
 case _RegistroProgreso() when $default != null:
-return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados);case _:
+return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ejercicioTipo,_that.sesionId,_that.fecha,_that.numeroSerie,_that.repeticionesRealizadas,_that.pesoReal,_that.rirReal,_that.minutosRealizados,_that.pesoPorLado);case _:
   return null;
 
 }
@@ -225,7 +229,7 @@ return $default(_that.clienteId,_that.ejercicioId,_that.ejercicioNombre,_that.ej
 @JsonSerializable()
 
 class _RegistroProgreso implements RegistroProgreso {
-  const _RegistroProgreso({required this.clienteId, required this.ejercicioId, required this.ejercicioNombre, required this.ejercicioTipo, required this.sesionId, required this.fecha, this.numeroSerie, this.repeticionesRealizadas, this.pesoReal, this.rirReal, this.minutosRealizados});
+  const _RegistroProgreso({required this.clienteId, required this.ejercicioId, required this.ejercicioNombre, required this.ejercicioTipo, required this.sesionId, required this.fecha, this.numeroSerie, this.repeticionesRealizadas, this.pesoReal, this.rirReal, this.minutosRealizados, this.pesoPorLado = false});
   factory _RegistroProgreso.fromJson(Map<String, dynamic> json) => _$RegistroProgresoFromJson(json);
 
 @override final  String clienteId;
@@ -239,6 +243,10 @@ class _RegistroProgreso implements RegistroProgreso {
 @override final  double? pesoReal;
 @override final  int? rirReal;
 @override final  double? minutosRealizados;
+/// Si el peso de ese ejercicio se cuenta por lado. Lo trae la vista desde
+/// `ejercicios`, y **no cambia ningun calculo**: la grafica se dibuja con
+/// los numeros guardados, igual que siempre. Solo sirve para decirlo.
+@override@JsonKey() final  bool pesoPorLado;
 
 /// Create a copy of RegistroProgreso
 /// with the given fields replaced by the non-null parameter values.
@@ -253,18 +261,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegistroProgreso&&(identical(other.clienteId, clienteId) || other.clienteId == clienteId)&&(identical(other.ejercicioId, ejercicioId) || other.ejercicioId == ejercicioId)&&(identical(other.ejercicioNombre, ejercicioNombre) || other.ejercicioNombre == ejercicioNombre)&&(identical(other.ejercicioTipo, ejercicioTipo) || other.ejercicioTipo == ejercicioTipo)&&(identical(other.sesionId, sesionId) || other.sesionId == sesionId)&&(identical(other.fecha, fecha) || other.fecha == fecha)&&(identical(other.numeroSerie, numeroSerie) || other.numeroSerie == numeroSerie)&&(identical(other.repeticionesRealizadas, repeticionesRealizadas) || other.repeticionesRealizadas == repeticionesRealizadas)&&(identical(other.pesoReal, pesoReal) || other.pesoReal == pesoReal)&&(identical(other.rirReal, rirReal) || other.rirReal == rirReal)&&(identical(other.minutosRealizados, minutosRealizados) || other.minutosRealizados == minutosRealizados));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegistroProgreso&&(identical(other.clienteId, clienteId) || other.clienteId == clienteId)&&(identical(other.ejercicioId, ejercicioId) || other.ejercicioId == ejercicioId)&&(identical(other.ejercicioNombre, ejercicioNombre) || other.ejercicioNombre == ejercicioNombre)&&(identical(other.ejercicioTipo, ejercicioTipo) || other.ejercicioTipo == ejercicioTipo)&&(identical(other.sesionId, sesionId) || other.sesionId == sesionId)&&(identical(other.fecha, fecha) || other.fecha == fecha)&&(identical(other.numeroSerie, numeroSerie) || other.numeroSerie == numeroSerie)&&(identical(other.repeticionesRealizadas, repeticionesRealizadas) || other.repeticionesRealizadas == repeticionesRealizadas)&&(identical(other.pesoReal, pesoReal) || other.pesoReal == pesoReal)&&(identical(other.rirReal, rirReal) || other.rirReal == rirReal)&&(identical(other.minutosRealizados, minutosRealizados) || other.minutosRealizados == minutosRealizados)&&(identical(other.pesoPorLado, pesoPorLado) || other.pesoPorLado == pesoPorLado));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,clienteId,ejercicioId,ejercicioNombre,ejercicioTipo,sesionId,fecha,numeroSerie,repeticionesRealizadas,pesoReal,rirReal,minutosRealizados);
+    return Object.hash(runtimeType,clienteId,ejercicioId,ejercicioNombre,ejercicioTipo,sesionId,fecha,numeroSerie,repeticionesRealizadas,pesoReal,rirReal,minutosRealizados,pesoPorLado);
 }
 
 @override
 String toString() {
-    return 'RegistroProgreso(clienteId: $clienteId, ejercicioId: $ejercicioId, ejercicioNombre: $ejercicioNombre, ejercicioTipo: $ejercicioTipo, sesionId: $sesionId, fecha: $fecha, numeroSerie: $numeroSerie, repeticionesRealizadas: $repeticionesRealizadas, pesoReal: $pesoReal, rirReal: $rirReal, minutosRealizados: $minutosRealizados)';
+    return 'RegistroProgreso(clienteId: $clienteId, ejercicioId: $ejercicioId, ejercicioNombre: $ejercicioNombre, ejercicioTipo: $ejercicioTipo, sesionId: $sesionId, fecha: $fecha, numeroSerie: $numeroSerie, repeticionesRealizadas: $repeticionesRealizadas, pesoReal: $pesoReal, rirReal: $rirReal, minutosRealizados: $minutosRealizados, pesoPorLado: $pesoPorLado)';
 }
 
 
@@ -275,7 +283,7 @@ abstract mixin class _$RegistroProgresoCopyWith<$Res> implements $RegistroProgre
   factory _$RegistroProgresoCopyWith(_RegistroProgreso value, $Res Function(_RegistroProgreso) _then) = __$RegistroProgresoCopyWithImpl;
 @override @useResult
 $Res call({
- String clienteId, String ejercicioId, String ejercicioNombre, TipoEjercicio ejercicioTipo, String sesionId, DateTime fecha, int? numeroSerie, int? repeticionesRealizadas, double? pesoReal, int? rirReal, double? minutosRealizados
+ String clienteId, String ejercicioId, String ejercicioNombre, TipoEjercicio ejercicioTipo, String sesionId, DateTime fecha, int? numeroSerie, int? repeticionesRealizadas, double? pesoReal, int? rirReal, double? minutosRealizados, bool pesoPorLado
 });
 
 
@@ -292,7 +300,7 @@ class __$RegistroProgresoCopyWithImpl<$Res>
 
 /// Create a copy of RegistroProgreso
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? clienteId = null,Object? ejercicioId = null,Object? ejercicioNombre = null,Object? ejercicioTipo = null,Object? sesionId = null,Object? fecha = null,Object? numeroSerie = freezed,Object? repeticionesRealizadas = freezed,Object? pesoReal = freezed,Object? rirReal = freezed,Object? minutosRealizados = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? clienteId = null,Object? ejercicioId = null,Object? ejercicioNombre = null,Object? ejercicioTipo = null,Object? sesionId = null,Object? fecha = null,Object? numeroSerie = freezed,Object? repeticionesRealizadas = freezed,Object? pesoReal = freezed,Object? rirReal = freezed,Object? minutosRealizados = freezed,Object? pesoPorLado = null,}) {
   return _then(_RegistroProgreso(
 clienteId: null == clienteId ? _self.clienteId : clienteId // ignore: cast_nullable_to_non_nullable
 as String,ejercicioId: null == ejercicioId ? _self.ejercicioId : ejercicioId // ignore: cast_nullable_to_non_nullable
@@ -305,7 +313,8 @@ as int?,repeticionesRealizadas: freezed == repeticionesRealizadas ? _self.repeti
 as int?,pesoReal: freezed == pesoReal ? _self.pesoReal : pesoReal // ignore: cast_nullable_to_non_nullable
 as double?,rirReal: freezed == rirReal ? _self.rirReal : rirReal // ignore: cast_nullable_to_non_nullable
 as int?,minutosRealizados: freezed == minutosRealizados ? _self.minutosRealizados : minutosRealizados // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,pesoPorLado: null == pesoPorLado ? _self.pesoPorLado : pesoPorLado // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

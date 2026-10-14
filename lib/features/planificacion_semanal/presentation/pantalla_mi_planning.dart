@@ -528,30 +528,74 @@ class _TarjetaSesion extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          for (final ejercicio in ejercicios) ...[
+          // Separado por bloques: el entrenamiento se piensa asi —calentar,
+          // luego fuerza— y de corrido era una lista plana en la que no se veia
+          // donde acababa uno. Es solo presentacion: el orden lo pone el
+          // entrenador y el modelo no cambia.
+          for (final bloque in sesion.bloques) ...[
             const Divider(height: 17),
-            _FilaEjercicio(
-              ejercicio: ejercicio,
-              esElSiguiente: ejercicio.id == siguiente?.id,
-              onTap: planning.estado.esActivo
-                  ? () => context.go(
-                      Rutas.conVuelta(
-                        Rutas.registroDeEjercicio(
-                          planning.id,
-                          sesion.id,
-                          ejercicio.id,
+            _CabeceraBloque(bloque: bloque),
+            for (final ejercicio in bloque.ejercicios)
+              _FilaEjercicio(
+                ejercicio: ejercicio,
+                esElSiguiente: ejercicio.id == siguiente?.id,
+                onTap: planning.estado.esActivo
+                    ? () => context.go(
+                        Rutas.conVuelta(
+                          Rutas.registroDeEjercicio(
+                            planning.id,
+                            sesion.id,
+                            ejercicio.id,
+                          ),
+                          Rutas.inicioCliente,
                         ),
-                        Rutas.inicioCliente,
-                      ),
-                    )
-                  : null,
-            ),
+                      )
+                    : null,
+              ),
+            if (bloque.ejercicios.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 2, bottom: 6),
+                child: Text('Sin ejercicios.', style: textos.bodySmall),
+              ),
           ],
           if (ejercicios.isEmpty)
             Text(
               'Esta sesión aún no tiene ejercicios.',
               style: textos.bodySmall,
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// El nombre del bloque sobre sus ejercicios.
+///
+/// Lleva la nota del entrenador si la hay: es donde el diseno la llama "Nota de
+/// Aimar", y el cliente la tenia escondida hasta entrar en un ejercicio.
+class _CabeceraBloque extends StatelessWidget {
+  const _CabeceraBloque({required this.bloque});
+
+  final BloqueEjercicio bloque;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'BLOQUE ${bloque.orden} · ${bloque.tipo.etiqueta.toUpperCase()}',
+            key: Key('bloque_cliente_${bloque.id}'),
+            style: textos.labelMedium?.copyWith(color: Tokens.acento),
+          ),
+          if (bloque.notas case final notas?) ...[
+            const SizedBox(height: 2),
+            Text(notas, style: textos.bodySmall),
+          ],
         ],
       ),
     );
@@ -630,7 +674,7 @@ class _FilaEjercicio extends StatelessWidget {
   }
 }
 
-/// "4 series · 60-65 kg" o "30 min", a partir de lo planificado.
+/// "4 series · 60-65 kg por lado" o "30 min", a partir de lo planificado.
 String resumenDeEjercicio(EjercicioPlanificado ejercicio) {
   if (ejercicio.minutosPlanificados case final minutos?) {
     return '${_numero(minutos)} min';
@@ -646,9 +690,14 @@ String resumenDeEjercicio(EjercicioPlanificado ejercicio) {
 
   final minimo = pesos.reduce((a, b) => a < b ? a : b);
   final maximo = pesos.reduce((a, b) => a > b ? a : b);
+  // "por lado" cuando el ejercicio esta marcado asi: el numero es el de un
+  // lado, no el total, y sin decirlo el cliente carga el doble o la mitad.
+  final porLado = (ejercicio.ejercicio?.pesoPorLado ?? false)
+      ? ' por lado'
+      : '';
   final rango = minimo == maximo
-      ? '${_numero(minimo)} kg'
-      : '${_numero(minimo)}-${_numero(maximo)} kg';
+      ? '${_numero(minimo)} kg$porLado'
+      : '${_numero(minimo)}-${_numero(maximo)} kg$porLado';
   return '$cuantas · $rango';
 }
 

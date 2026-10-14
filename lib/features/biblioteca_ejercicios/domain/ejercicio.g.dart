@@ -26,6 +26,7 @@ _Ejercicio _$EjercicioFromJson(Map<String, dynamic> json) => _Ejercicio(
         ),
   equipamiento: json['equipamiento'] as String?,
   videoEjemploUrl: json['video_ejemplo_url'] as String?,
+  pesoPorLado: json['peso_por_lado'] as bool? ?? false,
   imagenRuta: json['imagen_ruta'] as String?,
 );
 
@@ -48,6 +49,7 @@ Map<String, dynamic> _$EjercicioToJson(_Ejercicio instance) =>
       ),
       'equipamiento': instance.equipamiento,
       'video_ejemplo_url': instance.videoEjemploUrl,
+      'peso_por_lado': instance.pesoPorLado,
       'imagen_ruta': instance.imagenRuta,
     };
 

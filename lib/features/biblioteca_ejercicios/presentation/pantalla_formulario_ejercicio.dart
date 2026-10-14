@@ -17,6 +17,8 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercici
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_muscular.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/lista_musculos_plegable.dart';
 
@@ -75,6 +77,7 @@ class _EstadoPantallaFormularioEjercicio
   late final TextEditingController _descripcion;
   late final TextEditingController _video;
   late TipoEjercicio _tipo;
+  late bool _pesoPorLado;
 
   /// Clasificacion muscular. El grupo solo se guarda si no hay principal; con
   /// principal se deriva de el (ver `DatosEjercicio.grupoNormalizado`), pero
@@ -99,6 +102,7 @@ class _EstadoPantallaFormularioEjercicio
     _descripcion = TextEditingController(text: e?.descripcion ?? '');
     _video = TextEditingController(text: e?.videoEjemploUrl ?? '');
     _tipo = e?.tipo ?? TipoEjercicio.fuerza;
+    _pesoPorLado = e?.pesoPorLado ?? false;
     // El grupo efectivo, no el declarado: al editar un ejercicio con musculo
     // principal el selector tiene que aparecer ya en su grupo.
     _grupo = e?.grupo;
@@ -125,7 +129,22 @@ class _EstadoPantallaFormularioEjercicio
     equipamiento: _equipamiento.text,
     videoEjemploUrl: _video.text,
     imagenRuta: widget.ejercicio?.imagenRuta,
+    pesoPorLado: _pesoPorLado,
   );
+
+  /// Marcar no pregunta nada; **desmarcar si**.
+  ///
+  /// POR QUE: la app no versiona los ejercicios, asi que quitar la marca cambia
+  /// tambien como se lee el historico de este ejercicio (deja de poner "por
+  /// lado" en registros que ya existian). Los numeros guardados no se tocan,
+  /// pero conviene que sea una decision y no un descuido.
+  Future<void> _cambiarPesoPorLado({required bool marcado}) async {
+    if (!marcado) {
+      final confirmado = await confirmarQuitarPesoPorLado(context);
+      if (!confirmado) return;
+    }
+    setState(() => _pesoPorLado = marcado);
+  }
 
   Future<void> _guardar() async {
     final guardado = await ref
@@ -228,6 +247,22 @@ class _EstadoPantallaFormularioEjercicio
                 : [..._secundarios, musculo];
           }),
         ),
+        // Solo tiene sentido en lo que se planifica con peso: en un cardio no
+        // hay kg que etiquetar.
+        if (_tipo.vaPorSeries) ...[
+          const SizedBox(height: 16),
+          FilaInterruptor(
+            clave: const Key('interruptor_peso_por_lado'),
+            titulo: 'El peso se cuenta por lado',
+            descripcion:
+                'El cliente verá "7,5 kg por lado" en vez de "7,5 kg". Es solo '
+                'la etiqueta: el peso se guarda tal cual, no se multiplica.',
+            valor: _pesoPorLado,
+            onCambio: estado.enCurso
+                ? null
+                : (marcado) => _cambiarPesoPorLado(marcado: marcado),
+          ),
+        ],
         const SizedBox(height: 16),
         TextField(
           key: const Key('campo_equipamiento'),

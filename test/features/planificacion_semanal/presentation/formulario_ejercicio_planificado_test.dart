@@ -201,23 +201,27 @@ void main() {
   });
 
   testWidgets('se pueden añadir y quitar series', (tester) async {
+    // La primera fila que **no** viene de partida: su indice es el numero de
+    // series por defecto, porque las claves empiezan en 0.
+    final nueva = Key('campo_reps_$seriesPorDefecto');
+
     await montar(tester);
     await elegir(tester, 'Press banca');
-    expect(find.byKey(const Key('campo_reps_3')), findsNothing);
+    expect(find.byKey(nueva), findsNothing);
 
     await tester.tap(find.byKey(const Key('boton_anadir_serie')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('campo_reps_3')), findsOneWidget);
+    expect(find.byKey(nueva), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('quitar_serie_3')));
+    await tester.tap(find.byKey(Key('quitar_serie_$seriesPorDefecto')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('campo_reps_3')), findsNothing);
+    expect(find.byKey(nueva), findsNothing);
   });
 
   // Es lo que Aimar pone casi siempre: el formulario abre con el trabajo hecho
   // y solo se corrige lo que se salga. Antes abria con una serie vacia y habia
   // que pulsar "añadir serie" dos veces por ejercicio.
-  testWidgets('un ejercicio nuevo abre con tres series de ocho repeticiones', (
+  testWidgets('un ejercicio nuevo abre con las series de partida', (
     tester,
   ) async {
     await montar(tester);
@@ -248,36 +252,27 @@ void main() {
   testWidgets('la serie añadida hereda lo escrito en la anterior', (
     tester,
   ) async {
+    // La ultima de las de partida, y la que se añade justo detras.
+    final ultima = seriesPorDefecto - 1;
+    final nueva = seriesPorDefecto;
+
     await montar(tester);
     await elegir(tester, 'Press banca');
 
-    await tester.enterText(find.byKey(const Key('campo_reps_2')), '12');
-    await tester.enterText(find.byKey(const Key('campo_peso_2')), '72,5');
-    await tester.enterText(find.byKey(const Key('campo_rir_2')), '1');
+    await tester.enterText(find.byKey(Key('campo_reps_$ultima')), '12');
+    await tester.enterText(find.byKey(Key('campo_peso_$ultima')), '72,5');
+    await tester.enterText(find.byKey(Key('campo_rir_$ultima')), '1');
     await tester.tap(find.byKey(const Key('boton_anadir_serie')));
     await tester.pumpAndSettle();
 
-    expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('campo_reps_3')))
-          .controller
-          ?.text,
-      '12',
-    );
-    expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('campo_peso_3')))
-          .controller
-          ?.text,
-      '72,5',
-    );
-    expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('campo_rir_3')))
-          .controller
-          ?.text,
-      '1',
-    );
+    String escrito(String campo) => tester
+        .widget<TextField>(find.byKey(Key('campo_${campo}_$nueva')))
+        .controller!
+        .text;
+
+    expect(escrito('reps'), '12');
+    expect(escrito('peso'), '72,5');
+    expect(escrito('rir'), '1');
   });
 
   testWidgets('un Cardio guarda minutos y ninguna serie', (tester) async {
@@ -332,13 +327,11 @@ void main() {
             as DatosEjercicioPlanificado;
     expect(capturado.minutos, isNull);
     expect(capturado.descansoSeg, 90);
-    // Las tres de partida; solo se ha retocado la primera.
+    // Las de partida, con la primera ya retocada a mano.
     expect(capturado.series, hasLength(seriesPorDefecto));
     expect(capturado.series.first.repeticiones, 10);
     expect(capturado.series.first.peso, 60);
     expect(capturado.series.first.rir, 2);
-    expect(capturado.series.last.repeticiones, repeticionesPorDefecto);
-    expect(capturado.series.last.peso, isNull);
   });
 
   testWidgets('al editar llegan las series que ya tenía', (tester) async {

@@ -30,17 +30,20 @@ void main() {
     String? imagenRuta,
     String? video,
     List<Musculo> secundarios = const [],
+    bool pesoPorLado = false,
+    TipoEjercicio tipo = TipoEjercicio.fuerza,
   }) => Ejercicio(
     id: 'id-1',
     nombre: 'Press banca',
     descripcion: 'Tumbado en banco plano.',
-    tipo: TipoEjercicio.fuerza,
+    tipo: tipo,
     estado: EstadoEjercicio.activo,
     creadoEn: DateTime.utc(2026),
     musculoPrincipal: Musculo.porcionEsternoCostal,
     musculosSecundarios: secundarios,
     imagenRuta: imagenRuta,
     videoEjemploUrl: video,
+    pesoPorLado: pesoPorLado,
   );
 
   setUp(() {
@@ -146,5 +149,61 @@ void main() {
 
     expect(find.text('Elegir imagen'), findsOneWidget);
     expect(find.byKey(const Key('boton_quitar_imagen')), findsNothing);
+  });
+
+  group('peso por lado', () {
+    final interruptor = find.byKey(const Key('interruptor_peso_por_lado'));
+
+    testWidgets('no se ofrece en un Cardio: no hay kg que etiquetar', (
+      tester,
+    ) async {
+      await montar(tester, aEditar: ejercicio(tipo: TipoEjercicio.cardio));
+
+      expect(interruptor, findsNothing);
+    });
+
+    testWidgets('marcarlo no pregunta nada', (tester) async {
+      await montar(tester, aEditar: ejercicio());
+
+      await tester.tap(interruptor);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Quitar "peso por lado"'), findsNothing);
+      expect(tester.widget<Switch>(interruptor).value, isTrue);
+    });
+
+    // La app no versiona los ejercicios: quitar la marca cambia tambien como se
+    // lee lo que el cliente ya tiene registrado. No deberia ser un descuido.
+    testWidgets('quitarlo pregunta, y cancelar lo deja puesto', (tester) async {
+      await montar(tester, aEditar: ejercicio(pesoPorLado: true));
+      expect(tester.widget<Switch>(interruptor).value, isTrue);
+
+      await tester.tap(interruptor);
+      await tester.pumpAndSettle();
+      expect(find.text('Quitar "peso por lado"'), findsOneWidget);
+
+      // El formulario tiene su propio "Cancelar" debajo: el del dialogo es el
+      // que esta dentro del AlertDialog.
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('Cancelar'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(interruptor).value, isTrue);
+    });
+
+    testWidgets('al confirmar, se quita', (tester) async {
+      await montar(tester, aEditar: ejercicio(pesoPorLado: true));
+
+      await tester.tap(interruptor);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('boton_confirmar_aviso')));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(interruptor).value, isFalse);
+    });
   });
 }

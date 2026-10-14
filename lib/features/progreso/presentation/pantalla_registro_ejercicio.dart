@@ -321,6 +321,24 @@ class _PantallaRegistroEjercicioState
   List<EjercicioPlanificado>? get _ejerciciosDeLaSesion =>
       widget.sesion?.bloques.expand((b) => b.ejercicios).toList();
 
+  /// El bloque al que salta el siguiente ejercicio, **solo si cambia de
+  /// bloque**; `null` si sigue en el mismo o si ya no hay siguiente.
+  ///
+  /// POR QUE: el entrenamiento se piensa por bloques —calentar, luego fuerza—,
+  /// y el cliente no tenia forma de saber que estaba cerrando uno. El boton lo
+  /// dice antes de pulsarlo.
+  BloqueEjercicio? get _bloqueQueEmpieza {
+    final sesion = widget.sesion;
+    final lista = _ejerciciosDeLaSesion;
+    final indice = _indiceActual;
+    if (sesion == null || lista == null || indice == null) return null;
+    if (indice + 1 >= lista.length) return null;
+
+    final siguiente = lista[indice + 1];
+    if (siguiente.bloqueId == widget.ejercicio.bloqueId) return null;
+    return sesion.bloques.where((b) => b.id == siguiente.bloqueId).firstOrNull;
+  }
+
   int? get _indiceActual {
     final lista = _ejerciciosDeLaSesion;
     if (lista == null) return null;
@@ -417,6 +435,7 @@ class _PantallaRegistroEjercicioState
                   numero: numero,
                   campos: _camposDe(numero),
                   planificada: _planificadaDe(numero),
+                  porLado: widget.ejercicio.ejercicio?.pesoPorLado ?? false,
                   confirmada: _confirmadas.containsKey(numero),
                   habilitado: !estado.enCurso,
                   onEditar: () => _alEditarSerie(numero),
@@ -462,9 +481,15 @@ class _PantallaRegistroEjercicioState
           ),
           etiqueta: _vaPorMinutos
               ? 'Guardar minutos'
-              : (lista != null && indice != null && indice + 1 < lista.length)
-              ? 'Guardar y siguiente ejercicio'
-              : 'Terminar ejercicio',
+              : switch ((
+                  lista != null && indice != null && indice + 1 < lista.length,
+                  _bloqueQueEmpieza,
+                )) {
+                  (true, final bloque?) =>
+                    'Guardar y comenzar el bloque ${bloque.tipo.etiqueta}',
+                  (true, _) => 'Guardar y siguiente ejercicio',
+                  _ => 'Terminar ejercicio',
+                },
           cargando: estado.enCurso,
           onPulsar: _vaPorMinutos ? _guardarCardio : _guardarYSiguiente,
         ),
@@ -648,6 +673,7 @@ class _TarjetaSerie extends StatelessWidget {
     required this.numero,
     required this.campos,
     required this.planificada,
+    required this.porLado,
     required this.confirmada,
     required this.habilitado,
     required this.onEditar,
@@ -658,6 +684,10 @@ class _TarjetaSerie extends StatelessWidget {
   final int numero;
   final _CamposSerie campos;
   final SeriePlanificada? planificada;
+
+  /// Si el peso de este ejercicio se cuenta por lado. Solo cambia el texto del
+  /// plan: lo que el cliente escribe es el peso de un lado, igual que el plan.
+  final bool porLado;
   final bool confirmada;
   final bool habilitado;
 
@@ -685,7 +715,7 @@ class _TarjetaSerie extends StatelessWidget {
               // Lo planificado, en ambar y sin posibilidad de editarlo aqui.
               if (planificada case final plan?)
                 Text(
-                  _resumenPlan(plan),
+                  _resumenPlan(plan, porLado: porLado),
                   style: textos.bodySmall?.copyWith(color: Tokens.secundario),
                 ),
               if (onQuitar case final quitar?) ...[
@@ -747,12 +777,14 @@ class _TarjetaSerie extends StatelessWidget {
     );
   }
 
-  static String _resumenPlan(SeriePlanificada plan) => [
-    'Plan: ',
-    if (plan.pesoPlanificado case final peso?) '${_numero(peso)} kg × ',
-    '${plan.repeticionesPlanificadas}',
-    if (plan.rirPlanificado case final rir?) ' · RIR $rir',
-  ].join();
+  static String _resumenPlan(SeriePlanificada plan, {required bool porLado}) =>
+      [
+        'Plan: ',
+        if (plan.pesoPlanificado case final peso?)
+          '${_numero(peso)} kg${porLado ? ' por lado' : ''} × ',
+        '${plan.repeticionesPlanificadas}',
+        if (plan.rirPlanificado case final rir?) ' · RIR $rir',
+      ].join();
 }
 
 class _CampoSerie extends StatelessWidget {

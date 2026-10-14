@@ -74,6 +74,8 @@ Escala orientativa: 22–24px títulos de pantalla, 17–19px títulos de tarjet
 ### 6.1 Mi planning (cliente, móvil — pantalla de entrada tras login)
 Cabecera con saludo y avatar. Tira horizontal de 7 días (el día actual resaltado en `accent`). Tarjeta de la sesión de hoy: título, progreso circular (series completadas), lista de ejercicios con estado (hecho / en curso / pendiente). Fila de estadísticas rápidas (próximo control, sesiones de la semana). CTA "Continuar entrenamiento". Barra de navegación inferior.
  
+La sesión del día se presenta **separada por bloques**, con su nombre ("BLOQUE 1 · CALENTAMIENTO") y la nota del entrenador encima de sus ejercicios. Es solo presentación: el orden lo decide el entrenador y el modelo no cambia.
+
 ### 6.2 Registro de ejercicio (cliente, móvil)
 Cabecera con flecha atrás, contador "Ejercicio X de N" y puntos de progreso. Fila superior: imagen del ejercicio (100×100, de la entidad `Ejercicio`) a la izquierda + grupo muscular, nombre y enlace "Ver vídeo" a la derecha. Por cada serie: una tarjeta con lo **planificado** por el entrenador (etiqueta discreta en color secundario) y, debajo, los campos editables de **kg / reps / RIR** que rellena el cliente, más un botón de check para marcarla completada. Aviso de descanso recomendado. Nota de texto del entrenador. CTA fijo "Guardar y siguiente ejercicio".
  
