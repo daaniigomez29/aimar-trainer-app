@@ -1348,6 +1348,12 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                   ],
                 ),
               ),
+              // Para que el entrenador escriba el numero que toca: el peso de
+              // este ejercicio se cuenta por lado, no en total.
+              if (ficha?.pesoPorLado ?? false) ...[
+                const Pastilla(texto: 'Kg por lado'),
+                const SizedBox(width: 6),
+              ],
               IconButton(
                 key: Key('editar_ejercicio_${widget.ejercicio.id}'),
                 tooltip: 'Editar ejercicio',

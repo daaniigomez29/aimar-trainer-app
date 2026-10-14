@@ -258,4 +258,49 @@ void main() {
       expect(find.text('Revisar la sesión'), findsOneWidget);
     });
   });
+
+  // El entrenamiento se piensa por bloques —calentar, luego fuerza— y de
+  // corrido era una lista plana en la que no se veía dónde acababa uno.
+  testWidgets('el día del cliente va separado por bloques', (tester) async {
+    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await montar(
+      tester,
+      lista: [
+        planningDePrueba(
+          id: 'p-hoy',
+          fechaInicio: estaSemana.lunes,
+          sesiones: [
+            sesionDePrueba(
+              planningId: 'p-hoy',
+              nombre: 'Sesion de hoy',
+              bloques: [
+                bloqueDePrueba(
+                  id: 'b-1',
+                  orden: 1,
+                  tipo: TipoBloque.calentamiento,
+                  notas: 'Sin prisa.',
+                  ejercicios: [ejercicioPlanificadoDePrueba(id: 'ep-1')],
+                ),
+                bloqueDePrueba(
+                  id: 'b-2',
+                  orden: 2,
+                  ejercicios: [
+                    ejercicioPlanificadoDePrueba(id: 'ep-2', bloqueId: 'b-2'),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    expect(find.text('BLOQUE 1 · CALENTAMIENTO'), findsOneWidget);
+    expect(find.text('BLOQUE 2 · FUERZA'), findsOneWidget);
+    // La nota del bloque deja de estar escondida dentro de cada ejercicio.
+    expect(find.text('Sin prisa.'), findsOneWidget);
+  });
 }

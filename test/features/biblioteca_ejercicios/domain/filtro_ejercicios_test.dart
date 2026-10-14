@@ -55,33 +55,59 @@ void main() {
   });
 
   group('FiltroEjercicios: texto', () {
-    test('busca en nombre, equipamiento y nombres de la taxonomía', () {
+    test('busca **solo** en el nombre', () {
       expect(
         const FiltroEjercicios(texto: 'banca').aceptar(_ejercicio()),
         isTrue,
       );
+      // Ni el equipamiento ni los nombres de la taxonomia: escribir "pecho"
+      // sacaba ejercicios de espalda porque el pectoral era secundario suyo, y
+      // nadie entendia por que. Para los musculos estan los chips.
       expect(
         const FiltroEjercicios(texto: 'pecho').aceptar(_ejercicio()),
-        isTrue,
+        isFalse,
       );
       expect(
         const FiltroEjercicios(texto: 'barra').aceptar(_ejercicio()),
-        isTrue,
+        isFalse,
       );
-      // Por el nombre del musculo, principal o secundario.
       expect(
         const FiltroEjercicios(texto: 'esterno').aceptar(_ejercicio()),
-        isTrue,
-      );
-      expect(
-        const FiltroEjercicios(texto: 'tríceps').aceptar(_ejercicio()),
-        isTrue,
+        isFalse,
       );
     });
 
     test('no distingue mayusculas ni espacios alrededor', () {
       expect(
         const FiltroEjercicios(texto: '  PRESS  ').aceptar(_ejercicio()),
+        isTrue,
+      );
+    });
+
+    // Nadie escribe con tildes en el buscador del gimnasio, y quedarse sin
+    // resultados por eso parece que el ejercicio no existe.
+    test('perdona las tildes, en los dos sentidos', () {
+      final conTilde = _ejercicio(nombre: 'Press francés');
+
+      expect(
+        const FiltroEjercicios(texto: 'frances').aceptar(conTilde),
+        isTrue,
+      );
+      expect(
+        const FiltroEjercicios(texto: 'FRANCÉS').aceptar(conTilde),
+        isTrue,
+      );
+      // Y al reves: con tilde escrita sobre un nombre guardado sin ella.
+      expect(
+        const FiltroEjercicios(texto: 'bánca').aceptar(_ejercicio()),
+        isTrue,
+      );
+    });
+
+    test('la eñe tampoco estorba', () {
+      expect(
+        const FiltroEjercicios(texto: 'espanol')
+            .aceptar(_ejercicio(nombre: 'Giro español')),
         isTrue,
       );
     });
@@ -103,10 +129,6 @@ void main() {
       expect(
         const FiltroEjercicios(texto: 'press').aceptar(sinOpcionales),
         isTrue,
-      );
-      expect(
-        const FiltroEjercicios(texto: 'pecho').aceptar(sinOpcionales),
-        isFalse,
       );
     });
   });

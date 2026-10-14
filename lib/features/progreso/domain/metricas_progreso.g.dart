@@ -20,6 +20,7 @@ _RegistroProgreso _$RegistroProgresoFromJson(
   pesoReal: (json['peso_real'] as num?)?.toDouble(),
   rirReal: (json['rir_real'] as num?)?.toInt(),
   minutosRealizados: (json['minutos_realizados'] as num?)?.toDouble(),
+  pesoPorLado: json['peso_por_lado'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$RegistroProgresoToJson(_RegistroProgreso instance) =>
@@ -35,6 +36,7 @@ Map<String, dynamic> _$RegistroProgresoToJson(_RegistroProgreso instance) =>
       'peso_real': instance.pesoReal,
       'rir_real': instance.rirReal,
       'minutos_realizados': instance.minutosRealizados,
+      'peso_por_lado': instance.pesoPorLado,
     };
 
 const _$TipoEjercicioEnumMap = {

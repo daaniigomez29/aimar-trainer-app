@@ -2368,3 +2368,63 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   avisos, donde se entiende por qué importa.
 - `flutter test` **486**, `dart analyze --fatal-infos` limpio.
 - Todo sin commitear: los commits los hace él.
+
+### 2026-10-14
+
+**Hecho:**
+
+- **El buscador de ejercicios busca solo por nombre, y perdona la ortografía.**
+  Ignora mayúsculas, tildes, diéresis y la virgulilla de la eñe, normalizando los
+  **dos** lados (lo escrito y el nombre guardado), así que "frances" encuentra
+  "Press francés" y "bánca" encuentra "Press banca". Y deja de mirar el
+  equipamiento y los nombres de la taxonomía: escribir "pecho" sacaba ejercicios
+  de espalda porque el pectoral era secundario suyo, y nadie entendía el
+  resultado. Para los músculos están los chips, que además dicen por qué está
+  filtrado.
+- **`seriesPorDefecto` vuelve a 1**, a petición de Aimar; estuvo en 3 entre el 12
+  y el 14. Los tests que afirmaban "tres" se reescribieron **en función de la
+  constante**, no del número, así que el siguiente cambio de criterio no los
+  rompe.
+
+**Pendiente / notas:**
+
+- `flutter test` **488**, `dart analyze --fatal-infos` limpio.
+- **Peso "por lado": consultado, a la espera de aprobación.** Implica migración y
+  tocar `guardar_ejercicio_planificado`, así que no se empieza sin su visto
+  bueno. La propuesta está en el pendiente de `estado-actual.md`.
+
+- **Peso "por lado"**, aprobado e implementado (pedído el 09).
+  - Migración `20261014090000_peso_por_lado.sql`, **verificada contra Supabase
+    local**: `ejercicios.peso_por_lado boolean not null default false` y la
+    columna añadida al final de `vista_progreso_ejercicios` (que ya hacía join
+    con `ejercicios`). Comprobado que marcar propaga a las 14 filas de la vista
+    del seed y que desmarcar las devuelve a cero.
+  - Va en **el ejercicio**, no en el ejercicio planificado: así no hay que
+    copiarlo en los tres sitios que crean ejercicios planificados y el dato
+    llega solo a las pantallas, porque la consulta ya incrusta `ejercicios(*)`.
+  - Interruptor en el formulario de la biblioteca, **solo para lo que va por
+    series** (en un cardio no hay kg que etiquetar). Marcar no pregunta;
+    **quitar la marca sí**, porque alcanza al histórico.
+  - Se ve: badge azul "Kg por lado" en la cuadrícula del entrenador, en la ficha
+    del ejercicio, en la vista de resultados y sobre la gráfica de progreso; y
+    como texto "7,5 kg por lado" en el resumen del planning del cliente y en su
+    pantalla de registro.
+- `flutter test` **495**, `dart analyze --fatal-infos` y `dart format
+  --set-exit-if-changed` limpios. 25 migraciones aplicadas sin incidencias.
+
+**Hecho (vista del cliente):**
+
+- **El día del cliente va separado por bloques**, con su nombre y la nota del
+  entrenador encima de sus ejercicios. Antes era una lista plana donde no se
+  veía dónde acababa uno. Solo presentación: el modelo no cambia, el orden ya lo
+  ponía el entrenador. De paso, la **nota del bloque** deja de estar escondida
+  dentro de cada ejercicio.
+- **El botón de continuar anuncia el bloque que empieza**: "Guardar y comenzar el
+  bloque Fuerza" cuando el ejercicio actual cierra el suyo. Dentro del mismo
+  bloque sigue diciendo "Guardar y siguiente ejercicio", y en el último del día,
+  "Terminar ejercicio".
+- `BotonCta` envuelve su texto en un `Flexible` con ellipsis: la etiqueta nueva
+  es larga ("Guardar y comenzar el bloque Calentamiento") y en un móvil estrecho
+  un `Text` suelto dentro de una `Row` desborda en vez de recortarse.
+- `flutter test` **499**.
+- Todo sin commitear: los commits los hace él.

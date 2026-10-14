@@ -23,6 +23,11 @@ abstract class RegistroProgreso with _$RegistroProgreso {
     double? pesoReal,
     int? rirReal,
     double? minutosRealizados,
+
+    /// Si el peso de ese ejercicio se cuenta por lado. Lo trae la vista desde
+    /// `ejercicios`, y **no cambia ningun calculo**: la grafica se dibuja con
+    /// los numeros guardados, igual que siempre. Solo sirve para decirlo.
+    @Default(false) bool pesoPorLado,
   }) = _RegistroProgreso;
 
   factory RegistroProgreso.fromJson(Map<String, dynamic> json) =>

@@ -30,6 +30,10 @@ enum AmbitoDeFiltro {
 /// El filtro muscular tiene dos niveles, [grupo] y [musculo], como la propia
 /// taxonomia: se elige "Pierna" y, dentro, "Glúteo".
 ///
+/// El buscador mira **solo el nombre**, y perdonando la ortografia: ignora
+/// mayusculas, tildes y espacios de sobra, para que "press frances" encuentre
+/// "Press francés". Lo demas se filtra con los chips, que para eso estan.
+///
 /// Los **secundarios cuentan**: filtrar por gluteo encuentra tambien la
 /// sentadilla, donde es secundario. Si no contaran, declararlos solo serviria
 /// para mirar la ficha. Lo que si cambia es el orden: primero los que lo tienen
@@ -61,7 +65,7 @@ class FiltroEjercicios {
   /// pasar del texto libre a la taxonomia.
   final bool soloSinClasificar;
 
-  String get textoNormalizado => texto.trim().toLowerCase();
+  String get textoNormalizado => normalizarParaBuscar(texto);
 
   bool get estaVacio =>
       textoNormalizado.isEmpty &&
@@ -106,18 +110,11 @@ class FiltroEjercicios {
     if (musculo != null && !ejercicio.trabaja(musculo!)) return false;
     if (textoNormalizado.isEmpty) return true;
 
-    final campos = [
-      ejercicio.nombre,
-      ejercicio.equipamiento ?? '',
-      ejercicio.grupo?.etiqueta ?? '',
-      for (final musculo in ejercicio.musculos) ...[
-        musculo.etiqueta,
-        musculo.etiquetaCompleta,
-      ],
-    ];
-    return campos.any(
-      (campo) => campo.toLowerCase().contains(textoNormalizado),
-    );
+    // Solo el nombre. Buscar tambien en equipamiento y en los nombres de la
+    // taxonomia daba resultados que nadie entendia: escribir "pecho" sacaba
+    // ejercicios de espalda porque el pectoral era uno de sus secundarios. Para
+    // los musculos estan los chips, que ademas dicen por que esta filtrado.
+    return normalizarParaBuscar(ejercicio.nombre).contains(textoNormalizado);
   }
 
   /// Lo filtrado y en el orden en que se presenta.
@@ -163,3 +160,48 @@ class FiltroEjercicios {
     soloSinClasificar,
   );
 }
+
+/// Deja un texto listo para comparar: sin espacios de sobra, en minusculas y
+/// **sin tildes ni dieresis**.
+///
+/// POR QUE: nadie escribe "press francés" con tilde en el buscador del gimnasio,
+/// y quedarse sin resultados por eso parece que el ejercicio no existe. Se
+/// normalizan los dos lados, el texto escrito y el nombre guardado, asi que
+/// funciona en los dos sentidos.
+///
+/// La `n` tambien pierde la virgulilla a proposito: "espanol" encuentra
+/// "español". Son letras distintas en castellano, pero aqui solo se trata de
+/// encontrar, no de escribir bien.
+String normalizarParaBuscar(String texto) {
+  final limpio = texto.trim().toLowerCase();
+  final letras = StringBuffer();
+  for (final letra in limpio.split('')) {
+    letras.write(_sinTilde[letra] ?? letra);
+  }
+  return letras.toString();
+}
+
+const Map<String, String> _sinTilde = {
+  'á': 'a',
+  'à': 'a',
+  'ä': 'a',
+  'â': 'a',
+  'é': 'e',
+  'è': 'e',
+  'ë': 'e',
+  'ê': 'e',
+  'í': 'i',
+  'ì': 'i',
+  'ï': 'i',
+  'î': 'i',
+  'ó': 'o',
+  'ò': 'o',
+  'ö': 'o',
+  'ô': 'o',
+  'ú': 'u',
+  'ù': 'u',
+  'ü': 'u',
+  'û': 'u',
+  'ñ': 'n',
+  'ç': 'c',
+};

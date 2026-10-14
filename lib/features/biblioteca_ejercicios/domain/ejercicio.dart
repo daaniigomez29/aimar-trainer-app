@@ -40,6 +40,20 @@ abstract class Ejercicio with _$Ejercicio {
     String? equipamiento,
     String? videoEjemploUrl,
 
+    /// Si el peso de este ejercicio se cuenta **por lado**: al cliente se le
+    /// presenta "7,5 kg por lado" en vez de "7,5 kg".
+    ///
+    /// Es una **etiqueta, no una operacion**: el peso se guarda tal cual y nunca
+    /// se multiplica. Multiplicarlo volveria incomparable todo el historico ya
+    /// registrado.
+    ///
+    /// Vive en el ejercicio y no en el ejercicio planificado porque describe
+    /// como se carga (mancuernas, polea unilateral, barra con discos por lado),
+    /// no una semana concreta. La contrapartida, aceptada el 2026-10-14:
+    /// desmarcarlo cambia tambien como se lee el historico de ese ejercicio,
+    /// igual que renombrarlo renombra todo su historico.
+    @Default(false) bool pesoPorLado,
+
     /// Ruta de la ilustracion dentro del bucket publico `imagenes-ejercicios`.
     /// No se guarda la URL completa porque el dominio cambia entre local y la
     /// nube; la arma el repositorio.
@@ -93,6 +107,7 @@ class DatosEjercicio {
     this.equipamiento,
     this.videoEjemploUrl,
     this.imagenRuta,
+    this.pesoPorLado = false,
   });
 
   static const int longitudMaximaNombre = 120;
@@ -108,6 +123,9 @@ class DatosEjercicio {
   final List<Musculo> musculosSecundarios;
   final String? equipamiento;
   final String? videoEjemploUrl;
+
+  /// Ver [Ejercicio.pesoPorLado].
+  final bool pesoPorLado;
 
   /// Ruta ya subida al bucket. La imagen se sube antes de guardar la fila, asi
   /// que cuando estos datos llegan al repositorio ya es una ruta, no un fichero.
@@ -238,6 +256,7 @@ class DatosEjercicio {
     'equipamiento': equipamientoNormalizado,
     'video_ejemplo_url': videoEjemploUrlNormalizada,
     'imagen_ruta': _oNulo(imagenRuta),
+    'peso_por_lado': pesoPorLado,
   };
 
   /// Mismos datos con otra imagen. Lo usa el controlador cuando acaba de subir
@@ -249,6 +268,7 @@ class DatosEjercicio {
     grupoDeclarado: grupoDeclarado,
     musculoPrincipal: musculoPrincipal,
     musculosSecundarios: musculosSecundarios,
+    pesoPorLado: pesoPorLado,
     equipamiento: equipamiento,
     videoEjemploUrl: videoEjemploUrl,
     imagenRuta: ruta,

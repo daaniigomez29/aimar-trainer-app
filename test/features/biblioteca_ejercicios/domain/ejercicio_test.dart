@@ -298,4 +298,46 @@ void main() {
       expect(suelto.resumenMuscular, isNull);
     });
   });
+
+  group('peso por lado', () {
+    // Es una **etiqueta**: el peso se guarda tal cual y nunca se multiplica. Si
+    // se multiplicara, el historico dejaria de ser comparable con todo lo ya
+    // registrado y la grafica ensenaria un salto que nunca ocurrio.
+    test('viaja en el JSON que se guarda', () {
+      const datos = DatosEjercicio(
+        nombre: 'Press banca',
+        descripcion: 'Tumbado.',
+        tipo: TipoEjercicio.fuerza,
+        pesoPorLado: true,
+      );
+
+      expect(datos.aJsonDeEscritura()['peso_por_lado'], isTrue);
+    });
+
+    test('por defecto no está marcado', () {
+      const datos = DatosEjercicio(
+        nombre: 'Press banca',
+        descripcion: 'Tumbado.',
+        tipo: TipoEjercicio.fuerza,
+      );
+
+      expect(datos.pesoPorLado, isFalse);
+      expect(datos.aJsonDeEscritura()['peso_por_lado'], isFalse);
+    });
+
+    test('un ejercicio de la base sin la columna no revienta', () {
+      // La columna es `not null default false`, pero el modelo tampoco debe
+      // depender de que venga: `fromJson` la da por falsa si falta.
+      final ejercicio = Ejercicio.fromJson({
+        'id': 'id-1',
+        'nombre': 'Press banca',
+        'descripcion': 'Tumbado.',
+        'tipo': 'fuerza',
+        'estado': 'activo',
+        'creado_en': '2026-10-14T00:00:00.000Z',
+      });
+
+      expect(ejercicio.pesoPorLado, isFalse);
+    });
+  });
 }

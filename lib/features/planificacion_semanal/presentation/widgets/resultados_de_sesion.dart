@@ -133,6 +133,10 @@ class _Ejercicio extends StatelessWidget {
                 style: textos.titleSmall,
               ),
             ),
+            if (ejercicio.ejercicio?.pesoPorLado ?? false) ...[
+              const Pastilla(texto: 'Kg por lado'),
+              const SizedBox(width: 8),
+            ],
             Icon(
               registrado ? Icons.task_alt : Icons.schedule,
               size: 16,
@@ -151,7 +155,10 @@ class _Ejercicio extends StatelessWidget {
         if (ejercicio.ejercicio?.tipo.vaPorMinutos ?? false)
           _Minutos(ejercicio: ejercicio)
         else
-          _Series(ejercicio: ejercicio),
+          _Series(
+            ejercicio: ejercicio,
+            porLado: ejercicio.ejercicio?.pesoPorLado ?? false,
+          ),
       ],
     );
   }
@@ -192,9 +199,12 @@ class _Minutos extends StatelessWidget {
 
 /// Fuerza y Fortalecimiento: una fila por serie, plan contra realizado.
 class _Series extends StatelessWidget {
-  const _Series({required this.ejercicio});
+  const _Series({required this.ejercicio, required this.porLado});
 
   final EjercicioPlanificado ejercicio;
+
+  /// Solo cambia el texto: el peso se guarda y se compara tal cual.
+  final bool porLado;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +245,7 @@ class _Series extends StatelessWidget {
                       ejercicio.series
                           .where((s) => s.numeroSerie == numero)
                           .firstOrNull,
+                      porLado: porLado,
                     ),
                     style: textos.bodyMedium,
                   ),
@@ -245,6 +256,7 @@ class _Series extends StatelessWidget {
                       ejercicio.seriesRealizadas
                           .where((s) => s.numeroSerie == numero)
                           .firstOrNull,
+                      porLado: porLado,
                     ),
                     key: Key('serie_hecha_${ejercicio.id}_$numero'),
                     style: textos.bodyMedium?.copyWith(color: Tokens.exito),
@@ -257,19 +269,21 @@ class _Series extends StatelessWidget {
     );
   }
 
-  static String _planificada(SeriePlanificada? serie) {
+  static String _planificada(SeriePlanificada? serie, {bool porLado = false}) {
     if (serie == null) return '—';
     return [
-      if (serie.pesoPlanificado case final peso?) '${_numero(peso)} kg',
+      if (serie.pesoPlanificado case final peso?)
+        '${_numero(peso)} kg${porLado ? ' por lado' : ''}',
       '${serie.repeticionesPlanificadas} reps',
       if (serie.rirPlanificado case final rir?) 'RIR $rir',
     ].join(' · ');
   }
 
-  static String _realizada(SerieRealizada? serie) {
+  static String _realizada(SerieRealizada? serie, {bool porLado = false}) {
     if (serie == null) return '—';
     return [
-      if (serie.pesoReal case final peso?) '${_numero(peso)} kg',
+      if (serie.pesoReal case final peso?)
+        '${_numero(peso)} kg${porLado ? ' por lado' : ''}',
       '${serie.repeticionesRealizadas} reps',
       if (serie.rirReal case final rir?) 'RIR $rir',
     ].join(' · ');

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/features/progreso/application/controlador_progreso.dart';
@@ -212,9 +213,21 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
         ),
         error: (error, _) =>
             Text(mensajeDeErrorProgreso(error), textAlign: TextAlign.center),
-        data: (filas) => _GraficaConTabla(
-          puntos: serieDeProgreso(registros: filas, metrica: metrica),
-          unidad: metrica.unidad,
+        data: (filas) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Los numeros son los guardados; si el ejercicio se carga por lado,
+            // la grafica no los convierte. Decirlo evita leer 7,5 como si
+            // fuera el total.
+            if (filas.any((fila) => fila.pesoPorLado)) ...[
+              const Pastilla(texto: 'Kg por lado'),
+              const SizedBox(height: 8),
+            ],
+            _GraficaConTabla(
+              puntos: serieDeProgreso(registros: filas, metrica: metrica),
+              unidad: metrica.unidad,
+            ),
+          ],
         ),
       ),
     ];
