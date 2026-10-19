@@ -39,7 +39,7 @@ void main() {
                 await elegirBloque(
                   context: context,
                   sesion: sesion,
-                  ejercicio: ejercicio,
+                  nombre: ejercicio.nombre,
                 ),
               ),
               child: const Text('abrir'),

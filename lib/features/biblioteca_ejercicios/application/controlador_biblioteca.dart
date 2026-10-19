@@ -48,6 +48,26 @@ class FiltroBiblioteca extends _$FiltroBiblioteca {
     soloSinClasificar: state.soloSinClasificar,
   );
 
+  /// Cambia de filtro principal en la pantalla de biblioteca.
+  ///
+  /// El texto escrito se conserva siempre. El filtro muscular **solo** se
+  /// conserva al pasar entre Fuerza y Fortalecimiento, que lo comparten: con
+  /// "pecho" elegido en Fuerza, pulsar Fortalecimiento ensena el
+  /// fortalecimiento de pecho. En el resto los musculos no se ven, asi que se
+  /// suelta: si no, la lista saldria recortada por algo que no esta a la vista.
+  void elegirPestana(PestanaBiblioteca pestana) {
+    final conservaMusculo =
+        pestana.filtraPorMusculo && state.pestana.filtraPorMusculo;
+    state = FiltroEjercicios(
+      texto: state.texto,
+      tipo: pestana.tipo,
+      grupo: conservaMusculo ? state.grupo : null,
+      musculo: conservaMusculo ? state.musculo : null,
+      soloSinClasificar: conservaMusculo && state.soloSinClasificar,
+      soloEliminados: pestana == PestanaBiblioteca.dadosDeBaja,
+    );
+  }
+
   /// `null` quita el filtro por grupo. Al cambiar de grupo se **suelta el
   /// musculo** elegido: era del grupo anterior y dejaria la lista vacia sin que
   /// se vea por que.

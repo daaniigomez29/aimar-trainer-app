@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -30,6 +31,10 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pa
 import 'package:aimar_trainer_app/features/notificaciones/presentation/pantalla_preferencias_notificacion.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_mi_control.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_mi_progreso.dart';
+import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/pantalla_formulario_ejercicio_pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/pantalla_pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/pantalla_packs.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_recuperar_contrasena.dart';
 import 'package:aimar_trainer_app/features/autenticacion/presentation/pantalla_restablecer_contrasena.dart';
 
@@ -195,6 +200,29 @@ GoRouter enrutador(Ref ref) {
             builder: (context, state) => _formularioDeEjercicio(state),
           ),
           GoRoute(
+            path: Rutas.packs,
+            builder: (context, state) => const PantallaPacks(),
+            routes: [
+              GoRoute(
+                path: Rutas.unPack,
+                builder: (context, state) =>
+                    PantallaPack(packId: state.pathParameters['packId']!),
+                routes: [
+                  // `nuevo` antes que `:idPackEjercicio`: si no, se tomaria la
+                  // palabra por un identificador.
+                  GoRoute(
+                    path: Rutas.nuevo,
+                    builder: (context, state) => _formularioDePack(state),
+                  ),
+                  GoRoute(
+                    path: Rutas.ejercicioDelPack,
+                    builder: (context, state) => _formularioDePack(state),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
             path: Rutas.ajustes,
             builder: (context, state) => const PantallaAjustesEntrenador(),
           ),
@@ -311,6 +339,35 @@ Widget _formularioDeEjercicio(GoRouterState state) {
           ? null
           : ejercicioPlanificadoPorId(planning, idEjercicio),
     ),
+  );
+}
+
+/// El formulario de un ejercicio de un pack (RF-25.1).
+///
+/// El pack se resuelve aqui y no dentro de la pantalla por el mismo motivo que
+/// en el planning: asi el formulario recibe el pack **ya cargado** y no tiene
+/// que lidiar con el estado de carga ni con que se haya borrado mientras tanto.
+Widget _formularioDePack(GoRouterState state) {
+  final packId = state.pathParameters['packId']!;
+  final idEjercicio = state.pathParameters['idPackEjercicio'];
+
+  return Consumer(
+    builder: (context, ref, _) => ref
+        .watch(packCompletoProvider(packId))
+        .when(
+          data: (pack) => PantallaFormularioEjercicioPack(
+            pack: pack,
+            ejercicioDelPack: idEjercicio == null
+                ? null
+                : pack.ejercicios.where((e) => e.id == idEjercicio).firstOrNull,
+          ),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text(mensajeDeErrorPacks(error))),
+          ),
+        ),
   );
 }
 

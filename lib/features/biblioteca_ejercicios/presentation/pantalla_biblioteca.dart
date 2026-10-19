@@ -14,7 +14,6 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/con
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/tarjeta_ejercicio.dart';
@@ -220,15 +219,22 @@ class _Resumen extends StatelessWidget {
   }
 }
 
-/// Filtro muscular en dos niveles.
+/// Filtros de la biblioteca, en tres niveles.
 ///
-/// Arriba los grupos; al elegir uno aparece debajo la fila de sus musculos. Es
-/// el mismo recorrido que hace el entrenador al pensar ("pierna… glúteo"), y
-/// evita la lista plana de 21 musculos, que es justo lo que no se podia buscar.
+/// Arriba los **principales**, excluyentes: Todos, Fuerza, Cardio,
+/// Fortalecimiento y, solo para el entrenador, Dados de baja. Es lo primero que
+/// se decide al buscar ("un cardio", "algo de fortalecimiento").
 ///
-/// Los chips salen de [FacetasBiblioteca], no de la taxonomia completa: un chip
-/// que no devuelve nada al pulsarlo es ruido. Descubrir la taxonomia entera es
-/// cosa del formulario, que es donde se clasifica.
+/// Debajo, **solo con Fuerza o Fortalecimiento**, los grupos musculares; y al
+/// elegir uno, sus musculos. El Cardio no se busca por musculo, y en Todos la
+/// fila de grupos competia con los tipos por el mismo sitio. Fuerza y
+/// Fortalecimiento **comparten** el filtro muscular (ver
+/// `FiltroBiblioteca.elegirPestana`): "pecho" sigue elegido al pasar de una a
+/// otra.
+///
+/// Los chips musculares salen de [FacetasBiblioteca], no de la taxonomia
+/// completa: un chip que no devuelve nada al pulsarlo es ruido. Descubrir la
+/// taxonomia entera es cosa del formulario, que es donde se clasifica.
 class _FiltrosMusculares extends ConsumerWidget {
   const _FiltrosMusculares({required this.mostrarEliminados});
 
@@ -245,53 +251,41 @@ class _FiltrosMusculares extends ConsumerWidget {
     final notificador = ref.read(
       filtroBibliotecaProvider(AmbitoDeFiltro.biblioteca).notifier,
     );
+    final pestana = filtro.pestana;
 
     return Column(
       children: [
-        SizedBox(
-          height: 44,
-          child: ListView(
-            key: const Key('fila_filtros_tipo_y_grupo'),
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Tokens.margenPantalla,
-            ),
-            children: [
+        _FilaDeChips(
+          clave: const Key('fila_filtros_principales'),
+          chips: [
+            for (final opcion in PestanaBiblioteca.values)
+              if (opcion != PestanaBiblioteca.dadosDeBaja || mostrarEliminados)
+                ChipFiltro(
+                  key: Key(switch (opcion.tipo) {
+                    final tipo? => 'tipo_${tipo.name}',
+                    null => 'filtro_${opcion.name}',
+                  }),
+                  etiqueta: opcion.etiqueta,
+                  icono: opcion.tipo?.icono,
+                  activo: pestana == opcion,
+                  onPulsar: () => notificador.elegirPestana(opcion),
+                ),
+          ],
+        ),
+        if (pestana.filtraPorMusculo) ...[
+          // Aire entre niveles: pegados no se lee que el de abajo depende del
+          // de arriba, parecen una sola fila partida.
+          const SizedBox(height: 12),
+          _FilaDeChips(
+            clave: const Key('fila_filtros_grupo'),
+            chips: [
               ChipFiltro(
-                etiqueta: 'Todos',
-                activo:
-                    filtro.grupo == null &&
-                    filtro.tipo == null &&
-                    !filtro.soloSinClasificar,
-                onPulsar: () {
-                  notificador.alternarSinClasificar(solo: false);
-                  notificador.cambiarTipo(null);
-                  notificador.cambiarGrupo(null);
-                },
+                key: const Key('grupo_todos'),
+                etiqueta: 'Todos los músculos',
+                activo: filtro.grupo == null && !filtro.soloSinClasificar,
+                onPulsar: () => notificador.alternarSinClasificar(solo: false),
               ),
-              // Cardio y Fortalecimiento, no Fuerza: la fuerza es la mayor
-              // parte de la biblioteca y los grupos musculares ya sirven para
-              // recorrerla, asi que su chip no descartaria casi nada.
-              //
-              // **Se cruzan con el filtro muscular**, no lo sustituyen:
-              // "fortalecimiento de hombro" es justo la consulta util para un
-              // cliente lesionado. Si la combinacion no da nada, la lista vacia
-              // lo dice y ofrece quitar los filtros.
-              for (final tipo in facetas.tipos)
-                if (tipo != TipoEjercicio.fuerza) ...[
-                  const SizedBox(width: 8),
-                  ChipFiltro(
-                    key: Key('tipo_${tipo.name}'),
-                    etiqueta: tipo.etiqueta,
-                    icono: tipo.icono,
-                    activo: filtro.tipo == tipo,
-                    onPulsar: () => notificador.cambiarTipo(
-                      filtro.tipo == tipo ? null : tipo,
-                    ),
-                  ),
-                ],
-              for (final grupo in facetas.grupos) ...[
-                const SizedBox(width: 8),
+              for (final grupo in facetas.grupos)
                 ChipFiltro(
                   key: Key('grupo_${grupo.valorJson}'),
                   etiqueta: grupo.etiqueta,
@@ -300,9 +294,7 @@ class _FiltrosMusculares extends ConsumerWidget {
                     filtro.grupo == grupo ? null : grupo,
                   ),
                 ),
-              ],
-              if (facetas.haySinClasificar) ...[
-                const SizedBox(width: 8),
+              if (facetas.haySinClasificar)
                 ChipFiltro(
                   key: const Key('chip_sin_clasificar'),
                   etiqueta: 'Sin clasificar',
@@ -311,44 +303,24 @@ class _FiltrosMusculares extends ConsumerWidget {
                     solo: !filtro.soloSinClasificar,
                   ),
                 ),
-              ],
-              if (mostrarEliminados) ...[
-                const SizedBox(width: 8),
-                ChipFiltro(
-                  etiqueta: 'Dados de baja',
-                  activo: filtro.soloEliminados,
-                  onPulsar: () => notificador.alternarEliminados(
-                    solo: !filtro.soloEliminados,
-                  ),
-                ),
-              ],
-              const SizedBox(width: Tokens.margenPantalla),
             ],
           ),
-        ),
-        // El segundo nivel solo existe con un grupo elegido, y solo si ese grupo
-        // tiene mas de un musculo con ejercicios: ofrecer un unico musculo que
-        // ya equivale al grupo no filtra nada.
-        if (filtro.grupo case final grupo?
-            when facetas.musculosDe(grupo).length > 1) ...[
-          // Aire entre los dos niveles: pegados no se lee que el de abajo
-          // depende del de arriba, parecen una sola fila partida.
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: Tokens.margenPantalla,
-              ),
-              children: [
+          // El tercer nivel solo existe con un grupo elegido, y solo si ese
+          // grupo tiene mas de un musculo con ejercicios: ofrecer un unico
+          // musculo que ya equivale al grupo no filtra nada.
+          if (filtro.grupo case final grupo?
+              when facetas.musculosDe(grupo).length > 1) ...[
+            const SizedBox(height: 12),
+            _FilaDeChips(
+              clave: const Key('fila_filtros_musculo'),
+              alto: 40,
+              chips: [
                 ChipFiltro(
                   etiqueta: 'Todo ${grupo.etiqueta.toLowerCase()}',
                   activo: filtro.musculo == null,
                   onPulsar: () => notificador.cambiarMusculo(null),
                 ),
-                for (final musculo in facetas.musculosDe(grupo)) ...[
-                  const SizedBox(width: 8),
+                for (final musculo in facetas.musculosDe(grupo))
                   ChipFiltro(
                     key: Key('musculo_${musculo.valorJson}'),
                     etiqueta: musculo.etiqueta,
@@ -357,15 +329,43 @@ class _FiltrosMusculares extends ConsumerWidget {
                       filtro.musculo == musculo ? null : musculo,
                     ),
                   ),
-                ],
-                const SizedBox(width: Tokens.margenPantalla),
               ],
             ),
-          ),
+          ],
         ],
       ],
     );
   }
+}
+
+/// Una fila de chips con desplazamiento horizontal, con el mismo margen que el
+/// resto de la pantalla y aire entre chip y chip.
+class _FilaDeChips extends StatelessWidget {
+  const _FilaDeChips({
+    required this.clave,
+    required this.chips,
+    this.alto = 44,
+  });
+
+  final Key clave;
+  final List<Widget> chips;
+  final double alto;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: alto,
+    child: ListView(
+      key: clave,
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.margenPantalla),
+      children: [
+        for (final (indice, chip) in chips.indexed) ...[
+          if (indice > 0) const SizedBox(width: 8),
+          chip,
+        ],
+      ],
+    ),
+  );
 }
 
 class _SinResultados extends ConsumerWidget {

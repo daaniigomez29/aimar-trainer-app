@@ -4,7 +4,6 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/errores/result.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
@@ -90,7 +89,8 @@ String _comoFecha(DateTime fecha) =>
     '${fecha.day.toString().padLeft(2, '0')}/'
     '${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
 
-/// A que bloque de la sesion va el ejercicio que se acaba de elegir (CU-08).
+/// A que bloque de la sesion va lo que se acaba de elegir: un ejercicio suelto
+/// (CU-08) o un pack entero (RF-25). [nombre] es el de uno u otro.
 ///
 /// Solo se pregunta cuando hay **mas de un bloque**: antes el ejercicio caia
 /// siempre en el primero, y una sesion con calentamiento y fuerza es justo el
@@ -98,11 +98,11 @@ String _comoFecha(DateTime fecha) =>
 Future<BloqueEjercicio?> elegirBloque({
   required BuildContext context,
   required SesionEntrenamiento sesion,
-  required Ejercicio ejercicio,
+  required String nombre,
 }) => showDialog<BloqueEjercicio>(
   context: context,
   builder: (contexto) => SimpleDialog(
-    title: Text('¿En qué bloque va ${ejercicio.nombre}?'),
+    title: Text('¿En qué bloque va $nombre?'),
     children: [
       for (final bloque in sesion.bloques)
         SimpleDialogOption(
@@ -321,10 +321,10 @@ Future<void> alternarArchivadoPlanning({
   );
 }
 
-/// CU-11: mover un bloque dentro de su sesion arrastrandolo.
+/// CU-11: mover un bloque dentro de su sesion, con las flechas.
 ///
 /// No pide confirmacion ni avisa cuando sale bien: el resultado se ve, y un
-/// cartel por cada arrastre seria ruido. Solo se habla si falla, y entonces hay
+/// cartel por cada movimiento seria ruido. Solo se habla si falla, y entonces hay
 /// que decirlo, porque la lista se habra recolocado sola al recargar.
 Future<bool> moverBloque({
   required BuildContext context,
@@ -355,7 +355,7 @@ Future<bool> moverBloque({
   return resultado.esExito;
 }
 
-/// CU-12: mover un ejercicio dentro de su bloque arrastrandolo.
+/// CU-12: mover un ejercicio dentro de su bloque, con las flechas.
 Future<bool> moverEjercicio({
   required BuildContext context,
   required WidgetRef ref,

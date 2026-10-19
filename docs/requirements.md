@@ -39,6 +39,14 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 - **RF-18** — Dar de baja cliente (lógica), conservando histórico y bloqueando su acceso.
 - **RF-19** — Editar ficha de cliente existente.
 
+### Packs de entrenamiento
+
+- **RF-25** — El entrenador crea packs: un nombre, un tipo (Fuerza, Cardio o Fortalecimiento) y un conjunto de ejercicios de la biblioteca, **todos de ese tipo**. Los packs solo los ve el entrenador.
+- **RF-25.1** — De cada ejercicio del pack puede dejar **preparadas** sus series (Fuerza y Fortalecimiento) o sus minutos (Cardio). Es opcional: un pack puede ser solo la lista de ejercicios.
+- **RF-25.2** — Los ejercicios de un pack se reordenan con flechas (arriba / abajo).
+- **RF-25.3** — Un pack se aplica a un bloque de una sesión: sus ejercicios se **copian** al final del bloque con lo que tuvieran preparado. Los dados de baja se omiten y se informa de cuántos; un pack sin ejercicios no se puede aplicar.
+- **RF-25.4** — Lo copiado pertenece al planning: **editar el pack después no cambia lo ya planificado**.
+
 ### Progreso y bienestar
 - **RF-20** — El cliente registra el resultado de cada sesión (series/reps/peso/RIR reales en Fuerza y Fortalecimiento, o minutos en Cardio).
 - **RF-21** — Mostrar al cliente y al entrenador la evolución histórica de sus métricas.
@@ -105,7 +113,7 @@ postcondición, excepciones.
 **CU-09 a CU-12 Editar planning / sesión / bloque / ejercicio en bloque**
 - Mismo patrón: seleccionar → mostrar datos actuales → modificar → validar → guardar → notificar. Excepción común: datos inválidos o conflicto (orden duplicado) → error, vuelta a editar.
 - Al planificar las series de un ejercicio (CU-08 y CU-12), la pantalla muestra al lado **lo que el cliente hizo la última vez** en ese mismo ejercicio: el Día N de la semana anterior o, si esa semana no lo hizo, el último registro que haya, indicando la fecha. Un botón lo copia a lo planificado como punto de partida. Es consulta: no altera lo registrado ni obliga a que planificado y realizado coincidan.
-- CU-11 y CU-12 incluyen **cambiar el orden arrastrando**: el entrenador mueve un bloque dentro de su sesión, o un ejercicio dentro de su bloque, y el sistema renumera el conjunto en una sola operación. Solo el entrenador; el cliente ve el orden pero no lo toca.
+- CU-11 y CU-12 incluyen **cambiar el orden con flechas arriba/abajo** (hasta el 2026-10-19 se arrastraba): el entrenador mueve un bloque dentro de su sesión, o un ejercicio dentro de su bloque, y el sistema renumera el conjunto en una sola operación. Solo el entrenador; el cliente ve el orden pero no lo toca.
 
 **CU-13 a CU-16 Eliminar planning / sesión / bloque / ejercicio en bloque**
 - Mismo patrón: seleccionar y solicitar eliminar → advertencia de cascada (salvo CU-16, que no elimina de biblioteca) → confirmar → eliminar → notificar. Excepción común: cancelación → sin cambios.

@@ -17,6 +17,7 @@ enum SeccionDeNavegacion {
   inicio,
   biblioteca,
   clientes,
+  packs,
   progreso,
   control,
   ajustes;
@@ -39,6 +40,10 @@ enum SeccionDeNavegacion {
                 SeccionDeNavegacion.control => Rutas.controlCliente,
                 _ => Rutas.inicioCliente,
               },
+      // Los packs son solo del entrenador; un cliente no llega aqui, pero si
+      // llegara se le marca su inicio en vez de una ruta que no puede abrir.
+      SeccionDeNavegacion.packs =>
+        esEntrenador ? Rutas.packsEntrenador : Rutas.inicioCliente,
       SeccionDeNavegacion.ajustes =>
         esEntrenador ? Rutas.ajustesEntrenador : Rutas.avisosCliente,
     };

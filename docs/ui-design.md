@@ -77,22 +77,25 @@ Cabecera con saludo y avatar. Tira horizontal de 7 días (el día actual resalta
 La sesión del día se presenta **separada por bloques**, con su nombre ("BLOQUE 1 · CALENTAMIENTO") y la nota del entrenador encima de sus ejercicios. Es solo presentación: el orden lo decide el entrenador y el modelo no cambia.
 
 ### 6.2 Registro de ejercicio (cliente, móvil)
-Cabecera con flecha atrás, contador "Ejercicio X de N" y puntos de progreso. Fila superior: imagen del ejercicio (100×100, de la entidad `Ejercicio`) a la izquierda + grupo muscular, nombre y enlace "Ver vídeo" a la derecha. Por cada serie: una tarjeta con lo **planificado** por el entrenador (etiqueta discreta en color secundario) y, debajo, los campos editables de **kg / reps / RIR** que rellena el cliente, más un botón de check para marcarla completada. Aviso de descanso recomendado. Nota de texto del entrenador. CTA fijo "Guardar y siguiente ejercicio".
+Cabecera con flecha atrás, contador "Ejercicio X de N" y puntos de progreso. Fila superior: imagen del ejercicio (100×100, de la entidad `Ejercicio`) a la izquierda + grupo muscular, nombre y, debajo, los botones "Vídeo" y, a su derecha, "Descripción" (la explicación del ejercicio, en una hoja inferior); cada uno solo si existe. Por cada serie: una tarjeta con lo **planificado** por el entrenador (etiqueta discreta en color secundario) y, debajo, los campos editables de **kg / reps / RIR** que rellena el cliente, más un botón de check para marcarla completada. Aviso de descanso recomendado. Nota de texto del entrenador. CTA fijo "Guardar y siguiente ejercicio".
  
 ### 6.3 Control semanal (cliente, móvil — flujo de 2 pasos, uno visible a la vez)
 **Paso 1 — Medidas corporales**: fecha + "Cambiar día", campos de peso (obligatorio) y medidas opcionales (pecho, cintura, cadera, cuádriceps, brazos), botón "Continuar".
 **Paso 2 — Check-in de recuperación**: sliders para horas de sueño, estrés, agujetas y fatiga (valor numérico a la derecha de cada uno), campo de notas opcional, botón "Guardar check-in". La flecha atrás del paso 2 regresa al paso 1 sin perder los datos introducidos.
  
 ### 6.4 Biblioteca (cliente, móvil)
-Buscador y filtro muscular **en dos niveles**: una fila de chips con los grupos (Pierna, Pecho…) y, al elegir uno, una segunda fila con sus músculos. Ambas salen de lo que hay en la biblioteca, no de la taxonomía completa: un chip que no devuelve nada es ruido. Se añaden las pestañas "Sin clasificar" (lo que quedó por reclasificar) y, para el entrenador, "Dados de baja". La lista muestra miniatura, nombre, "Grupo · Músculo principal", tipo (Fuerza / Cardio / Fortalecimiento) e indicador de vídeo; al filtrar por un músculo, los que solo lo trabajan de secundario van detrás y lo dicen.
+Buscador y, debajo, los **filtros principales**, excluyentes: Todos, Fuerza, Cardio, Fortalecimiento y, solo para el entrenador, Dados de baja. **Solo con Fuerza o Fortalecimiento** aparece el filtro muscular en dos niveles: una fila con los grupos (Pierna, Pecho…, más "Sin clasificar" si hay alguno) y, al elegir uno, otra con sus músculos; los grupos y músculos salen de lo que hay en la biblioteca, no de la taxonomía completa. Fuerza y Fortalecimiento **comparten** el músculo elegido (pecho en Fuerza y luego Fortalecimiento da el fortalecimiento de pecho); al pasar a Todos, Cardio o Dados de baja se suelta, porque ahí no se ve. La lista muestra miniatura, nombre, "Grupo · Músculo principal", tipo (Fuerza / Cardio / Fortalecimiento) e indicador de vídeo; al filtrar por un músculo, los que solo lo trabajan de secundario van detrás y lo dicen.
  
 ### 6.5 Configuración (cliente, móvil)
 Sección "Cómo te avisamos": notificaciones en el dispositivo (interruptor) y correo electrónico (siempre activo, de respaldo). Texto explicativo de cuándo se notifica.
 
 Debajo, **"Instalar la app en el móvil"**: desplegable (plegado por defecto) con los pasos para iPhone —obligatorio Safari— y para Android. Va justo después de los avisos porque en iOS el push **no existe** hasta que la app está en la pantalla de inicio. El mismo bloque está en los ajustes del entrenador.
  
+### 6.5bis Packs — entrenador
+Quinto destino de su navegación, debajo de Biblioteca. Lista de packs con su tipo, cuántos ejercicios tiene cada uno y un aviso en ámbar en los vacíos ("Sin ejercicios · no se puede aplicar"). Dentro, la ficha: sus ejercicios en orden, con lo que tengan preparado debajo, y **flechas arriba/abajo** para moverlos —no se arrastra—. El formulario de añadir reutiliza el buscador y el filtro de la biblioteca, **restringidos al tipo del pack**, y la tabla de series del planning.
+
 ### 6.6 Planificación semanal — entrenador, escritorio
-Barra superior: marca, selector de cliente, navegación de semana, botón "Guardar cambios". Barra lateral de navegación. Área principal: pestañas de día, bloques de ejercicios con series editables (kg/reps/RIR) en cuadrícula. Panel fijo a la derecha con la biblioteca de ejercicios (buscador, filtros, lista con botón "+" para añadir a la sesión).
+Barra superior: marca, selector de cliente, navegación de semana, botón "Guardar cambios". Barra lateral de navegación. Área principal: pestañas de día, bloques de ejercicios con series editables (kg/reps/RIR) en cuadrícula. Panel fijo a la derecha para añadir a la sesión, con dos pestañas: **Biblioteca** (buscador, filtros, lista con botón "+") y **Packs** (lista de packs con su "+", que copia el pack entero al bloque que se elija; los vacíos salen con el "+" apagado). Bloques y ejercicios se reordenan con **flechas arriba/abajo** en su cabecera, no arrastrando.
 
 El buscador de ejercicios lleva una **X para borrar lo escrito**, que solo aparece cuando hay algo que borrar.
 

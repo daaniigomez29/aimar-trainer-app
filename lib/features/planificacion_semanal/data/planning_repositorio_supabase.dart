@@ -312,15 +312,7 @@ sesiones_entrenamiento(
           'p_orden': datos.orden,
           'p_descanso_seg': datos.vaPorSeries ? datos.descansoSeg : null,
           'p_minutos': datos.vaPorMinutos ? datos.minutos : null,
-          'p_series': [
-            for (final serie in datos.series)
-              {
-                'numero_serie': serie.numeroSerie,
-                'repeticiones': serie.repeticiones,
-                'peso': serie.peso,
-                'rir': serie.rir,
-              },
-          ],
+          'p_series': [for (final serie in datos.series) serie.aJsonDeRpc()],
         },
       );
       return await obtenerEjercicioPlanificado(idGuardado);

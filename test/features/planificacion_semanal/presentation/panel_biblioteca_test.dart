@@ -9,6 +9,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/data/ejercicio_
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio_repositorio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/clientes/data/cliente_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente_repositorio.dart';
@@ -143,6 +144,37 @@ void main() {
 
     // Un `RenderFlex overflowed` llega aquí como excepción del test.
     expect(tester.takeException(), isNull);
+  });
+
+  // Pedido el 2026-10-19: el panel tambien tiene chip de Fuerza. Sin el no
+  // habia forma de quitar de la lista el cardio y el fortalecimiento.
+  testWidgets('el chip de Fuerza deja solo los de fuerza', (tester) async {
+    when(() => ejercicios.listar()).thenAnswer(
+      (_) async => Success([
+        ejercicioDePrueba(id: 'ej-f', nombre: 'Press banca'),
+        ejercicioDePrueba(
+          id: 'ej-c',
+          nombre: 'Cinta',
+          tipo: TipoEjercicio.cardio,
+        ),
+        ejercicioDePrueba(
+          id: 'ej-r',
+          nombre: 'Rotación externa',
+          tipo: TipoEjercicio.fortalecimiento,
+        ),
+      ]),
+    );
+    await montar(tester);
+
+    expect(find.byKey(const Key('tipo_fuerza')), findsOneWidget);
+    expect(find.text('Cinta'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('tipo_fuerza')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Press banca'), findsOneWidget);
+    expect(find.text('Cinta'), findsNothing);
+    expect(find.text('Rotación externa'), findsNothing);
   });
 
   // El entrenador añade el Día 2 porque va a montarlo, no para seguir mirando

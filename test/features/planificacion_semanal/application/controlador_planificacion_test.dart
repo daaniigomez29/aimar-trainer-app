@@ -288,7 +288,7 @@ void main() {
     });
   });
 
-  group('CU-11 y CU-12: reordenar arrastrando', () {
+  group('CU-11 y CU-12: reordenar', () {
     final bloque1 = bloqueDePrueba(id: 'b-1', orden: 1);
     final bloque2 = bloqueDePrueba(id: 'b-2', orden: 2);
     final sesion = sesionDePrueba(bloques: [bloque1, bloque2]);

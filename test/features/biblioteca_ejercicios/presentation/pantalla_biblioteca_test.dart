@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/theme/tema_app.dart';
@@ -153,7 +154,11 @@ void main() {
       ],
     );
 
-    // El segundo nivel no existe hasta elegir grupo.
+    // Los grupos no existen hasta elegir Fuerza o Fortalecimiento, y los
+    // musculos hasta elegir grupo.
+    expect(find.byKey(const Key('grupo_pierna')), findsNothing);
+    await tester.tap(find.byKey(const Key('tipo_fuerza')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('musculo_cuadriceps')), findsNothing);
 
     await tester.tap(find.byKey(const Key('grupo_pierna')));
@@ -183,6 +188,8 @@ void main() {
       ],
     );
 
+    await tester.tap(find.byKey(const Key('tipo_fuerza')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('grupo_pierna')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('musculo_gluteo')));
@@ -220,6 +227,8 @@ void main() {
       ],
     );
 
+    await tester.tap(find.byKey(const Key('tipo_fuerza')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('chip_sin_clasificar')));
     await tester.pumpAndSettle();
 
@@ -235,6 +244,9 @@ void main() {
       rol: RolUsuario.entrenador,
       biblioteca: [_ejercicio()],
     );
+
+    await tester.tap(find.byKey(const Key('tipo_fuerza')));
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('chip_sin_clasificar')), findsNothing);
   });
@@ -374,7 +386,7 @@ void main() {
         find.byKey(const Key('grupo_hombro')),
         120,
         scrollable: find.descendant(
-          of: find.byKey(const Key('fila_filtros_tipo_y_grupo')),
+          of: find.byKey(const Key('fila_filtros_grupo')),
           matching: find.byType(Scrollable),
         ),
       );
@@ -399,7 +411,10 @@ void main() {
       expect(find.text('Cinta'), findsOneWidget);
     });
 
-    testWidgets('sin ejercicios de ese tipo no se ofrece el chip', (
+    // Los filtros principales son fijos (decision del 2026-10-19): Todos, los
+    // tres tipos y Dados de baja, haya o no ejercicios de cada uno. Antes los
+    // tipos sin ejercicios no salian.
+    testWidgets('los tres tipos salen aunque no haya de alguno', (
       tester,
     ) async {
       await montar(
@@ -408,8 +423,142 @@ void main() {
         biblioteca: [_ejercicio(id: 'e-1')],
       );
 
-      expect(find.byKey(const Key('tipo_cardio')), findsNothing);
-      expect(find.byKey(const Key('tipo_fortalecimiento')), findsNothing);
+      expect(find.byKey(const Key('filtro_todos')), findsOneWidget);
+      expect(find.byKey(const Key('tipo_fuerza')), findsOneWidget);
+      expect(find.byKey(const Key('tipo_cardio')), findsOneWidget);
+      expect(find.byKey(const Key('tipo_fortalecimiento')), findsOneWidget);
+      expect(find.byKey(const Key('filtro_dadosDeBaja')), findsOneWidget);
+    });
+
+    testWidgets('ni en Todos ni en Cardio se ofrecen los músculos', (
+      tester,
+    ) async {
+      await montar(tester, rol: RolUsuario.entrenador, biblioteca: biblioteca);
+      expect(find.byKey(const Key('fila_filtros_grupo')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('tipo_cardio')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('fila_filtros_grupo')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('tipo_fortalecimiento')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('fila_filtros_grupo')), findsOneWidget);
+    });
+
+    // Fuerza y Fortalecimiento comparten el filtro muscular: "pecho" en Fuerza
+    // y luego Fortalecimiento ensena el fortalecimiento de pecho.
+    testWidgets('el músculo elegido se conserva entre Fuerza y '
+        'Fortalecimiento', (tester) async {
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [
+          _ejercicio(id: 'e-1', nombre: 'Press banca'),
+          _ejercicio(
+            id: 'e-2',
+            nombre: 'Flexiones en pared',
+            tipo: TipoEjercicio.fortalecimiento,
+          ),
+          _ejercicio(
+            id: 'e-3',
+            nombre: 'Sentadilla a una pierna',
+            tipo: TipoEjercicio.fortalecimiento,
+            musculoPrincipal: Musculo.cuadriceps,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('tipo_fuerza')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('grupo_pecho')));
+      await tester.pumpAndSettle();
+      expect(find.text('Press banca'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('tipo_fortalecimiento')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Flexiones en pared'), findsOneWidget);
+      expect(find.text('Sentadilla a una pierna'), findsNothing);
+      expect(find.text('Press banca'), findsNothing);
+      // Y el chip sigue marcado: el filtro que recorta la lista se ve.
+      expect(
+        tester.widget<ChipFiltro>(find.byKey(const Key('grupo_pecho'))).activo,
+        isTrue,
+      );
+    });
+
+    // En Cardio los musculos no se ven: si el filtro siguiera puesto, la
+    // lista saldria recortada por algo que no esta a la vista.
+    testWidgets('al pasar a Cardio se suelta el músculo', (tester) async {
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [
+          _ejercicio(id: 'e-1', nombre: 'Press banca'),
+          _ejercicio(
+            id: 'e-2',
+            nombre: 'Bici',
+            tipo: TipoEjercicio.cardio,
+            musculoPrincipal: Musculo.cuadriceps,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('tipo_fuerza')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('grupo_pecho')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tipo_cardio')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bici'), findsOneWidget);
+
+      // Y al volver a Fuerza no reaparece el pecho de antes.
+      await tester.tap(find.byKey(const Key('tipo_fuerza')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ChipFiltro>(find.byKey(const Key('grupo_todos'))).activo,
+        isTrue,
+      );
+    });
+
+    testWidgets('Dados de baja enseña las bajas de cualquier tipo', (
+      tester,
+    ) async {
+      // Ancho de sobra: con la fuente de los tests (mas ancha que la real) el
+      // ultimo chip de la fila queda en el borde y el toque no le llega.
+      tester.view.physicalSize = const Size(1600, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await montar(
+        tester,
+        rol: RolUsuario.entrenador,
+        biblioteca: [
+          _ejercicio(id: 'e-1', nombre: 'Press banca'),
+          _ejercicio(
+            id: 'e-2',
+            nombre: 'Remo viejo',
+            estado: EstadoEjercicio.eliminado,
+          ),
+          _ejercicio(
+            id: 'e-3',
+            nombre: 'Cinta vieja',
+            tipo: TipoEjercicio.cardio,
+            estado: EstadoEjercicio.eliminado,
+            musculoPrincipal: null,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byKey(const Key('tipo_cardio')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('filtro_dadosDeBaja')));
+      await tester.pumpAndSettle();
+
+      // Excluyente con los tipos: no son "las bajas de cardio".
+      expect(find.text('Remo viejo'), findsOneWidget);
+      expect(find.text('Cinta vieja'), findsOneWidget);
+      expect(find.text('Press banca'), findsNothing);
     });
   });
 

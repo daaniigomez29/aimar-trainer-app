@@ -676,8 +676,14 @@ class _FilaEjercicio extends StatelessWidget {
 
 /// "4 series · 60-65 kg por lado" o "30 min", a partir de lo planificado.
 String resumenDeEjercicio(EjercicioPlanificado ejercicio) {
-  if (ejercicio.minutosPlanificados case final minutos?) {
-    return '${_numero(minutos)} min';
+  // Por el **tipo**, no por si hay minutos: desde que un cardio puede quedarse
+  // sin ellos, mirar el valor hacia que un cardio sin minutos cayera en la rama
+  // de las series y dijera "Sin series planificadas", que no es lo suyo.
+  if (ejercicio.ejercicio?.tipo.vaPorMinutos ?? false) {
+    final minutos = ejercicio.minutosPlanificados;
+    return minutos == null
+        ? 'Sin minutos planificados'
+        : '${_numero(minutos)} min';
   }
   final series = ejercicio.series;
   if (series.isEmpty) return 'Sin series planificadas';
