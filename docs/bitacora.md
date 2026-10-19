@@ -2616,3 +2616,74 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   filtro muscular.
 - Test nuevo en `panel_biblioteca_test.dart`. `flutter test` **560**, analyze y
   format limpios. Sin probar en el navegador.
+
+**Corregido (iconos en blanco en produccion):**
+
+- **Algunos iconos no salian** (los anadidos en los ultimos despliegues). Causa:
+  Flutter recorta la fuente de iconos en cada build a los que usa la app, pero
+  la publica siempre como `assets/fonts/MaterialIcons-Regular.otf`, y
+  `vercel.json` servia `/assets/` un ano con `immutable`. El navegador se quedaba
+  con la fuente de su primera visita. Confirmado en el build local: la fuente
+  recortada pasa de 15 344 a 15 988 bytes con el mismo nombre.
+- Arreglo sin que nadie tenga que borrar la cache:
+  - `web/flutter_bootstrap.js` (plantilla nueva) carga los assets desde
+    `/v/<version>/` con `assetBase`.
+  - `scripts/vercel_build.sh` pone de version los 12 primeros caracteres de
+    `VERCEL_GIT_COMMIT_SHA` (o la hora, si no lo hay) y falla si no consigue
+    ponerla.
+  - `vercel.json`: rewrite de `/v/:version/assets/*` a `/assets/*`; lo
+    versionado sigue un ano e inmutable, y `/assets/` a secas pasa a
+    revalidarse siempre.
+  - En local (`flutter run` o un build sin el script) el marcador no se
+    sustituye y se cargan los assets de siempre.
+- Comprobado en local: `flutter build web` usa la plantilla, la sustitucion del
+  script deja la version y el motor (`main.dart.js`) lee `assetBase`.
+
+**Pendiente / notas (iconos):**
+
+- **Sin probar en Vercel**: la rewrite solo existe alli. Tras el push a `dev`,
+  mirar en la pestana Network que la fuente se pida en `/v/<commit>/assets/...`
+  con 200 y que los iconos salgan.
+- Los usuarios que ya tienen la fuente vieja la siguen teniendo guardada, pero
+  ya no se pide: la app nueva pide otra URL. No hace falta que hagan nada.
+- `canvaskit/` sigue con `immutable` y nombre fijo. Hoy no molesta (el motor
+  carga CanvasKit del CDN de Google, con la version del motor en la URL), pero
+  si alguna vez se compila con `--no-web-resources-cdn`, al subir de Flutter
+  tendria el mismo problema.
+
+**Hecho (documentacion del dominio):**
+
+- `docs/domain-model.md` no tenia los packs. Anadidas las entidades 11 (Pack),
+  12 (Ejercicio del pack) y 13 (Serie del pack), con sus reglas sacadas de la
+  migracion `20261019090000_packs_de_entrenamiento.sql`: tipo estricto, solo el
+  entrenador, aplicar es copiar, bajas omitidas, borrado fisico, todo lo
+  preparado opcional y series y minutos excluyentes.
+- Corregido lo que ya no era verdad: bloques y ejercicios se reordenan **con
+  flechas**, y un Cardio planificado puede quedarse **sin minutos** (migracion
+  `20261019090100_cardio_sin_minutos.sql`).
+- Anadida la regla de los filtros principales de la biblioteca y el filtro
+  muscular compartido entre Fuerza y Fortalecimiento.
+
+**Pendiente / notas:**
+
+- `docs/sql-schema.md` tampoco recoge las tablas ni las funciones de los packs.
+
+**Hecho (sql-schema.md al dia con los packs):**
+
+- Seccion nueva **"Packs de entrenamiento (RF-25)"**: las tres tablas con sus
+  checks e indices, el patron de permisos y la politica unica de solo
+  entrenador, los dos triggers del tipo estricto
+  (`validar_ejercicio_del_pack`, `validar_serie_del_pack`) copiados de la
+  migracion, y en prosa las tres RPC (`guardar_ejercicio_del_pack`,
+  `reordenar_pack_ejercicios`, que aparca sumando por el `check (orden > 0)`, y
+  `aplicar_pack_a_bloque`, con lo que devuelve y cuando falla).
+- **Cardio sin minutos**: el bloque de `validar_tipo_ejercicio_planificado` pasa
+  a la version de `20261019090100`, con una nota de por que se relajo.
+- De paso: las tablas de packs anadidas a la lista de las que conceden
+  `delete`, y "arrastra" cambiado por "mueve (con flechas)" en el reordenado.
+
+**Pendiente / notas:**
+
+- `sql-schema.md` **no recoge nada de la fase 6** (recordatorios, `pg_cron`,
+  Vault, `20261018090000_recordatorios_fallan_a_la_vista.sql`). Es un hueco
+  anterior; esas notas viven hoy en `estado-actual.md` (trampa 36).

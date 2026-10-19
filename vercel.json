@@ -4,6 +4,12 @@
   "installCommand": "bash scripts/vercel_install.sh",
   "buildCommand": "bash scripts/vercel_build.sh",
   "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/v/:version/assets/:ruta*",
+      "destination": "/assets/:ruta*"
+    }
+  ],
   "headers": [
     {
       "source": "/(index.html)?",
@@ -51,11 +57,20 @@
       ]
     },
     {
-      "source": "/assets/(.*)",
+      "source": "/v/:version/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }

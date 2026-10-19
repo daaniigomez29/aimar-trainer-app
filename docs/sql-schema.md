@@ -18,7 +18,7 @@ concede solo lo que usa y nunca `delete`: para deshacer un alta a medias basta
 `auth.admin.deleteUser`, que cascadea por la FK a `auth.users`.
 Ninguna tabla concede `delete` salvo las que tienen un caso de uso real de
 borrado físico (plannings, sesiones, bloques, ejercicios planificados,
-series planificadas, fotos de progreso); clientes y ejercicios de la
+series planificadas, fotos de progreso y las tres tablas de los packs); clientes y ejercicios de la
 biblioteca nunca conceden `delete`, porque su baja es siempre lógica.
 
 ## Base: perfiles y funciones auxiliares
@@ -397,21 +397,27 @@ begin
 end;
 $$;
 
+-- Version de 20261019090100_cardio_sin_minutos: un cardio planificado puede
+-- quedarse sin minutos, igual que una fuerza puede quedarse sin series. Solo se
+-- prohibe la contradiccion: minutos en lo que va por series.
 create function validar_tipo_ejercicio_planificado() returns trigger
-  language plpgsql as $$
+  language plpgsql
+  set search_path = public, pg_temp
+as $$
 declare
   v_tipo tipo_ejercicio;
 begin
   select tipo into v_tipo from ejercicios where id = new.ejercicio_id;
 
-  if planifica_con_minutos(v_tipo) then
-    if new.minutos_planificados is null then
-      raise exception 'Un ejercicio de % requiere minutos_planificados', v_tipo;
-    end if;
-  else
+  if v_tipo is null then
+    raise exception 'El ejercicio % no existe', new.ejercicio_id;
+  end if;
+
+  if not planifica_con_minutos(v_tipo) then
     if new.minutos_planificados is not null or
        new.minutos_realizados is not null then
-      raise exception 'Un ejercicio de % no admite minutos, usa series', v_tipo;
+      raise exception 'Un ejercicio de % no admite minutos, usa series', v_tipo
+        using errcode = 'check_violation';
     end if;
   end if;
 
@@ -423,6 +429,18 @@ create trigger comprobar_tipo_ejercicio_planificado
   before insert or update on ejercicios_planificados
   for each row execute function validar_tipo_ejercicio_planificado();
 ```
+
+**Cardio sin minutos** (migración `20261019090100_cardio_sin_minutos.sql`,
+2026-10-19). Hasta entonces el trigger exigía `minutos_planificados` a todo
+cardio. Esa regla, "un ejercicio planificado tiene que decir qué hacer", estaba
+partida en dos sitios por una limitación técnica, no por una decisión: los
+minutos son una columna de la propia fila y un trigger `before insert` puede
+exigirlos, pero las series son filas de otra tabla que se insertan después, así
+que la mitad de la fuerza solo vivía en Dart. Con los packs, que permiten dejar
+los minutos sin preparar, exigirlos obligaba a inventarse una cifra al aplicar
+uno. Ahora el trigger solo prohíbe minutos en lo que va por series. El
+formulario de CU-08 sigue pidiendo los minutos al añadir un cardio a mano: lo
+único que puede dejarlos vacíos es aplicar un pack que no los traía.
 
 **Lo pasado no se toca** (migración `20261011100000`). `semana_pasada(fecha)`
 compara contra el lunes de la semana en curso **en `Europe/Madrid`**, no en UTC:
@@ -763,8 +781,9 @@ si el cliente registra 3 series y luego corrige a 2, la tercera sigue ahí.
 
 ### `reordenar_bloques` y `reordenar_ejercicios_planificados` (CU-11, CU-12)
 
-Renumeran `orden` cuando el entrenador arrastra un bloque dentro de su sesión o
-un ejercicio dentro de su bloque. Reciben la lista **completa** de ids en el
+Renumeran `orden` cuando el entrenador mueve un bloque dentro de su sesión o
+un ejercicio dentro de su bloque (con flechas desde el 2026-10-19; antes,
+arrastrando). Reciben la lista **completa** de ids en el
 orden que debe quedar.
 
 No se puede hacer con `update` sueltos: `(sesion_id, orden)` y
@@ -804,6 +823,204 @@ Son RLS normal sobre `storage.objects`, con la ruta
 segmento, con `(storage.foldername(name))[1] = auth.uid()::text`. El cliente
 gestiona lo suyo; el entrenador solo lee; el administrador, sin política, no
 accede.
+
+## Packs de entrenamiento (RF-25)
+
+Migración `20261019090000_packs_de_entrenamiento.sql`. Plantillas de ejercicios
+que el entrenador reutiliza al planificar (entidades 11 a 13 de
+`domain-model.md`).
+
+**Tablas propias, no las del planning.** La cadena `bloques →
+ejercicios_planificados → series_planificadas` lleva lo necesario para que
+alguien entrene y registre (`estado_registro`, `minutos_realizados`,
+`fecha_realizada`). Un pack no se entrena ni lo ve ningún cliente. Meter las dos
+cosas en las mismas tablas habría obligado a tocar lo que usa el cliente en
+producción, incluidas la RPC de registro y las vistas de progreso, para
+ahorrarse tres tablas que no comparten ni la mitad de las columnas.
+
+```sql
+create table packs (
+  id uuid primary key default gen_random_uuid(),
+  nombre text not null,
+  tipo tipo_ejercicio not null,
+  creado_en timestamptz not null default now(),
+
+  constraint nombre_no_vacio check (length(trim(nombre)) > 0)
+);
+
+-- Sin dos packs con el mismo nombre, mirando igual mayusculas y minusculas.
+create unique index packs_nombre_unico on packs (lower(trim(nombre)));
+
+create table pack_ejercicios (
+  id uuid primary key default gen_random_uuid(),
+  pack_id uuid not null references packs(id) on delete cascade,
+  -- Sin `on delete cascade`: un ejercicio de la biblioteca nunca se borra
+  -- fisicamente, se da de baja.
+  ejercicio_id uuid not null references ejercicios(id),
+  orden integer not null,
+  descanso_seg integer,
+  -- Opcional, a diferencia del planning.
+  minutos numeric(5, 1),
+
+  constraint orden_positivo check (orden > 0),
+  constraint descanso_positivo check (descanso_seg is null or descanso_seg > 0),
+  constraint minutos_positivos check (minutos is null or minutos > 0)
+);
+
+create unique index pack_ejercicios_orden_unico on pack_ejercicios (pack_id, orden);
+create index pack_ejercicios_por_ejercicio on pack_ejercicios (ejercicio_id);
+
+create table pack_series (
+  id uuid primary key default gen_random_uuid(),
+  pack_ejercicio_id uuid not null
+    references pack_ejercicios(id) on delete cascade,
+  numero_serie integer not null,
+  repeticiones integer not null,
+  peso numeric(6, 2),
+  rir integer,
+
+  constraint numero_positivo check (numero_serie > 0),
+  constraint repeticiones_positivas check (repeticiones > 0),
+  constraint peso_positivo check (peso is null or peso > 0),
+  constraint rir_rango check (rir is null or rir between 0 and 10)
+);
+
+create unique index pack_series_numero_unico
+  on pack_series (pack_ejercicio_id, numero_serie);
+```
+
+**Permisos y políticas.** Las tres tablas siguen el mismo patrón: RLS activado,
+`grant select, insert, update, delete ... to authenticated`, `revoke truncate,
+trigger, references ... from anon, authenticated`, y una sola política:
+
+```sql
+create policy "solo el entrenador gestiona los packs"
+  on packs for all
+  to authenticated
+  using (es_entrenador())
+  with check (es_entrenador());
+
+-- Igual en pack_ejercicios ("... los ejercicios del pack") y en pack_series
+-- ("... las series del pack").
+```
+
+Son las únicas tablas, junto a las de planificación, que conceden `delete`:
+borrar un pack es físico y se lleva sus ejercicios y sus series en cascada. Lo
+ya planificado a partir de él no se toca, porque se copió. Ni el cliente ni el
+administrador tienen política, así que no ven ningún pack.
+
+**El tipo del pack manda** (decisión del 2026-10-19: tipo estricto). Dos
+triggers lo imponen:
+
+```sql
+create function validar_ejercicio_del_pack() returns trigger
+  language plpgsql
+  set search_path = public, pg_temp
+as $$
+declare
+  v_tipo_pack tipo_ejercicio;
+  v_tipo_ejercicio tipo_ejercicio;
+begin
+  select tipo into v_tipo_pack from packs where id = new.pack_id;
+  select tipo into v_tipo_ejercicio from ejercicios where id = new.ejercicio_id;
+
+  if v_tipo_ejercicio is null then
+    raise exception 'El ejercicio % no existe', new.ejercicio_id;
+  end if;
+
+  if v_tipo_ejercicio <> v_tipo_pack then
+    raise exception
+      'Este pack es de % y el ejercicio es de %', v_tipo_pack, v_tipo_ejercicio
+      using errcode = 'check_violation';
+  end if;
+
+  -- Los minutos son de lo que va por minutos. Aqui pueden faltar.
+  if not planifica_con_minutos(v_tipo_pack) and new.minutos is not null then
+    raise exception 'Un pack de % no lleva minutos, lleva series', v_tipo_pack
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger comprobar_ejercicio_del_pack
+  before insert or update on pack_ejercicios
+  for each row execute function validar_ejercicio_del_pack();
+
+-- Y al reves: nada de series en un pack de cardio.
+create function validar_serie_del_pack() returns trigger
+  language plpgsql
+  set search_path = public, pg_temp
+as $$
+declare
+  v_tipo tipo_ejercicio;
+begin
+  select p.tipo into v_tipo
+  from pack_ejercicios pe
+  join packs p on p.id = pe.pack_id
+  where pe.id = new.pack_ejercicio_id;
+
+  if planifica_con_minutos(v_tipo) then
+    raise exception 'Un pack de % no lleva series, lleva minutos', v_tipo
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger comprobar_serie_del_pack
+  before insert or update on pack_series
+  for each row execute function validar_serie_del_pack();
+```
+
+Por eso la app no deja cambiar el tipo de un pack al editarlo: dejaría dentro
+ejercicios que no encajan.
+
+### `guardar_ejercicio_del_pack` (RPC)
+
+`(p_id, p_pack_id, p_ejercicio_id, p_orden, p_descanso_seg, p_minutos, p_series
+jsonb) returns uuid`. Crea (`p_id` nulo) o edita un ejercicio del pack y
+**reemplaza sus series**, en una sola transacción. Mismo motivo que
+`guardar_ejercicio_planificado`: son tres operaciones y PostgREST abre una
+transacción por petición. `p_series` puede venir vacío, porque en un pack las
+series son opcionales. Es `security invoker`. Al editar mira si el `update`
+tocó la fila: con RLS, uno prohibido no da error, solo deja 0 filas.
+
+### `reordenar_pack_ejercicios` (RPC)
+
+`(p_pack_id, p_ids uuid[]) returns void`. Mismo contrato que
+`reordenar_bloques`: la lista **completa** y sin repetidos, comprobación de
+`es_entrenador()` y de `row_count`, renumerado en dos fases. Una diferencia: aquí
+el aparcamiento intermedio **suma** un millón en vez de restarlo, porque esta
+tabla tiene `check (orden > 0)` y restar la violaría a mitad de camino. Las
+funciones del planning restan porque sus tablas no llevan ese check. Es uno de
+los dos fallos que cazó la verificación contra Supabase local y que no se veían
+leyendo el SQL.
+
+### `aplicar_pack_a_bloque` (RPC)
+
+`(p_pack_id, p_bloque_id) returns jsonb`. Copia los ejercicios del pack **al
+final** del bloque, con su descanso, sus minutos (solo si el tipo va por
+minutos) y sus series, en una transacción: o entran todos o ninguno.
+
+- **Omite los ejercicios dados de baja** (un ejercicio eliminado no se añade a
+  bloques nuevos) y devuelve cuántos:
+  `{"ejercicios_anadidos": n, "ejercicios_omitidos": m}`. La app lo dice en el
+  aviso.
+- Un pack sin ningún ejercicio falla con `check_violation` ("Ese pack no tiene
+  ejercicios"). Si todos están de baja no falla: devuelve 0 añadidos.
+- Si el pack o el bloque no son visibles para quien llama, sale por "ya no
+  existe" (`no_data_found`), sin distinguir de "no puedes".
+- Es `security invoker`: los `insert` pasan por RLS y por los triggers del
+  planning, también el de "lo pasado no se toca".
+- **No rellena lo que el pack no traía.** Un cardio sin minutos se queda sin
+  minutos. Antes había un `coalesce(..., 20)`, y desapareció con la migración
+  siguiente (ver "Ejercicio planificado").
+- El tipo del bloque no restringe qué pack se le aplica.
+
+Lo copiado pasa a ser del planning: editar el pack después no lo cambia.
 
 ## Notas técnicas pendientes para el futuro
 
