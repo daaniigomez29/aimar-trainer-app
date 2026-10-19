@@ -348,6 +348,18 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     estaba en la propia app: el editor lleva desde su primera version la rama
     "Sin minutos planificados", para un estado que la base no permitia. Relajado
     el 2026-10-19 (`20261019090100_cardio_sin_minutos.sql`).
+38. **Iconos en blanco tras desplegar: la fuente de iconos cacheada.** Flutter
+    recorta `MaterialIcons-Regular.otf` en cada build a los iconos que usa la
+    app, pero el archivo se llama igual en todos, y `vercel.json` servia
+    `/assets/` con `max-age=31536000, immutable`. El navegador se quedaba con la
+    fuente de su primera visita y los iconos anadidos despues no existian en
+    ella. No se arregla cambiando la cabecera: con `immutable` el navegador ni
+    pregunta. Arreglo (2026-10-19): los assets se piden en
+    `/v/<commit>/assets/...` (`assetBase` en `web/flutter_bootstrap.js`, el
+    commit lo pone `scripts/vercel_build.sh`) y una rewrite de `vercel.json` lo
+    lleva a `/assets/`. Cada despliegue son URLs nuevas. **Regla**: nada con
+    nombre fijo puede llevar `immutable`; si se anade algo cacheado a largo
+    plazo, que vaya bajo `/v/`.
 
 ## Decisiones tomadas (no reabrir sin motivo)
 

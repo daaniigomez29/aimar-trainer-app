@@ -27,3 +27,23 @@ flutter/bin/flutter build web --release \
   --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
   --dart-define=APP_ENV="${APP_ENV:-production}" \
   --dart-define=VAPID_PUBLIC_KEY="${VAPID_PUBLIC_KEY:-}"
+
+# Version de los assets: cada despliegue los sirve bajo `/v/<version>/`, que
+# `vercel.json` reescribe a `/assets/`. Asi el navegador no puede quedarse con
+# los de un despliegue anterior (la fuente de iconos se llama igual en todos y
+# salian iconos en blanco). Ver `web/flutter_bootstrap.js`.
+#
+# El commit, que Vercel da en `VERCEL_GIT_COMMIT_SHA`: volver a desplegar el
+# mismo commit da los mismos assets, y la misma URL es correcta. Sin el (un
+# despliegue a mano), la hora, que nunca repite.
+VERSION_ASSETS="${VERCEL_GIT_COMMIT_SHA:-$(date +%s)}"
+VERSION_ASSETS="${VERSION_ASSETS:0:12}"
+sed -i "s/__AIMAR_VERSION_ASSETS__/${VERSION_ASSETS}/" build/web/flutter_bootstrap.js
+
+# Si el marcador no estaba, la app seguiria pidiendo `/assets/` y el arreglo no
+# se aplicaria sin que nadie se enterase. Mejor fallar aqui.
+grep -q "\"${VERSION_ASSETS}\"" build/web/flutter_bootstrap.js || {
+  echo "Error: no se ha podido poner la version en flutter_bootstrap.js." >&2
+  exit 1
+}
+echo "Assets servidos bajo /v/${VERSION_ASSETS}/"

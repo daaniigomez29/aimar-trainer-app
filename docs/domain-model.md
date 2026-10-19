@@ -1,6 +1,7 @@
 # Modelo de dominio
 
-Resumen técnico de las 10 entidades de dominio: atributos y reglas de negocio
+Resumen técnico de las 10 entidades de dominio del ERS, más las 3 de los packs
+de entrenamiento (RF-25, secciones 11 a 13): atributos y reglas de negocio
 que cada una debe garantizar por sí misma. Referencia rápida para el código;
 el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 
@@ -74,7 +75,7 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 
 **Reglas de dominio**
 - No puede haber dos bloques con el mismo `orden` en la misma sesión.
-- El `orden` lo cambia el entrenador **arrastrando**, y se renumera el conjunto entero de una vez: no se mueve un bloque suelto dejando huecos ni repetidos. El cliente no reordena lo que le han planificado.
+- El `orden` lo cambia el entrenador **con flechas** (arriba / abajo; hasta el 2026-10-19 se arrastraba), y se renumera el conjunto entero de una vez: no se mueve un bloque suelto dejando huecos ni repetidos. El cliente no reordena lo que le han planificado.
 - Eliminar un bloque elimina en cascada sus ejercicios planificados (no afecta a la biblioteca general de Ejercicio).
 
 ## 5. Ejercicio (biblioteca)
@@ -120,6 +121,7 @@ series, Cardio por minutos.
 - El grupo y el músculo principal **no conviven**: con principal, el grupo se deriva de él.
 - El músculo principal no puede repetirse entre los secundarios.
 - Al filtrar, **los secundarios cuentan**: buscar "glúteo" encuentra también la sentadilla. Se listan primero los que lo tienen como principal.
+- En la pantalla de biblioteca, el filtro principal es uno de **Todos / Fuerza / Cardio / Fortalecimiento / Dados de baja** (`PestanaBiblioteca`, que se deduce del filtro, no se guarda aparte). El filtro muscular **solo** existe con Fuerza o Fortalecimiento, que lo **comparten**: el músculo elegido se conserva al pasar de uno a otro y se suelta en los demás.
 - Todos los usuarios autenticados (incluidos clientes) pueden **leer** la biblioteca completa (para ver la imagen y el vídeo de ejemplo).
 - La imagen es material de la biblioteca, no dato personal: su bucket es público y cualquiera con el enlace la ve. Subirla, reemplazarla o borrarla es solo del entrenador.
 - La imagen acompaña al ejercicio **allá donde se muestre**: la biblioteca, la planificación del entrenador y la pantalla con la que el cliente registra su resultado. Donde no la haya, un hueco con el icono de su tipo.
@@ -140,7 +142,8 @@ series, Cardio por minutos.
 
 **Reglas de dominio**
 - **Series y minutos son mutuamente excluyentes**, y lo que decide cuál se usa es el **modo de planificación** del tipo: Fuerza y Fortalecimiento usan series (no minutos); Cardio usa minutos (no series). La pregunta no es por el tipo a propósito: con un tercer tipo, preguntar "¿es cardio?" convierte a Fortalecimiento en Fuerza sin que nadie lo decida.
-- No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque. Se reordena arrastrando, igual que los bloques, y también es cosa solo del entrenador.
+- No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque. Se reordena con flechas, igual que los bloques, y también es cosa solo del entrenador.
+- **Lo planificado puede quedarse sin rellenar**: un Cardio puede no tener minutos, igual que uno por series puede no tener series. Pasa al aplicar un pack que no los traía (2026-10-19): la base ya no exige los minutos, para no inventarse una cifra que el entrenador no puso. Añadido a mano desde el formulario de CU-08, en cambio, se siguen pidiendo.
 - `estadoRegistro` pasa a "registrado" si existe al menos una Serie realizada (tipos por series) o si `minutosRealizados` tiene valor (Cardio).
 - Eliminarlo no elimina el Ejercicio de la biblioteca, solo la referencia en ese bloque.
 
@@ -208,6 +211,64 @@ Vive como colección dentro de Ejercicio planificado (tabla propia en SQL, sin R
 - No puede haber dos check-in del mismo cliente con la misma `fecha`.
 - `estres`, `agujetas`, `fatiga` deben estar entre 1 y 10.
 - **Sin relación (FK) con Registro de medidas corporales**: comparten `fecha` por convención de uso de la interfaz, no por restricción de dominio. El front hace las dos inserciones una vez rellenados ambos formularios, sin transacción que las una en base de datos.
+
+## 11. Pack de entrenamiento (RF-25)
+
+Plantilla de ejercicios que el entrenador reutiliza al planificar. **No forma
+parte de la cadena del planning**: tiene tablas propias (`packs`,
+`pack_ejercicios`, `pack_series`), porque un pack no se entrena ni se registra,
+y lo que un planning lleva encima para eso (`estadoRegistro`,
+`minutosRealizados`, `fechaRealizada`) no tiene sentido en él.
+
+| Atributo | Tipo | Descripción |
+| --- | --- | --- |
+| id | uuid | Clave |
+| nombre | text | Único entre packs, sin distinguir mayúsculas ni espacios de los extremos |
+| tipo | enum (fuerza / cardio / fortalecimiento) | El mismo de la biblioteca. **Manda sobre sus ejercicios** |
+| creadoEn | timestamptz | Fecha de creación |
+| ejercicios | colección de Ejercicio del pack | Composición |
+
+**Reglas de dominio**
+- **Todos sus ejercicios son del tipo del pack** (lo impone un trigger). Por eso el tipo **no se cambia** al editar: dejaría dentro ejercicios que no encajan.
+- Solo lo ve y lo toca el **entrenador**: ni el cliente ni el administrador (RLS).
+- **Aplicar un pack a un bloque copia** sus ejercicios, con lo que tuvieran preparado, **al final** del bloque, en una sola transacción (`aplicar_pack_a_bloque`). A partir de ahí lo copiado es del planning: **editar el pack después no cambia lo ya planificado**.
+- Al aplicar, los ejercicios **dados de baja se omiten** (un ejercicio eliminado no se añade a bloques nuevos) y se informa de cuántos. Un pack **sin ejercicios no se puede aplicar**.
+- El tipo del bloque no restringe qué pack se le aplica.
+- Borrado **físico**, como el de un planning: es una plantilla, no un dato de nadie. Se lleva sus ejercicios y sus series; lo ya planificado a partir de él no se toca, porque se copió.
+
+## 12. Ejercicio del pack
+
+| Atributo | Tipo | Descripción |
+| --- | --- | --- |
+| id | uuid | Clave |
+| packId | referencia a Pack | Propietario |
+| ejercicioId | referencia a Ejercicio | Ejercicio de la biblioteca |
+| orden | integer (> 0) | Posición dentro del pack |
+| descansoSeg | integer (> 0)? | Descanso preparado |
+| minutos | numeric (> 0)? | Solo en packs de Cardio |
+| series | colección de Serie del pack | Solo en packs que van por series |
+
+**Reglas de dominio**
+- **Todo lo preparado es opcional**, a diferencia del planning: un pack puede ser solo la lista de ejercicios. Lo que falte se rellena en el planning después de aplicarlo.
+- **Series y minutos son excluyentes**, según el modo de planificación del tipo del pack: un pack de Cardio no lleva series y uno por series no lleva minutos (triggers).
+- No puede haber dos con el mismo `orden` en el mismo pack. Se reordena con **flechas**, renumerando el conjunto entero de una vez (`reordenar_pack_ejercicios`).
+- Un ejercicio que se da de baja en la biblioteca **se queda** en el pack, marcado, pero no se copia al aplicarlo.
+- Se guarda con sus series de una pieza (`guardar_ejercicio_del_pack`): o entra todo, o nada.
+
+## 13. Serie del pack
+
+Hermana de la Serie planificada, colgando del pack en vez de una semana.
+
+| Atributo | Tipo | Descripción |
+| --- | --- | --- |
+| numeroSerie | integer (> 0) | 1ª, 2ª, 3ª serie... |
+| repeticiones | integer (> 0) | Objetivo |
+| peso | numeric (> 0)? | Carga orientativa |
+| rir | integer? (0–10) | RIR objetivo |
+
+**Reglas de dominio**
+- No puede haber dos series con el mismo `numeroSerie` en el mismo Ejercicio del pack.
+- Mismas validaciones que una Serie planificada (en Dart se reutiliza `DatosSerie` entera).
 
 ## Restricciones transversales
 
