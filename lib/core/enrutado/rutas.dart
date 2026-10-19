@@ -38,6 +38,22 @@ abstract final class Rutas {
   static const String avisos = 'avisos';
   static const String avisosCliente = '$inicioCliente/$avisos';
 
+  /// Packs de entrenamiento (RF-25). Solo del entrenador: un cliente no los ve
+  /// ni por ruta, porque RLS no le devuelve ninguno.
+  static const String packs = 'packs';
+  static const String packsEntrenador = '$inicioEntrenador/$packs';
+  static const String unPack = ':packId';
+  static String packConcreto(String packId) => '$packsEntrenador/$packId';
+
+  /// El formulario de un ejercicio dentro de un pack. `nuevo` va antes que
+  /// `:idPackEjercicio` por el mismo motivo que en la biblioteca: si no, se
+  /// tomaria la palabra "nuevo" por un identificador.
+  static const String ejercicioDelPack = ':idPackEjercicio';
+  static String nuevoEjercicioDelPack(String packId) =>
+      '${packConcreto(packId)}/$nuevo';
+  static String editarEjercicioDelPack(String packId, String idEjercicio) =>
+      '${packConcreto(packId)}/$idEjercicio';
+
   /// Gestion de clientes (CU-17 a CU-19). La ven el entrenador y el
   /// administrador; el cliente no tiene esta seccion.
   static const String clientes = 'clientes';

@@ -617,6 +617,10 @@ class _Encabezado extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textos = Theme.of(context).textTheme;
     final ficha = ejercicio.ejercicio;
+    final descripcion = switch (ficha?.descripcion.trim()) {
+      final texto? when texto.isNotEmpty => texto,
+      _ => null,
+    };
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,28 +640,35 @@ class _Encabezado extends ConsumerWidget {
                 const SizedBox(height: 8),
               ],
               Text(ficha?.nombre ?? 'Ejercicio', style: textos.titleLarge),
-              if (ficha?.videoEjemploUrl case final url?) ...[
-                const SizedBox(height: 6),
-                InkWell(
-                  key: const Key('boton_ver_video'),
-                  onTap: () => onVerVideo(url),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.play_circle_outline,
-                        size: 18,
-                        color: Tokens.acento,
+              // Video a la izquierda y descripcion a la derecha, cada uno solo
+              // si existe: la descripcion es opcional y hay ejercicios sin
+              // video. `Wrap` y no `Row`: junto a la miniatura, en un movil
+              // estrecho los dos no siempre caben en una linea.
+              if (ficha?.videoEjemploUrl != null || descripcion != null) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (ficha?.videoEjemploUrl case final url?)
+                      _BotonEncabezado(
+                        clave: const Key('boton_ver_video'),
+                        icono: Icons.play_circle_outline,
+                        texto: 'Vídeo',
+                        onPulsar: () => onVerVideo(url),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Ver vídeo de ejemplo',
-                        style: textos.bodyMedium?.copyWith(
-                          color: Tokens.acento,
+                    if (descripcion case final texto?)
+                      _BotonEncabezado(
+                        clave: const Key('boton_ver_descripcion'),
+                        icono: Icons.notes_outlined,
+                        texto: 'Descripción',
+                        onPulsar: () => _verDescripcion(
+                          context,
+                          nombre: ficha?.nombre ?? 'Ejercicio',
+                          descripcion: texto,
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
               ],
             ],
@@ -666,6 +677,74 @@ class _Encabezado extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// La explicacion del ejercicio, la misma que "Cómo se ejecuta" en su ficha de
+/// la biblioteca. En una hoja y no navegando a la ficha: el cliente esta a
+/// mitad de registrar las series y tiene que volver a ellas sin perder nada.
+void _verDescripcion(
+  BuildContext context, {
+  required String nombre,
+  required String descripcion,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (contexto) {
+      final textos = Theme.of(contexto).textTheme;
+      return SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(contexto).height * 0.8,
+          ),
+          child: SingleChildScrollView(
+            key: const Key('hoja_descripcion'),
+            padding: const EdgeInsets.all(Tokens.margenPantalla),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(nombre, style: textos.titleLarge),
+                const SizedBox(height: 4),
+                Text('Cómo se ejecuta', style: textos.labelLarge),
+                const SizedBox(height: 12),
+                Text(descripcion, style: textos.bodyMedium),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _BotonEncabezado extends StatelessWidget {
+  const _BotonEncabezado({
+    required this.clave,
+    required this.icono,
+    required this.texto,
+    required this.onPulsar,
+  });
+
+  final Key clave;
+  final IconData icono;
+  final String texto;
+  final VoidCallback onPulsar;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    key: clave,
+    onPressed: onPulsar,
+    icon: Icon(icono, size: 18),
+    label: Text(texto),
+    // Mas bajos que los del tema (48): van junto al nombre, no son la accion
+    // principal de la pantalla.
+    style: OutlinedButton.styleFrom(
+      foregroundColor: Tokens.acento,
+      minimumSize: const Size(0, 38),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      visualDensity: VisualDensity.compact,
+    ),
+  );
 }
 
 class _TarjetaSerie extends StatelessWidget {

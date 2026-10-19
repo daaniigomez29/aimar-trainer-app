@@ -4,9 +4,50 @@ Resumen operativo para retomar el trabajo. Complementa a `AGENTS.md` (convencion
 y a `bitacora.md` (histórico cronológico): aquí está **dónde estamos, qué trampas
 ya se han pisado y qué queda abierto**.
 
-Última actualización: 2026-10-12. La app está **en producción**: Vercel sirve
+Última actualización: 2026-10-19. La app está **en producción**: Vercel sirve
 la PWA, el pipeline despliega a Supabase en cada push a `dev` y a `main`, y hay
 clientes reales dados de alta.
+
+## En curso ahora mismo (2026-10-19)
+
+**Packs de entrenamiento (RF-25)**, en tres fases. Las tres estan hechas y
+verificadas con tests, y las flechas ya estan tambien en el planning; falta
+que Daniel lo pruebe todo en el navegador.
+
+- **Fase 1, hecha**: tres migraciones nuevas, verificadas contra Supabase local,
+  y el lado Dart entero en `lib/features/packs/` (entidades, `DatosPack`,
+  puerto, repositorio Supabase y `ControladorPacks`).
+- **Fase 2, hecha**: pantalla de Packs (quinto destino del entrenador), ficha del
+  pack, formulario de ejercicio del pack y el widget `ListaOrdenable` (flechas),
+  que vive en `lib/core/presentacion/widgets/` porque lo comparten packs y
+  planning.
+- **Fase 3, hecha**: el panel de la planificacion tiene dos pestanas,
+  **Biblioteca | Packs** (un `SegmentedButton` dentro de `_PanelBiblioteca`, el
+  mismo en escritorio y en el modal de movil). El `+` de un pack elige bloque
+  con `elegirBloque` (que ahora recibe un `nombre`, no un `Ejercicio`), llama a
+  `aplicarABloque` y **recarga el planning a mano**: el controlador de packs no
+  sabe de plannings. Los packs vacios salen con el `+` apagado.
+- **Flechas en el planning, hechas**: bloques y ejercicios se reordenan con
+  `FlechasDeOrden`, colocadas en la cabecera de cada uno (donde estaba el asa)
+  para no comerse ancho en movil con dos listas anidadas. Las claves llevan el
+  id (`bajar_bloque_<id>`, `subir_ejercicio_<id>`). `ListaArrastrable` y
+  `arrastre_planning_test.dart` estan borrados; los sustituye
+  `ordenar_planning_test.dart`, contra la pantalla. Mismo contrato
+  `desde`/`hasta`, asi que las funciones de Postgres no cambian.
+
+**Sin commitear** (unas 30 entradas en `git status`, dos de ellas borrados sin pasar al indice), y **sin desplegar**: hay tres migraciones nuevas
+que el CI aplicara en el primer push a `dev`.
+
+- `20261018090000_recordatorios_fallan_a_la_vista.sql`
+- `20261019090000_packs_de_entrenamiento.sql`
+- `20261019090100_cardio_sin_minutos.sql`
+
+El script que las verifico esta fuera del repo (era de usar y tirar); la base
+local ya las tiene aplicadas con `supabase db reset`.
+
+**Ojo con el token de despliegue**: el `SUPABASE_ACCESS_TOKEN` de `main` caduco
+el 2026-10-18 (trampa 35). Si no se ha regenerado, el job de despliegue sigue
+fallando en `supabase link`.
 
 ## Fases
 
@@ -21,7 +62,7 @@ clientes reales dados de alta.
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Hecho y en uso** |
 
 Verificación actual: `supabase db reset` aplica **25 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **495**,
+`./scripts/probar_local.sh` da **200/200**, `flutter test` **551**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**
@@ -270,6 +311,43 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
     para pruebas. Resuelto el 2026-10-12 poniendo Resend como SMTP de Auth
     (`smtp.resend.com`, usuario `resend`, clave la API key, remitente del dominio
     verificado).
+35. **El `SUPABASE_ACCESS_TOKEN` caduca, y nadie avisa.** El despliegue a `main`
+    fallo el 2026-10-14 con `Unexpected error retrieving remote project status:
+    {"message":"Invalid access token"}` en el paso de `supabase link`, sin que
+    nadie hubiera tocado nada: el token personal (Account -> Access Tokens, el
+    que empieza por `sbp_`) tenia fecha de caducidad y la alcanzo. Como se
+    reconoce: el paso "Comprobar que el entorno esta configurado" **pasa** (el
+    secreto existe y no esta vacio) y revienta el primero que habla con la API,
+    asi que no se aplica ninguna migracion ni se despliega ninguna funcion. Se
+    arregla generando otro y actualizando el secreto **en los dos entornos** si
+    comparten token: el de `dev` caduca el mismo dia aunque no se note hasta el
+    siguiente push. Para comprobar uno nuevo sin gastar un run de CI:
+    `SUPABASE_ACCESS_TOKEN=sbp_... supabase projects list`.
+36. **Un secreto de Vault que falta no rompe nada, y por eso cuesta verlo.**
+    Los recordatorios no se enviaron durante una semana (16-18/10/2026) porque
+    en el proyecto faltaba el secreto `url_enviar_recordatorios`: estaba
+    `secreto_cron` y la URL no. `enviar_recordatorios_programados()` no
+    encuentra la URL, hace `raise warning`, devuelve `null` y **no llama a
+    nadie**; el job sigue apareciendo como `succeeded` en
+    `cron.job_run_details`, porque desde su punto de vista termino bien.
+    Dos cosas que lo hacen dificil de diagnosticar a posteriori: el job dice
+    que fue bien, y `net._http_response` **se vacia a las pocas horas**, asi que
+    mirar el lunes lo del viernes no devuelve nada. La forma de mirarlo es
+    dispararlo a mano (`select public.enviar_recordatorios_programados();`) y
+    consultar `net._http_response` acto seguido.
+    Ojo tambien con `vault.create_secret`: recibe **primero el valor y despues
+    el nombre**, y creados del reves el sintoma es identico.
+37. **Una regla puede acabar partida en dos sitios sin que nadie lo decida.**
+    "Un ejercicio planificado tiene que decir que hacer" se implemento de dos
+    formas: los minutos del cardio en un trigger (son una columna de la propia
+    fila) y las series de la fuerza solo en Dart (son filas de **otra** tabla,
+    insertadas despues, asi que un trigger de fila siempre veria cero). El
+    resultado era que un cardio sin minutos se rechazaba y una fuerza sin series
+    no, sin que esa asimetria la hubiera decidido nadie. Se vio al montar los
+    packs, donde lo preparado es opcional. La pista de que la prohibicion sobraba
+    estaba en la propia app: el editor lleva desde su primera version la rama
+    "Sin minutos planificados", para un estado que la base no permitia. Relajado
+    el 2026-10-19 (`20261019090100_cardio_sin_minutos.sql`).
 
 ## Decisiones tomadas (no reabrir sin motivo)
 
@@ -297,6 +375,28 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   trigger iba a rechazar). El criterio es **deshabilitar, no esconder**, con el
   motivo en el tooltip cuando quepa: un boton que desaparece se lee como que la
   funcion no existe. Lo vigila `editor_semana_pasada_test.dart`.
+- **Los packs son tablas propias, no una variante de lo planificado**
+  (2026-10-19). `packs`, `pack_ejercicios` y `pack_series`, espejo de la cadena
+  del planning pero **sin nada de lo realizado**. Reutilizar
+  `ejercicios_planificados` habria obligado a tocar lo que el cliente usa en
+  produccion (la RPC de registro, las vistas de progreso, sus politicas) para
+  ahorrar tres tablas que no comparten ni la mitad de las columnas.
+  - **Solo el entrenador**: RLS con `es_entrenador()` en las tres. Ni el cliente
+    ni el administrador.
+  - **Tipo estricto**: todos los ejercicios de un pack son del tipo del pack, lo
+    impone un trigger. Si no, el tipo del pack no significaria nada.
+  - **Todo lo preparado es opcional**, series y minutos: un pack puede ser solo
+    la lista de ejercicios. Es la diferencia con el planning, y lo que obligo a
+    relajar la regla del cardio (trampa 37).
+  - **Aplicar copia**: lo que entra en el bloque es del planning, y editar el
+    pack despues no lo cambia. Lo contrario que el "peso por lado", que es una
+    etiqueta viva del ejercicio. Dos reglas opuestas a proposito: una son datos
+    que el entrenador va a retocar cada semana, la otra describe el ejercicio.
+  - **Borrado fisico**, como los plannings: una plantilla no tiene historico que
+    conservar.
+  - **El minimo de un ejercicio se exige al aplicar**, no al crear: el pack se
+    monta en dos pasos (crear, luego anadir), como una sesion del planning, y
+    `aplicar_pack_a_bloque` rechaza uno vacio.
 - **El peso "por lado" es un campo del ejercicio, no del ejercicio planificado**
   (2026-10-14, pedido el 09). `ejercicios.peso_por_lado`, `boolean not null
   default false`. Es una **etiqueta, no una operación**: el peso se guarda tal
@@ -387,7 +487,8 @@ Cada una costó una depuración; están todas verificadas contra Supabase local.
   se puede decir "mañana tienes sesión", así que el recordatorio de entrenamiento pasó
   a enviarse el día en que arranca el planning, resumiendo cuántas sesiones trae la
   semana. El aviso del día de control no cambia: ese sí depende de un día real.
-- **El orden de bloques y ejercicios se cambia arrastrando** (2026-10-04), con
+- **El orden de bloques y ejercicios se cambia con flechas** (arrastrando desde
+  el 2026-10-04; con flechas desde el 2026-10-19, ver "En curso"), con
   dos funciones de Postgres (`reordenar_bloques`,
   `reordenar_ejercicios_planificados`) que renumeran el conjunto entero en una
   transacción. No se puede con `update` sueltos: el índice único del orden
@@ -666,7 +767,7 @@ Decisiones que quedaron sin cerrar:
   clasificar a propósito, visible en su chip.
 - **Anotar en `AGENTS.md`** la regla de migraciones inmutables (trampa 7).
 - **`linguist-generated=true`** en `.gitattributes` oculta los `.g.dart` en los diffs
-  de GitHub y los excluye de las estadísticas de lenguaje. Si para el TFG interesa que
+  de GitHub y los excluye de las estadísticas de lenguaje. Si alguna vez interesa que
   cuenten, hay que quitar esas dos líneas.
 - **`docs/sql-schema.md`** usa `auth.role() = 'authenticated'` en la política de
   lectura de `ejercicios`; las migraciones usan `to authenticated`. Ambos funcionan en
@@ -730,7 +831,9 @@ Ya en marcha y comprobado en producción:
 - **Los dos secretos de Vault** del job de recordatorios y `SECRETO_CRON` en las
   funciones, con el mismo valor. La migración crea `pg_cron`, `pg_net` y la
   función que los lee; los valores se pusieron a mano, que es lo correcto: no
-  tienen por qué pasar por un log de CI.
+  tienen por qué pasar por un log de CI. **Ojo**: hasta el 18/10/2026 solo
+  estaba `secreto_cron`; faltaba `url_enviar_recordatorios` y los recordatorios
+  no salieron en toda la semana sin que nada se pusiera rojo (trampa 36).
 - **Par VAPID propio de producción**: `VAPID_PUBLIC_KEY` en Vercel y la privada
   en las Edge Functions. El de local no valía.
 - **Buckets `fotos-progreso` e `imagenes-ejercicios`** creados en el panel. Sus
@@ -746,10 +849,11 @@ La puesta en producción **está cerrada**. Lo único que sigue abierto:
    no se puede cerrar en local (ver la nota de la bitácora sobre la rama de
    suscripción caducada). Con el par VAPID de producción ya puesto, se puede
    hacer cuando se quiera.
-2. **Comprobar que el recordatorio llega**: el job de `pg_cron` ya tiene sus
-   secretos, pero si algo no cuadrara fallaría **en silencio** (se dispara y no
-   llega a ninguna parte). La señal de que va bien es que un cliente reciba el
-   correo de "empieza una semana nueva" el día que arranca su planning.
+2. **Cerrar el circuito del recordatorio de punta a punta.** El 18/10/2026 se
+   creo el secreto que faltaba y el disparo manual devolvio **200**, asi que la
+   cadena cron -> funcion -> cabecera correcta ya funciona. Queda ver un correo
+   de verdad en una bandeja: lo rapido es poner el `dia_control_preferido` de un
+   cliente de prueba en el dia de hoy, disparar a mano y mirar si llega.
 3. **Proyecto aparte para pruebas** (opcional): crearlo, rellenar un Environment
    propio y, si se quiere, exigirle revisores para que el despliegue a `main`
    espere aprobación.

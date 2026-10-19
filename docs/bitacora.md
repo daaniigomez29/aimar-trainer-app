@@ -2427,4 +2427,192 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
   es larga ("Guardar y comenzar el bloque Calentamiento") y en un móvil estrecho
   un `Text` suelto dentro de una `Row` desborda en vez de recortarse.
 - `flutter test` **499**.
+
+**Hecho (packs, fase 1):**
+
+- **Modelo y SQL**, verificados contra Supabase local con un script de 25 casos:
+  `packs`, `pack_ejercicios`, `pack_series` con RLS de solo entrenador, dos
+  triggers de tipo estricto, y tres funciones:
+  `guardar_ejercicio_del_pack` (ejercicio + series en una transaccion),
+  `reordenar_pack_ejercicios` y `aplicar_pack_a_bloque`.
+- **Dos bugs cazados por esa verificacion**, los dos invisibles leyendo el SQL:
+  `v_faltan || 'texto'` reventaba por "malformed array literal" (falta un
+  `::text`), y el renumerado en dos fases aparcaba en negativo contra un
+  `check (orden > 0)`; ahora aparca hacia arriba. Las funciones equivalentes del
+  planning solo funcionan porque esas tablas no llevan ese check.
+- **Lado Dart**: entidades `Pack`/`PackEjercicio`/`PackSerie`, `DatosPack` y
+  `DatosPackEjercicio` con su validacion, el puerto `PackRepositorio`, su
+  implementacion Supabase y `ControladorPacks`. En `lib/features/packs/`.
+- **Reutilizado**, no duplicado: `DatosSerie` entera (las series de un pack son
+  las mismas y sus tres validaciones tambien) y, de camino, el mapa de la RPC
+  sube a `DatosSerie.aJsonDeRpc()`, que estaba escrito a mano en el repositorio
+  del planning.
+- 25 tests nuevos: validaciones del dominio, el JSON con relaciones incrustadas
+  (el fallo de `PlanningSemanal` que dejaba la lista vacia) y el controlador con
+  repositorio falso.
+
+**Pendiente / notas (packs):**
+
+- `flutter test` **529**, `dart analyze --fatal-infos` y `dart format
+  --set-exit-if-changed` limpios. **28 migraciones** aplicando limpias.
+- Fases 2 y 3 sin empezar: la pantalla de Packs y el panel de planificacion con
+  las dos pestanas.
+- Pendiente tambien lo de **reordenar con flechas** en vez de arrastrando, que
+  se decidio para los packs y **tambien para el planning**: sale un
+  `ListaOrdenable` compartido que sustituye a `ListaArrastrable` en las dos
+  pantallas.
+
+**Hecho (packs, fase 2):**
+
+- **Pantalla de Packs**, quinto destino del entrenador. Lista con el tipo, el
+  numero de ejercicios y, en ambar, el aviso de los packs **vacios**: no se
+  pueden aplicar a ningun bloque, y mas vale decirlo ahi que al intentarlo.
+- **Ficha del pack**: sus ejercicios en orden con lo que tengan preparado, el
+  formulario para anadir y editar, quitar con confirmacion, y borrar el pack
+  entero (avisando de que lo ya planificado no se toca, porque se copio).
+- **`ListaOrdenable`**: reordenar **con flechas** en vez de arrastrando, como se
+  decidio. Mismo contrato que `ListaArrastrable` (`desde`/`hasta` ya corregidos),
+  asi que las funciones de Postgres que renumeran no cambian. Queda pendiente
+  llevarlo tambien al planning, que es la otra mitad de esa decision.
+- **Formulario de ejercicio del pack**: reutiliza `FiltroDeEjercicios` (con un
+  ambito propio, `formularioPack`) y `FilaDeSerie`/`CamposDeSerie` del planning.
+  El filtro se abre **restringido al tipo del pack**, para que no se pueda elegir
+  algo que el trigger va a rechazar al guardar. Y la tabla de series empieza
+  **vacia**: no preparar nada es una opcion, no un formulario a medias.
+- Crear el pack abre su ficha directamente: se crea para meterle ejercicios, no
+  para mirarlo en la lista.
+- El **tipo no se puede cambiar al editar**: sus ejercicios son de ese tipo, y
+  cambiarlo dejaria dentro cosas que no encajan.
+
+**Pendiente / notas (packs, fase 2):**
+
+- `flutter test` **541**, `dart analyze --fatal-infos` y `dart format
+  --set-exit-if-changed` limpios.
+- Falta la **fase 3**: el panel de planificacion con las dos pestanas
+  (Biblioteca | Packs) y el "+" que aplica el pack a un bloque.
+- Y llevar las flechas al planning, sustituyendo `ListaArrastrable` en bloques y
+  ejercicios.
 - Todo sin commitear: los commits los hace él.
+
+**Corregido (packs, fase 2):**
+
+- **La pantalla de Packs se quedaba colgada** con un bucle de "BoxConstraints
+  forces an infinite width". Misma causa que la pantalla negra del formulario de
+  ejercicio: el tema da a los `FilledButton` `Size.fromHeight(52)`, que es ancho
+  minimo **infinito**, y el boton "Nuevo pack" vive en una `Row`, que no acota el
+  ancho. Arreglado con un `minimumSize: Size(0, 44)` local, el mismo que lleva
+  "Guardar cambios" en el planning; el tema no se toca porque los CTA de ancho
+  completo dependen de el.
+- **Por que los tests no lo vieron**: `pantalla_packs_test.dart` montaba la app
+  sin el tema real. Ahora pasa `TemaApp.oscuro()`, y con el tema y sin el arreglo
+  fallan los 4 tests de la lista. Ojo con esto en los tests de pantallas nuevas:
+  sin `tema:` este fallo no se reproduce.
+- `flutter test` **541**, `dart analyze --fatal-infos` y `dart format` limpios.
+
+**Hecho (packs, fase 3):**
+
+- **Panel de la planificacion con dos pestanas, Biblioteca | Packs** (RF-25).
+  Es un `SegmentedButton` dentro del mismo `_PanelBiblioteca`, asi que vale
+  igual para el panel fijo de escritorio y para el modal de movil. El titulo
+  pasa a "Añadir a la sesión", que sirve para las dos pestanas.
+- **El `+` de un pack** elige bloque igual que un ejercicio suelto: sin bloques
+  avisa, con uno va directo y con varios pregunta. La logica comun sale a
+  `_bloqueDestino`, y `elegirBloque` recibe un `nombre` en vez de un
+  `Ejercicio` para servir a los dos.
+- Tras aplicar, la pantalla **recarga el planning ella misma**:
+  `ControladorPacks` no sabe de plannings, y sin esa recarga el pack entraba en
+  la base de datos pero no se veia. Comprobado que el test falla si se quita.
+- El aviso dice cuantos ejercicios entraron y **cuantos se quedaron fuera por
+  estar de baja** (la RPC los omite). Si no entro ninguno, no dice "añadido".
+- Los **packs vacios** salen con el `+` apagado, porque la RPC los rechazaria.
+  Mientras se aplica uno, los `+` tambien se apagan, para no aplicarlo dos veces.
+- 10 tests nuevos en `panel_packs_test.dart`, montados con el tema real.
+
+**Pendiente / notas (packs, fase 3):**
+
+- `flutter test` **551**, `dart analyze --fatal-infos` y `dart format` limpios.
+- Sin probar en el navegador; lo prueba él.
+- Queda **llevar las flechas al planning** (`ListaOrdenable` en lugar de
+  `ListaArrastrable` en bloques y ejercicios).
+- Todo sin commitear.
+
+**Hecho (flechas en el planning):**
+
+- **Bloques y ejercicios del planning se reordenan con flechas**, la otra mitad
+  de la decision del 19. `ListaOrdenable` pasa a `lib/core/presentacion/widgets/`
+  (ya no es solo de packs) y de ella sale `FlechasDeOrden`, publico, que el
+  planning coloca **en la cabecera** de cada bloque y de cada ejercicio, donde
+  estaba el asa. Ponerlas fuera, como hace `ListaOrdenable`, con dos listas
+  anidadas se comia dos margenes de ancho en movil.
+- Las claves de las flechas llevan el id (`bajar_bloque_<id>`,
+  `subir_ejercicio_<id>`): con varias listas en la misma pantalla, el indice no
+  basta para distinguirlas.
+- Mismo contrato `desde`/`hasta`, asi que `moverBloque`, `moverEjercicio` y las
+  funciones de Postgres no cambian.
+- **Borrados** `ListaArrastrable` y `arrastre_planning_test.dart`. Los sustituye
+  `ordenar_planning_test.dart`, contra la pantalla: comprueba que cada flecha
+  mueve **su** lista y la manda entera, los extremos apagados por lista, y que
+  en una semana pasada no se mueve nada.
+- Comentarios y docs (`requirements.md`, `ui-design.md`) que decian "arrastrando"
+  actualizados.
+
+**Corregido (flechas en el planning):**
+
+- La cabecera del bloque desbordaba 13 px en movil con las flechas, que son mas
+  anchas que el asa: el texto iba suelto con un `Spacer`. Ahora va en un
+  `Expanded` con elipsis.
+
+**Pendiente / notas (flechas en el planning):**
+
+- `flutter test` **551** (salen 4 de arrastre, entran 4), `dart analyze
+  --fatal-infos` y `dart format` limpios.
+- Los dos borrados estan **sin pasar al indice** (` D` en `git status`): hay que
+  incluirlos en el commit.
+- A 390 px y con la fuente de los tests, la fila de acciones movil de la
+  planificacion (selector de cliente y navegacion de semana) desborda 120 px.
+  **Ya pasaba antes** de este cambio. Con la fuente real puede que no se note,
+  pero conviene mirarlo en un movil estrecho.
+- Sin probar en el navegador; lo prueba él.
+
+**Hecho (ajustes de biblioteca y del registro del cliente):**
+
+- **Filtros principales de la biblioteca**: Todos, Fuerza, Cardio,
+  Fortalecimiento y, solo para el entrenador, Dados de baja, excluyentes entre
+  si. Salen siempre los tres tipos, haya o no ejercicios de cada uno (antes los
+  tipos vacios no se ofrecian y Fuerza no tenia chip).
+- **Los musculos solo aparecen con Fuerza o Fortalecimiento**: grupos (mas
+  "Sin clasificar" si hay) y, al elegir grupo, sus musculos.
+- **Fuerza y Fortalecimiento comparten el filtro muscular**: pecho en Fuerza y
+  luego Fortalecimiento ensena el fortalecimiento de pecho, con el chip marcado.
+  Al pasar a Todos, Cardio o Dados de baja se **suelta**: ahi los musculos no se
+  ven, y un filtro invisible recortando la lista parece un fallo.
+- Va en `PestanaBiblioteca` (deducida de `tipo` y `soloEliminados`, no
+  guardada aparte, para que no se contradigan) y en
+  `FiltroBiblioteca.elegirPestana`. Solo afecta a la pantalla de biblioteca: el
+  filtro del panel del planning y de los formularios no cambia.
+- **Registro del ejercicio (cliente)**: el enlace "Ver vídeo de ejemplo" pasa a
+  ser un boton **"Vídeo"**, con **"Descripción"** a su derecha, que abre en una
+  hoja inferior la explicacion del ejercicio (`descripcion` del dominio). Cada
+  boton solo sale si hay algo detras; la descripcion es opcional.
+- Tests: 5 nuevos en la biblioteca (tipos fijos, musculos solo en Fuerza y
+  Fortalecimiento, musculo compartido, se suelta en Cardio, bajas de cualquier
+  tipo) y 4 en el registro; 5 existentes adaptados a pulsar Fuerza antes de
+  ver los grupos.
+
+**Pendiente / notas (ajustes):**
+
+- `flutter test` **559**, `dart analyze --fatal-infos` y `dart format` limpios.
+- Sin probar en el navegador; lo prueba él.
+- Decision abierta: si prefiere que un tipo sin ejercicios no salga, es volver a
+  filtrar los chips por `FacetasBiblioteca.tipos`.
+
+**Hecho (chip de Fuerza en el panel del planning):**
+
+- El filtro del panel de biblioteca del planning (y de los formularios que usan
+  `FiltroDeEjercicios`) ofrece ya **Fuerza** junto a Cardio y Fortalecimiento.
+  Antes se dejaba fuera por ser la mayoria, pero sin el no habia forma de quitar
+  de la lista el cardio y el fortalecimiento. Los chips siguen saliendo de
+  `FacetasBiblioteca` (solo tipos con ejercicios) y siguen cruzandose con el
+  filtro muscular.
+- Test nuevo en `panel_biblioteca_test.dart`. `flutter test` **560**, analyze y
+  format limpios. Sin probar en el navegador.

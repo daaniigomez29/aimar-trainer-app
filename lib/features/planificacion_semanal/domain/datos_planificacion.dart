@@ -250,6 +250,17 @@ class DatosSerie {
   ErrorValidacion? validar() =>
       validarRepeticiones(repeticiones) ?? validarPeso(peso) ?? validarRir(rir);
 
+  /// La forma que esperan las RPC que guardan series en una transaccion
+  /// (`guardar_ejercicio_planificado` y `guardar_ejercicio_del_pack`). Las dos
+  /// reciben el mismo jsonb, asi que el mapa vive aqui y no escrito a mano en
+  /// cada repositorio.
+  Map<String, dynamic> aJsonDeRpc() => {
+    'numero_serie': numeroSerie,
+    'repeticiones': repeticiones,
+    'peso': peso,
+    'rir': rir,
+  };
+
   Map<String, dynamic> aJson(String ejercicioPlanificadoId) => {
     'ejercicio_planificado_id': ejercicioPlanificadoId,
     'numero_serie': numeroSerie,
@@ -476,13 +487,13 @@ ErrorValidacion? validarReordenacion({
   return null;
 }
 
-/// Aplica un arrastre a una lista: saca el elemento de [desde] y lo mete en
+/// Aplica un movimiento a una lista: saca el elemento de [desde] y lo mete en
 /// [hasta], que es su posicion **final**.
 ///
-/// Son los indices que da `onReorderItem` de `ReorderableListView`, ya
-/// corregidos por Flutter. Con el `onReorder` antiguo habria que restar uno al
-/// arrastrar hacia abajo, porque daba el destino contando el hueco que deja el
-/// elemento movido; por eso se usa el nuevo.
+/// Son los indices que da `FlechasDeOrden` (y antes `onReorderItem` de
+/// `ReorderableListView`, con el mismo contrato). Con el `onReorder` antiguo
+/// habria que restar uno al bajar, porque daba el destino contando el hueco
+/// que deja el elemento movido.
 List<T> reordenarLista<T>(List<T> original, int desde, int hasta) {
   final copia = [...original];
   if (desde < 0 || desde >= copia.length) return copia;

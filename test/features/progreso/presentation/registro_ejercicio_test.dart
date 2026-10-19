@@ -634,4 +634,67 @@ void main() {
       expect(find.text('Terminar ejercicio'), findsOneWidget);
     });
   });
+
+  group('el encabezado', () {
+    EjercicioPlanificado conFicha({
+      String descripcion = 'Espalda pegada al banco y bajar controlado.',
+      String? video = 'https://www.youtube.com/watch?v=abc123',
+    }) => deFuerza().copyWith(
+      ejercicio: ejercicioDePrueba().copyWith(
+        descripcion: descripcion,
+        videoEjemploUrl: video,
+      ),
+    );
+
+    // Pedido el 2026-10-19: "Vídeo" y, a su derecha, "Descripción".
+    testWidgets('lleva Vídeo y, a su derecha, Descripción', (tester) async {
+      await montar(tester, conFicha());
+
+      final video = find.byKey(const Key('boton_ver_video'));
+      final descripcion = find.byKey(const Key('boton_ver_descripcion'));
+      expect(
+        find.descendant(of: video, matching: find.text('Vídeo')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: descripcion, matching: find.text('Descripción')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(descripcion).dx,
+        greaterThan(tester.getTopLeft(video).dx),
+      );
+    });
+
+    testWidgets('Descripción enseña la explicación del ejercicio', (
+      tester,
+    ) async {
+      await montar(tester, conFicha());
+
+      await tester.tap(find.byKey(const Key('boton_ver_descripcion')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('hoja_descripcion')), findsOneWidget);
+      expect(
+        find.text('Espalda pegada al banco y bajar controlado.'),
+        findsOneWidget,
+      );
+    });
+
+    // La descripcion es opcional: un boton que abre una hoja vacia es peor que
+    // no tenerlo. Lo mismo el video.
+    testWidgets('sin descripción ni vídeo no hay botones', (tester) async {
+      await montar(tester, conFicha(descripcion: '   ', video: null));
+
+      expect(find.byKey(const Key('boton_ver_descripcion')), findsNothing);
+      expect(find.byKey(const Key('boton_ver_video')), findsNothing);
+    });
+
+    testWidgets('sin vídeo, Descripción sale sola', (tester) async {
+      await montar(tester, conFicha(video: null));
+
+      expect(find.byKey(const Key('boton_ver_descripcion')), findsOneWidget);
+      expect(find.byKey(const Key('boton_ver_video')), findsNothing);
+    });
+  });
 }

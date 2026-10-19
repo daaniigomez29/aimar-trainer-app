@@ -66,7 +66,7 @@ const List<Destino> destinosCliente = [
   ),
 ];
 
-/// Los cuatro del entrenador.
+/// Los cinco del entrenador.
 const List<Destino> destinosEntrenador = [
   Destino(
     etiqueta: 'Planificación',
@@ -86,6 +86,12 @@ const List<Destino> destinosEntrenador = [
     icono: Icons.bookmark_border,
     iconoActivo: Icons.bookmark,
     ruta: Rutas.bibliotecaEntrenador,
+  ),
+  Destino(
+    etiqueta: 'Packs',
+    icono: Icons.inventory_2_outlined,
+    iconoActivo: Icons.inventory_2,
+    ruta: Rutas.packsEntrenador,
   ),
   Destino(
     etiqueta: 'Ajustes',

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show listEquals;
+import 'package:flutter/foundation.dart' show listEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/lista_ordenable.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
@@ -18,8 +19,11 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
+import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
+import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
@@ -28,7 +32,6 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referenc
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/semana.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/dialogos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/formularios_planificacion.dart';
-import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/lista_arrastrable.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/navegador_de_semana.dart';
 
 /// Planificacion semanal del entrenador (`docs/ui-design.md`, 6.6 y 6.7).
@@ -943,26 +946,29 @@ class _Sesion extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 14),
-        ListaArrastrable(
-          onMover: !planning.esEditable
-              ? null
-              : (desde, hasta) => moverBloque(
-                  context: context,
-                  ref: ref,
-                  sesion: sesion,
-                  planningId: planning.id,
-                  desde: desde,
-                  hasta: hasta,
-                ),
-          hijos: [
+        // Las flechas de cada bloque van en su cabecera (`FlechasDeOrden`), no
+        // en una `ListaOrdenable` que las pondria fuera de la tarjeta: con los
+        // ejercicios dentro haciendo lo mismo, en movil se comian dos margenes.
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             for (final (indice, bloque) in sesion.bloques.indexed)
               Padding(
-                key: Key('bloque_arrastrable_${bloque.id}'),
+                key: Key('bloque_ordenable_${bloque.id}'),
                 padding: const EdgeInsets.only(bottom: 14),
                 child: _Bloque(
                   bloque: bloque,
                   indice: indice,
-                  sePuedeMover: sesion.bloques.length > 1,
+                  onMover: !planning.esEditable
+                      ? null
+                      : (desde, hasta) => moverBloque(
+                          context: context,
+                          ref: ref,
+                          sesion: sesion,
+                          planningId: planning.id,
+                          desde: desde,
+                          hasta: hasta,
+                        ),
                   sesion: sesion,
                   planning: planning,
                   pendientes: pendientes,
@@ -994,7 +1000,7 @@ class _Bloque extends ConsumerWidget {
   const _Bloque({
     required this.bloque,
     required this.indice,
-    required this.sePuedeMover,
+    required this.onMover,
     required this.sesion,
     required this.planning,
     required this.pendientes,
@@ -1004,7 +1010,9 @@ class _Bloque extends ConsumerWidget {
 
   final BloqueEjercicio bloque;
   final int indice;
-  final bool sePuedeMover;
+
+  /// `null` en una semana que ya no se puede editar.
+  final AlMover? onMover;
   final Map<String, ReferenciaAnterior> referencias;
   final SesionEntrenamiento sesion;
   final PlanningSemanal planning;
@@ -1022,13 +1030,25 @@ class _Bloque extends ConsumerWidget {
         children: [
           Row(
             children: [
-              AsaDeArrastre(indice: indice, activa: sePuedeMover, tamano: 16),
-              const SizedBox(width: 6),
-              Text(
-                'BLOQUE ${bloque.orden} · ${bloque.tipo.etiqueta.toUpperCase()}',
-                style: textos.labelMedium,
+              FlechasDeOrden(
+                indice: indice,
+                total: sesion.bloques.length,
+                onMover: onMover,
+                clave: 'bloque_${bloque.id}',
+                compactas: true,
               ),
-              const Spacer(),
+              const SizedBox(width: 6),
+              // `Expanded` y no texto + `Spacer`: las flechas son mas anchas que
+              // el asa que sustituyen, y en movil un tipo de bloque largo ya no
+              // cabia junto a los dos botones.
+              Expanded(
+                child: Text(
+                  'BLOQUE ${bloque.orden} · '
+                  '${bloque.tipo.etiqueta.toUpperCase()}',
+                  style: textos.labelMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               IconButton(
                 tooltip: 'Editar bloque',
                 icon: const Icon(Icons.edit_outlined, size: 16),
@@ -1064,24 +1084,24 @@ class _Bloque extends ConsumerWidget {
             Text(notas, style: textos.bodySmall),
           ],
           const Divider(height: 20),
-          ListaArrastrable(
-            onMover: !planning.esEditable
-                ? null
-                : (desde, hasta) => moverEjercicio(
-                    context: context,
-                    ref: ref,
-                    bloque: bloque,
-                    planningId: planning.id,
-                    desde: desde,
-                    hasta: hasta,
-                  ),
-            hijos: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               for (final (indice, ejercicio) in bloque.ejercicios.indexed)
                 _EjercicioEditable(
-                  key: Key('ejercicio_arrastrable_${ejercicio.id}'),
+                  key: Key('ejercicio_ordenable_${ejercicio.id}'),
                   ejercicio: ejercicio,
                   indice: indice,
-                  sePuedeMover: bloque.ejercicios.length > 1,
+                  onMover: !planning.esEditable
+                      ? null
+                      : (desde, hasta) => moverEjercicio(
+                          context: context,
+                          ref: ref,
+                          bloque: bloque,
+                          planningId: planning.id,
+                          desde: desde,
+                          hasta: hasta,
+                        ),
                   bloque: bloque,
                   planning: planning,
                   referencia: referencias[ejercicio.ejercicioId],
@@ -1120,7 +1140,7 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
   const _EjercicioEditable({
     required this.ejercicio,
     required this.indice,
-    required this.sePuedeMover,
+    required this.onMover,
     required this.bloque,
     required this.planning,
     required this.referencia,
@@ -1131,7 +1151,9 @@ class _EjercicioEditable extends ConsumerStatefulWidget {
 
   final EjercicioPlanificado ejercicio;
   final int indice;
-  final bool sePuedeMover;
+
+  /// `null` en una semana que ya no se puede editar.
+  final AlMover? onMover;
   final BloqueEjercicio bloque;
   final PlanningSemanal planning;
 
@@ -1322,10 +1344,12 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
         children: [
           Row(
             children: [
-              AsaDeArrastre(
+              FlechasDeOrden(
                 indice: widget.indice,
-                activa: widget.sePuedeMover,
-                tamano: 14,
+                total: widget.bloque.ejercicios.length,
+                onMover: widget.onMover,
+                clave: 'ejercicio_${widget.ejercicio.id}',
+                compactas: true,
               ),
               const SizedBox(width: 4),
               MiniaturaEjercicio(ejercicio: ficha, lado: 34),
@@ -1792,7 +1816,19 @@ class _Celda extends StatelessWidget {
   );
 }
 
-/// Panel de biblioteca: fijo a la derecha en escritorio, modal en movil.
+/// Que se esta mirando en el panel de anadir: ejercicios sueltos o packs.
+enum _PestanaPanel {
+  biblioteca('Biblioteca'),
+  packs('Packs');
+
+  const _PestanaPanel(this.etiqueta);
+
+  final String etiqueta;
+}
+
+/// Panel para anadir a la sesion: fijo a la derecha en escritorio, modal en
+/// movil. Dos pestanas, **Biblioteca | Packs** (RF-25): un ejercicio suelto o
+/// un pack entero van al mismo sitio y se eligen igual, asi que comparten panel.
 class _PanelBiblioteca extends ConsumerStatefulWidget {
   const _PanelBiblioteca({
     required this.sesion,
@@ -1815,15 +1851,13 @@ class _PanelBiblioteca extends ConsumerStatefulWidget {
 }
 
 class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
+  var _pestana = _PestanaPanel.biblioteca;
+
+  bool get _sePuedeAnadir => widget.sesion != null && widget.puedeEditar;
+
   @override
   Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
-    final ejercicios = ref.watch(
-      ejerciciosFiltradosProvider(AmbitoDeFiltro.panelPlanning),
-    );
-    final filtro = ref.watch(
-      filtroBibliotecaProvider(AmbitoDeFiltro.panelPlanning),
-    );
 
     // `Material` transparente: el panel vive dentro de un contenedor con color
     // de fondo, y los `ExpansionTile` del filtro pintan su tinta sobre el
@@ -1835,17 +1869,12 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
       child: Padding(
         padding: const EdgeInsets.all(Tokens.margenPantalla),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    widget.enModal
-                        ? 'Añadir ejercicio'
-                        : 'Biblioteca de ejercicios',
-                    style: textos.titleMedium,
-                  ),
+                  child: Text('Añadir a la sesión', style: textos.titleMedium),
                 ),
                 if (widget.enModal)
                   IconButton(
@@ -1855,59 +1884,29 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
               ],
             ),
             const SizedBox(height: 12),
-            // Un unico scroll para el filtro y los resultados.
-            //
-            // POR QUE: el filtro crece al abrir grupos, y como no es flexible,
-            // en un `Column` se queda con el alto que pida y deja al
-            // `Expanded` de debajo sin sitio. Con dos grupos abiertos el panel
-            // desbordaba por abajo ("BOTTOM OVERFLOWED BY 14 PIXELS"). Asi el
-            // filtro se desplaza con la lista y no hay alto que repartir.
+            SegmentedButton<_PestanaPanel>(
+              key: const Key('pestanas_panel_anadir'),
+              showSelectedIcon: false,
+              segments: [
+                for (final pestana in _PestanaPanel.values)
+                  ButtonSegment(
+                    value: pestana,
+                    label: Text(
+                      pestana.etiqueta,
+                      key: Key('pestana_${pestana.name}'),
+                    ),
+                  ),
+              ],
+              selected: {_pestana},
+              onSelectionChanged: (seleccion) =>
+                  setState(() => _pestana = seleccion.first),
+            ),
+            const SizedBox(height: 14),
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  // Mismo buscador y mismo filtro que el formulario de CU-08,
-                  // cada uno con su propio ambito: este panel es donde el
-                  // entrenador busca de verdad, una vez por ejercicio de cada
-                  // bloque.
-                  const FiltroDeEjercicios(
-                    ambito: AmbitoDeFiltro.panelPlanning,
-                  ),
-                  const SizedBox(height: 14),
-                  ejercicios.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, _) => Text(mensajeDeError(error)),
-                    data: (lista) {
-                      final activos = lista
-                          .where((e) => e.estado.esActivo)
-                          .toList();
-                      if (activos.isEmpty) {
-                        return Text(
-                          'Ningún ejercicio coincide.',
-                          style: textos.bodySmall,
-                        );
-                      }
-                      return ListView.separated(
-                        // Dentro del scroll de fuera: se pinta entera y no
-                        // desplaza por su cuenta.
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        itemCount: activos.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, indice) => _FilaBiblioteca(
-                          ejercicio: activos[indice],
-                          resaltar: filtro.musculo,
-                          onAnadir: widget.sesion == null || !widget.puedeEditar
-                              ? null
-                              : () => _anadir(activos[indice]),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+              child: switch (_pestana) {
+                _PestanaPanel.biblioteca => _listaBiblioteca(textos),
+                _PestanaPanel.packs => _listaPacks(textos),
+              },
             ),
           ],
         ),
@@ -1915,7 +1914,100 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     );
   }
 
-  /// Anade el ejercicio a un bloque de la sesion.
+  Widget _listaBiblioteca(TextTheme textos) {
+    final ejercicios = ref.watch(
+      ejerciciosFiltradosProvider(AmbitoDeFiltro.panelPlanning),
+    );
+    final filtro = ref.watch(
+      filtroBibliotecaProvider(AmbitoDeFiltro.panelPlanning),
+    );
+
+    // Un unico scroll para el filtro y los resultados.
+    //
+    // POR QUE: el filtro crece al abrir grupos, y como no es flexible, en un
+    // `Column` se queda con el alto que pida y deja al `Expanded` de debajo sin
+    // sitio. Con dos grupos abiertos el panel desbordaba por abajo ("BOTTOM
+    // OVERFLOWED BY 14 PIXELS"). Asi el filtro se desplaza con la lista y no
+    // hay alto que repartir.
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        // Mismo buscador y mismo filtro que el formulario de CU-08, cada uno
+        // con su propio ambito: este panel es donde el entrenador busca de
+        // verdad, una vez por ejercicio de cada bloque.
+        const FiltroDeEjercicios(ambito: AmbitoDeFiltro.panelPlanning),
+        const SizedBox(height: 14),
+        ejercicios.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Text(mensajeDeError(error)),
+          data: (lista) {
+            final activos = lista.where((e) => e.estado.esActivo).toList();
+            if (activos.isEmpty) {
+              return Text(
+                'Ningún ejercicio coincide.',
+                style: textos.bodySmall,
+              );
+            }
+            return ListView.separated(
+              // Dentro del scroll de fuera: se pinta entera y no desplaza por
+              // su cuenta.
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              itemCount: activos.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, indice) => _FilaBiblioteca(
+                ejercicio: activos[indice],
+                resaltar: filtro.musculo,
+                onAnadir: _sePuedeAnadir
+                    ? () => _anadir(activos[indice])
+                    : null,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _listaPacks(TextTheme textos) {
+    final packs = ref.watch(listaPacksProvider);
+    // Vigilado y no solo leido: asi el controlador no se desecha a mitad de
+    // aplicar, y mientras tanto los "+" se apagan para no aplicar dos veces.
+    final enCurso = ref.watch(controladorPacksProvider).enCurso;
+
+    return packs.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Text(mensajeDeErrorPacks(error)),
+      data: (lista) {
+        if (lista.isEmpty) {
+          return Text(
+            'Todavía no hay packs. Se crean en la pantalla de Packs.',
+            style: textos.bodySmall,
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.zero,
+          itemCount: lista.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, indice) {
+            final pack = lista[indice];
+            return _FilaPackDelPanel(
+              pack: pack,
+              // Un pack vacio no tiene nada que aplicar: la funcion de Postgres
+              // lo rechazaria, y mas vale no ofrecerlo.
+              onAnadir: _sePuedeAnadir && !enCurso && pack.ejercicios.isNotEmpty
+                  ? () => _aplicarPack(pack)
+                  : null,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// El bloque donde va lo elegido, o `null` si no hay donde ponerlo o se
+  /// cancela.
   ///
   /// Con mas de un bloque se **pregunta a cual**: antes caia siempre en el
   /// primero, y una sesion con calentamiento y fuerza es justo el caso en el
@@ -1925,27 +2017,19 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
   /// Si la sesion no tiene bloques todavia, no hay donde ponerlo: un ejercicio
   /// planificado cuelga de un bloque (entidad 6), asi que se avisa en lugar de
   /// inventarse uno.
-  Future<void> _anadir(Ejercicio ejercicio) async {
+  Future<BloqueEjercicio?> _bloqueDestino(String nombre) async {
     final sesion = widget.sesion!;
     if (sesion.bloques.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          duration: Avisos.duracion,
-          content: Text(
-            'Añade antes un bloque: el ejercicio va dentro de uno.',
-          ),
-        ),
-      );
-      return;
+      _avisar('Añade antes un bloque: los ejercicios van dentro de uno.');
+      return null;
     }
+    if (sesion.bloques.length == 1) return sesion.bloques.first;
+    return elegirBloque(context: context, sesion: sesion, nombre: nombre);
+  }
 
-    final bloque = sesion.bloques.length == 1
-        ? sesion.bloques.first
-        : await elegirBloque(
-            context: context,
-            sesion: sesion,
-            ejercicio: ejercicio,
-          );
+  /// Anade el ejercicio a un bloque de la sesion.
+  Future<void> _anadir(Ejercicio ejercicio) async {
+    final bloque = await _bloqueDestino(ejercicio.nombre);
     if (bloque == null || !mounted) return;
 
     final orden = bloque.ejercicios.length + 1;
@@ -1981,12 +2065,123 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
 
     if (!mounted) return;
     if (resultado.errorONulo case final error?) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(duration: Avisos.duracion, content: Text(error.mensaje)),
-      );
+      _avisar(error.mensaje);
     } else if (widget.enModal) {
       Navigator.of(context).pop();
     }
+  }
+
+  /// Copia el pack entero al final de un bloque (RF-25), con lo que trajera
+  /// preparado. Lo hace una funcion de Postgres en una sola transaccion: o
+  /// entran todos los ejercicios, o ninguno.
+  Future<void> _aplicarPack(Pack pack) async {
+    final bloque = await _bloqueDestino(pack.nombre);
+    if (bloque == null || !mounted) return;
+
+    final resultado = await ref
+        .read(controladorPacksProvider.notifier)
+        .aplicarABloque(packId: pack.id, bloqueId: bloque.id);
+    if (!mounted) return;
+
+    switch (resultado) {
+      case Failure(:final error):
+        _avisar(error.mensaje);
+      case Success(valor: final aplicado):
+        // El controlador de packs no sabe de plannings: lo que ha cambiado es
+        // este, y se recarga aqui.
+        ref.invalidate(planningCompletoProvider(widget.planningId));
+        _avisar(mensajeDePackAplicado(pack.nombre, aplicado));
+        if (widget.enModal && aplicado.ejerciciosAnadidos > 0) {
+          Navigator.of(context).pop();
+        }
+    }
+  }
+
+  void _avisar(String mensaje) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(duration: Avisos.duracion, content: Text(mensaje)));
+}
+
+/// Lo que se le dice al entrenador tras aplicar un pack.
+///
+/// Los ejercicios dados de baja se quedan fuera (no se anaden a bloques nuevos)
+/// y hay que decirlo: si no, el bloque sale con menos ejercicios que el pack y
+/// no hay forma de saber por que.
+@visibleForTesting
+String mensajeDePackAplicado(String nombre, ResultadoAplicarPack aplicado) {
+  final anadidos = aplicado.ejerciciosAnadidos;
+  final omitidos = aplicado.ejerciciosOmitidos;
+  if (anadidos == 0) {
+    return 'No se ha añadido nada de $nombre: todos sus ejercicios están '
+        'dados de baja.';
+  }
+  final base =
+      '$nombre añadido: $anadidos '
+      '${anadidos == 1 ? 'ejercicio' : 'ejercicios'}.';
+  if (!aplicado.hayOmitidos) return base;
+  final fuera = omitidos == 1
+      ? 'Uno se ha quedado fuera porque está dado de baja.'
+      : '$omitidos se han quedado fuera porque están dados de baja.';
+  return '$base $fuera';
+}
+
+class _FilaPackDelPanel extends StatelessWidget {
+  const _FilaPackDelPanel({required this.pack, required this.onAnadir});
+
+  final Pack pack;
+  final VoidCallback? onAnadir;
+
+  @override
+  Widget build(BuildContext context) {
+    final textos = Theme.of(context).textTheme;
+    final cuantos = pack.ejercicios.length;
+
+    return Tarjeta(
+      key: Key('panel_pack_${pack.id}'),
+      padding: const EdgeInsets.all(10),
+      hijo: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: pack.tipo.color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(pack.tipo.icono, size: 18, color: pack.tipo.color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(pack.nombre, style: textos.titleSmall),
+                Text(
+                  cuantos == 0
+                      ? 'Sin ejercicios'
+                      : '$cuantos ${cuantos == 1 ? 'ejercicio' : 'ejercicios'}'
+                            ' · ${pack.tipo.etiqueta}',
+                  style: textos.bodySmall?.copyWith(
+                    color: cuantos == 0 ? Tokens.secundario : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton.filledTonal(
+            key: Key('aplicar_pack_${pack.id}'),
+            tooltip: 'Añadir el pack a la sesión',
+            icon: const Icon(Icons.add, size: 18),
+            onPressed: onAnadir,
+            // El mismo acento que el "+" de la biblioteca: es la misma accion.
+            style: IconButton.styleFrom(
+              backgroundColor: Tokens.acentoSuave,
+              foregroundColor: Tokens.acento,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

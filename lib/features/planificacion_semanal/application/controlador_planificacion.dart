@@ -206,10 +206,10 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
     planningARecargar: planningId,
   );
 
-  /// Reordena los bloques de la sesion (CU-11), arrastrandolos.
+  /// Reordena los bloques de la sesion (CU-11), con las flechas.
   ///
   /// Recibe los bloques ya en el orden que deben quedar: la pantalla mueve la
-  /// tarjeta en su lista y manda el resultado, que es como se arrastra.
+  /// tarjeta en su lista y manda el resultado entero.
   Future<Result<void>> reordenarBloques({
     required SesionEntrenamiento sesion,
     required List<String> idsEnOrden,
@@ -261,7 +261,7 @@ class ControladorPlanificacion extends _$ControladorPlanificacion {
     planningARecargar: planningId,
   );
 
-  /// Reordena los ejercicios dentro de un bloque (CU-12), arrastrandolos.
+  /// Reordena los ejercicios dentro de un bloque (CU-12), con las flechas.
   Future<Result<void>> reordenarEjercicios({
     required BloqueEjercicio bloque,
     required List<String> idsEnOrden,

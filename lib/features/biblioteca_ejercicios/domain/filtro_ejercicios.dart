@@ -23,6 +23,50 @@ enum AmbitoDeFiltro {
 
   /// El formulario de anadir o editar un ejercicio de un bloque (CU-08, CU-12).
   formularioBloque,
+
+  /// El formulario de anadir un ejercicio a un pack (RF-25.1). Tiene el suyo
+  /// porque ademas llega **restringido al tipo del pack**, y arrastrar esa
+  /// restriccion a la biblioteca seria desconcertante.
+  formularioPack,
+}
+
+/// Los filtros principales de la pantalla de biblioteca, excluyentes entre si:
+/// Todos, uno por tipo y Dados de baja.
+///
+/// No es un campo mas del filtro: se **deduce** de `tipo` y `soloEliminados`
+/// (ver [FiltroEjercicios.pestana]), para que no puedan contradecirse.
+enum PestanaBiblioteca {
+  todos('Todos'),
+  fuerza('Fuerza'),
+  cardio('Cardio'),
+  fortalecimiento('Fortalecimiento'),
+  dadosDeBaja('Dados de baja');
+
+  const PestanaBiblioteca(this.etiqueta);
+
+  final String etiqueta;
+
+  /// El tipo que filtra esta pestana, si filtra alguno.
+  TipoEjercicio? get tipo => switch (this) {
+    PestanaBiblioteca.fuerza => TipoEjercicio.fuerza,
+    PestanaBiblioteca.cardio => TipoEjercicio.cardio,
+    PestanaBiblioteca.fortalecimiento => TipoEjercicio.fortalecimiento,
+    PestanaBiblioteca.todos || PestanaBiblioteca.dadosDeBaja => null,
+  };
+
+  /// Solo Fuerza y Fortalecimiento ofrecen el filtro muscular, y lo
+  /// **comparten**: "pecho" sigue puesto al pasar de una a otra. En las demas
+  /// los musculos no se ven, y un filtro que no se ve no puede seguir
+  /// recortando la lista.
+  bool get filtraPorMusculo =>
+      this == PestanaBiblioteca.fuerza ||
+      this == PestanaBiblioteca.fortalecimiento;
+
+  static PestanaBiblioteca deTipo(TipoEjercicio tipo) => switch (tipo) {
+    TipoEjercicio.fuerza => PestanaBiblioteca.fuerza,
+    TipoEjercicio.cardio => PestanaBiblioteca.cardio,
+    TipoEjercicio.fortalecimiento => PestanaBiblioteca.fortalecimiento,
+  };
 }
 
 /// Criterios de busqueda del listado de la biblioteca.
@@ -66,6 +110,13 @@ class FiltroEjercicios {
   final bool soloSinClasificar;
 
   String get textoNormalizado => normalizarParaBuscar(texto);
+
+  /// La pestana principal que corresponde a este filtro.
+  PestanaBiblioteca get pestana {
+    if (soloEliminados) return PestanaBiblioteca.dadosDeBaja;
+    if (tipo case final tipo?) return PestanaBiblioteca.deTipo(tipo);
+    return PestanaBiblioteca.todos;
+  }
 
   bool get estaVacio =>
       textoNormalizado.isEmpty &&
