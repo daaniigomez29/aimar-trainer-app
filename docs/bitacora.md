@@ -2687,3 +2687,55 @@ Planificacion semanal: RF-05 a RF-16, CU-05 a CU-16.
 - `sql-schema.md` **no recoge nada de la fase 6** (recordatorios, `pg_cron`,
   Vault, `20261018090000_recordatorios_fallan_a_la_vista.sql`). Es un hueco
   anterior; esas notas viven hoy en `estado-actual.md` (trampa 36).
+
+**Hecho (copias de seguridad):**
+
+- La app estaba en produccion **sin ninguna copia**: el plan gratuito de
+  Supabase no las hace, y la mitigacion de `architecture.md` (un `pg_dump` como
+  artefacto de CI) nunca llego a montarse.
+- `.github/workflows/copias.yml`, cada noche a las 02:30 UTC y a mano con
+  *Run workflow*:
+  - Vuelca roles, esquema y datos con `supabase db dump`, por el session pooler
+    (la conexion directa es solo IPv6). Comprueba que el volcado trae
+    `auth.users` y las tablas principales, lo empaqueta y lo cifra con **age**
+    antes de subirlo a R2 (`bd/diarias/`, y la del dia 1 tambien a
+    `bd/mensuales/`).
+  - Sincroniza los dos buckets de forma incremental con `rclone sync` a un
+    remoto `crypt`. Lo borrado o reemplazado va a `storage-historico/<fecha>/`.
+  - Si falta un secreto, **falla** en vez de saltarse.
+- `scripts/restaurar_copia.sh`: descifra, `db reset --no-seed` y carga los datos
+  en una transaccion, con el `psql` del contenedor de la base local.
+- `docs/copias-de-seguridad.md`: que se copia, las claves que solo tiene él,
+  la puesta en marcha (R2 en jurisdiccion UE, reglas de caducidad, Environment
+  `copias` con 12 secretos) y los tres procedimientos de restauracion.
+
+**Corregido (antes de llegar a produccion, gracias a probarlo):**
+
+- **Tablas internas de Storage en el volcado**: la restauracion fallaba con
+  "permission denied for table buckets_vectors". Son del rol interno de Storage
+  y no guardan nada de la app; se excluyen con `-x`.
+- **Choque con los buckets**: el reset los vuelve a crear desde `config.toml` y
+  la copia tambien los trae. Se borran dentro de la misma transaccion antes de
+  cargar.
+- **rclone lo volvia a subir todo cada noche**: el S3 de Supabase da la hora de
+  modificacion con milisegundos al listar y redondeada en otro sitio, y `crypt`
+  no compara hashes. Habria llenado el historico con una copia de cada foto por
+  noche. `--modify-window 1s` lo arregla; comprobado con dos noches seguidas
+  sin cambios y un reemplazo.
+- `docker cp` no encontraba el archivo en Git Bash con `MSYS_NO_PATHCONV=1`: la
+  ruta del lado de Windows se pasa con `cygpath`.
+
+**Comprobado contra Supabase local:** volcado real, cifrado con age en un
+Ubuntu 24.04 (los mismos paquetes de apt que el runner), restauracion con el
+script tal cual: mismos recuentos antes y despues, login 200 y 400, sin
+temporales en disco. Storage: nombres cifrados, nada en claro, foto borrada
+recuperada byte a byte, noches sin cambios sin subidas.
+
+**Pendiente / notas (copias):**
+
+- **Sin activar**: faltan el bucket de R2, las claves y el Environment `copias`.
+  Despues, primera copia a mano y primer ensayo.
+- Sin probar la conexion con **R2 de verdad** (solo con una carpeta local) ni la
+  restauracion en un **proyecto nuevo** de Supabase.
+- Ensayo de restauracion cada 3 meses o tras un cambio grande de esquema.
+- Anadir Cloudflare como encargado del tratamiento en el registro del RGPD.

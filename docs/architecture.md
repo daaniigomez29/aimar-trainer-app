@@ -325,7 +325,7 @@ Dos decisiones que importan:
 | Riesgo | Mitigación |
 | --- | --- |
 | Supabase pausa proyectos inactivos | Ping periódico desde GitHub Actions |
-| Sin backups automáticos en el plan gratuito | Volcado periódico (`pg_dump`) como artefacto de CI |
+| Sin backups automáticos en el plan gratuito | Copia nocturna cifrada (base de datos y Storage) a Cloudflare R2, en `.github/workflows/copias.yml`. Detalle y restauración en `docs/copias-de-seguridad.md` |
 | Límites de envío de Resend | Volumen actual muy por debajo; revisar si crece el nº de clientes |
 | Resend exige dominio propio verificado | Usar un subdominio o el dominio raíz ya existente |
 | Condiciones de uso comercial de planes gratuitos | Revisar periódicamente términos vigentes de cada proveedor |

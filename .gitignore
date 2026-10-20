@@ -58,3 +58,5 @@ scripts/probar_local.sh
 !.env.example
 
 supabase/seed.sql
+
+/.claude
