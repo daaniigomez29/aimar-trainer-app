@@ -35,6 +35,14 @@ que Daniel lo pruebe todo en el navegador.
   `ordenar_planning_test.dart`, contra la pantalla. Mismo contrato
   `desde`/`hasta`, asi que las funciones de Postgres no cambian.
 
+**Copias de seguridad, montadas pero sin activar** (2026-10-19). Hasta hoy no
+habia ninguna. `.github/workflows/copias.yml` copia cada noche la base y los
+archivos de Storage, cifrados, a Cloudflare R2. `scripts/restaurar_copia.sh`
+las restaura en local. Para activarlas hace falta crear el bucket de R2, las
+claves y el Environment `copias` de GitHub (pasos en
+`docs/copias-de-seguridad.md`), lanzar la primera a mano y hacer el primer
+ensayo de restauracion.
+
 **Sin commitear** (unas 30 entradas en `git status`, dos de ellas borrados sin pasar al indice), y **sin desplegar**: hay tres migraciones nuevas
 que el CI aplicara en el primer push a `dev`.
 

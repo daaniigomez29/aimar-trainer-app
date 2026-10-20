@@ -1,0 +1,230 @@
+name: Copias de seguridad
+
+# Copia nocturna de la base de datos y de los archivos de Storage a Cloudflare
+# R2, cifrada antes de salir del runner. Procedimiento completo, secretos y
+# restauracion en `docs/copias-de-seguridad.md`.
+#
+# POR QUE HACE FALTA: en el plan gratuito Supabase no hace copias automaticas.
+# Hasta el 2026-10-19 la app estaba en produccion sin ninguna.
+#
+# QUE SE COPIA:
+#   - La base entera, `auth.users` incluido (sin el, `clientes` no se puede
+#     restaurar: su id es una FK a `auth.users`). Tres archivos, como indica la
+#     guia de Supabase: roles, esquema y datos. Se empaquetan y se cifran con
+#     `age`; la clave privada solo la tiene Daniel, fuera de GitHub y de
+#     Cloudflare.
+#   - Los archivos de los dos buckets. Un `pg_dump` solo guarda sus metadatos
+#     (`storage.objects`), no los archivos. Van con `rclone sync` a un remoto
+#     `crypt`, que cifra cada archivo: cada noche solo sube lo nuevo.
+#
+# QUE NO SE COPIA, Y NO PUEDE: los secretos de Vault y de las Edge Functions.
+# Vault cifra con una clave del propio proyecto, asi que en otro no servirian.
+# Van en el gestor de contrasenas, no aqui.
+#
+# Si falla, GitHub manda un correo: un workflow programado en rojo es el aviso.
+
+on:
+  schedule:
+    # 02:30 UTC: 03:30 o 04:30 en Madrid, cuando nadie esta registrando.
+    - cron: "30 2 * * *"
+  # Para la primera prueba y para sacar una copia a mano antes de algo delicado
+  # (una migracion grande, por ejemplo).
+  workflow_dispatch:
+
+# Dos copias a la vez se pisarian en el `rclone sync`. La segunda espera.
+concurrency:
+  group: copias-de-seguridad
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  copia:
+    name: Copia de seguridad
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Los secretos viven en su propio Environment, no en el de `main`: este job
+    # no despliega nada y no tiene por que ver el token de despliegue.
+    environment: copias
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      STORAGE_S3_ENDPOINT: ${{ secrets.STORAGE_S3_ENDPOINT }}
+      STORAGE_S3_REGION: ${{ secrets.STORAGE_S3_REGION }}
+      STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID }}
+      STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_S3_SECRET_ACCESS_KEY }}
+      RCLONE_CRYPT_PASSWORD: ${{ secrets.RCLONE_CRYPT_PASSWORD }}
+      RCLONE_CRYPT_SALT: ${{ secrets.RCLONE_CRYPT_SALT }}
+    steps:
+      # Al reves que el despliegue, aqui un secreto que falta **falla**: una
+      # copia que se salta en silencio es exactamente lo que no puede pasar.
+      - name: Comprobar que estan todos los secretos
+        run: |
+          faltan=""
+          for nombre in SUPABASE_DB_URL AGE_RECIPIENT R2_ACCOUNT_ID R2_BUCKET \
+            R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY STORAGE_S3_ENDPOINT \
+            STORAGE_S3_REGION STORAGE_S3_ACCESS_KEY_ID \
+            STORAGE_S3_SECRET_ACCESS_KEY RCLONE_CRYPT_PASSWORD \
+            RCLONE_CRYPT_SALT; do
+            if [ -z "${!nombre}" ]; then faltan="$faltan $nombre"; fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan secretos en el Environment 'copias':$faltan"
+            exit 1
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          # La misma que el CI: fija, no `latest`.
+          version: 2.119.0
+
+      # De los repositorios de Ubuntu, no un script descargado: age 1.1 y
+      # rclone 1.60, que ya traen R2 y `crypt`.
+      - name: Instalar age y rclone
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age rclone
+          age --version
+          rclone version | head -1
+
+      # Por el session pooler, no por la conexion directa: la directa solo
+      # funciona por IPv6 y los runners de GitHub son IPv4.
+      #
+      # Del volcado de datos se excluyen las tablas internas de Storage que no
+      # guardan nada de la app (vectores, iceberg, analitica, subidas a medias).
+      # Son del rol interno de Storage y `postgres` no puede escribir en ellas,
+      # asi que la restauracion fallaria en la primera. Comprobado contra
+      # Supabase local el 2026-10-19.
+      - name: Volcar la base de datos
+        run: |
+          mkdir -p volcado
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only \
+            -f volcado/roles.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" \
+            -f volcado/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --use-copy \
+            -x storage.buckets_analytics \
+            -x storage.buckets_vectors \
+            -x storage.iceberg_namespaces \
+            -x storage.iceberg_tables \
+            -x storage.vector_indexes \
+            -x storage.s3_multipart_uploads \
+            -x storage.s3_multipart_uploads_parts \
+            -x supabase_functions.hooks \
+            -f volcado/data.sql
+
+      # Un volcado vacio o a medias tambien "sale bien". Se comprueba que traiga
+      # lo que no puede faltar antes de darlo por bueno.
+      - name: Comprobar el volcado
+        run: |
+          for tabla in '"auth"."users"' '"public"."clientes"' \
+            '"public"."ejercicios"' '"public"."plannings_semanales"'; do
+            if ! grep -q "^COPY $tabla" volcado/data.sql; then
+              echo "::error::El volcado no trae la tabla $tabla"
+              exit 1
+            fi
+          done
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"."clientes"' \
+            volcado/schema.sql || {
+            echo "::error::El esquema no trae la tabla clientes"
+            exit 1
+          }
+          ls -l volcado
+
+      # Cifrado aqui, en el runner: a R2 solo llega el archivo cifrado, y sin
+      # la clave privada no se puede abrir. El texto plano se borra al acabar.
+      - name: Empaquetar y cifrar
+        run: |
+          FECHA=$(date -u +%Y-%m-%d)
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+          tar -czf - -C volcado roles.sql schema.sql data.sql \
+            | age -r "$AGE_RECIPIENT" -o "bd-$FECHA.tar.gz.age"
+          rm -rf volcado
+          ls -l "bd-$FECHA.tar.gz.age"
+
+      # rclone se configura con variables de entorno, sin archivo de
+      # configuracion que pueda acabar en un log o en un artefacto.
+      #
+      #   r2        el bucket de Cloudflare, en la jurisdiccion UE (`.eu.` en
+      #             el endpoint).
+      #   cifrado   un `crypt` encima de r2 para los archivos de Storage. Cifra
+      #             el contenido y los nombres de archivo; los de las carpetas
+      #             no, para que las reglas de caducidad de R2 puedan
+      #             reconocer `storage-historico/` por su prefijo.
+      #   supabase  el Storage del proyecto por su API S3.
+      - name: Configurar rclone
+        run: |
+          {
+            echo "RCLONE_CONFIG_R2_TYPE=s3"
+            echo "RCLONE_CONFIG_R2_PROVIDER=Cloudflare"
+            echo "RCLONE_CONFIG_R2_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID"
+            echo "RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY"
+            echo "RCLONE_CONFIG_R2_ENDPOINT=https://$R2_ACCOUNT_ID.eu.r2.cloudflarestorage.com"
+            echo "RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true"
+            echo "RCLONE_CONFIG_CIFRADO_TYPE=crypt"
+            echo "RCLONE_CONFIG_CIFRADO_REMOTE=r2:$R2_BUCKET"
+            echo "RCLONE_CONFIG_CIFRADO_DIRECTORY_NAME_ENCRYPTION=false"
+            echo "RCLONE_CONFIG_SUPABASE_TYPE=s3"
+            echo "RCLONE_CONFIG_SUPABASE_PROVIDER=Other"
+            echo "RCLONE_CONFIG_SUPABASE_ENDPOINT=$STORAGE_S3_ENDPOINT"
+            echo "RCLONE_CONFIG_SUPABASE_REGION=$STORAGE_S3_REGION"
+            echo "RCLONE_CONFIG_SUPABASE_ACCESS_KEY_ID=$STORAGE_S3_ACCESS_KEY_ID"
+            echo "RCLONE_CONFIG_SUPABASE_SECRET_ACCESS_KEY=$STORAGE_S3_SECRET_ACCESS_KEY"
+            echo "RCLONE_CONFIG_SUPABASE_FORCE_PATH_STYLE=true"
+          } >> "$GITHUB_ENV"
+          # `crypt` quiere las contrasenas "ofuscadas" con `rclone obscure`.
+          # Se hace aqui para que el secreto sea la contrasena tal cual, la
+          # misma que se usa al restaurar. Se enmascaran para que no salgan en
+          # el log.
+          CLAVE=$(rclone obscure "$RCLONE_CRYPT_PASSWORD")
+          SAL=$(rclone obscure "$RCLONE_CRYPT_SALT")
+          echo "::add-mask::$CLAVE"
+          echo "::add-mask::$SAL"
+          echo "RCLONE_CONFIG_CIFRADO_PASSWORD=$CLAVE" >> "$GITHUB_ENV"
+          echo "RCLONE_CONFIG_CIFRADO_PASSWORD2=$SAL" >> "$GITHUB_ENV"
+
+      # `bd/diarias/` caduca a los 30 dias y `bd/mensuales/` a los 365, con
+      # reglas de ciclo de vida del bucket (ver docs/copias-de-seguridad.md).
+      # La del dia 1 de cada mes se guarda tambien en `mensuales`.
+      - name: Subir la copia de la base de datos
+        run: |
+          rclone copyto "bd-$FECHA.tar.gz.age" \
+            "r2:$R2_BUCKET/bd/diarias/bd-$FECHA.tar.gz.age"
+          if [ "$(date -u +%d)" = "01" ]; then
+            rclone copyto "bd-$FECHA.tar.gz.age" \
+              "r2:$R2_BUCKET/bd/mensuales/bd-$FECHA.tar.gz.age"
+          fi
+
+      # Incremental: solo sube lo nuevo o lo cambiado. Lo que se borra o se
+      # reemplaza en Supabase **no** se pierde de la copia esa noche: se mueve a
+      # `storage-historico/<fecha>/`, que caduca a los 90 dias. Asi un borrado
+      # por error no se propaga a la copia antes de que nadie se de cuenta.
+      #
+      # `--modify-window 1s` NO SE PUEDE QUITAR: el S3 de Supabase da la hora de
+      # modificacion con milisegundos al listar y redondeada al segundo en otro
+      # sitio, y `crypt` no puede comparar hashes. Sin la ventana, rclone cree
+      # que todo ha cambiado, lo vuelve a subir cada noche y llena el historico
+      # con copias de cada foto. Comprobado contra Supabase local el 2026-10-19.
+      - name: Copiar los archivos de Storage
+        run: |
+          for bucket in fotos-progreso imagenes-ejercicios; do
+            rclone sync "supabase:$bucket" "cifrado:storage/$bucket" \
+              --backup-dir "cifrado:storage-historico/$FECHA/$bucket" \
+              --modify-window 1s \
+              --stats-one-line --stats 0
+          done
+
+      - name: Resumen
+        if: success()
+        run: |
+          {
+            echo "### Copia del $FECHA"
+            echo ""
+            echo "- Base de datos: \`bd/diarias/bd-$FECHA.tar.gz.age\` ($(du -h "bd-$FECHA.tar.gz.age" | cut -f1))"
+            echo "- Storage: \`storage/\` sincronizado, cambios en \`storage-historico/$FECHA/\`"
+          } >> "$GITHUB_STEP_SUMMARY"
