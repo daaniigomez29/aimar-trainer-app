@@ -2777,3 +2777,20 @@ recuperada byte a byte, noches sin cambios sin subidas.
   carpeta, no con R2.
 - Las entradas del 19 y el 20 quedaron bajo el encabezado del 14, sin fecha
   propia. No se han movido.
+
+**Corregido (copias, mas tarde el mismo dia):**
+
+- **Causa del 501 de R2**, vista con la casilla "depurar": el `PUT` de cada foto
+  a R2 da 200 y devuelve un `X-Amz-Version-Id`. rclone 1.60 comprueba entonces
+  lo subido con un `HEAD ?versionId=...`, que R2 no admite (501). La foto
+  siempre estaba subida: el reintento la encontraba igual y la saltaba.
+- Arreglo: `RCLONE_CONFIG_R2_NO_HEAD=true` en el remoto de R2. Comprobado en un
+  Ubuntu 24.04 que la opcion existe en rclone 1.60 y que la lee de la variable.
+  La comprobacion que se pierde la cubre, entera, `cryptcheck`.
+- El log tambien confirma que R2 devuelve el `Etag` (md5) de cada archivo, que
+  es lo que necesita `cryptcheck`.
+
+**Pendiente / notas:**
+
+- Tras el push, otra pasada con "depurar": tiene que salir el `PUT` con 200 y
+  ningun 501. Despues, una normal, para ver `cryptcheck` en verde contra R2.

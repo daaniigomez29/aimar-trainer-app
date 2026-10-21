@@ -171,6 +171,13 @@ jobs:
             echo "RCLONE_CONFIG_R2_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY"
             echo "RCLONE_CONFIG_R2_ENDPOINT=https://$R2_ACCOUNT_ID.eu.r2.cloudflarestorage.com"
             echo "RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true"
+            # Sin esto, cada subida "falla" con 501 aunque haya ido bien. R2
+            # responde al PUT con un `X-Amz-Version-Id`, y rclone 1.60 comprueba
+            # entonces lo subido con un HEAD `?versionId=...` que R2 no admite.
+            # Visto con la casilla "depurar" el 2026-10-21: el PUT da 200 y el
+            # HEAD, 501. El reintento lo tapaba porque la foto ya estaba subida.
+            # La integridad no se pierde: la comprueba entera `cryptcheck`.
+            echo "RCLONE_CONFIG_R2_NO_HEAD=true"
             echo "RCLONE_CONFIG_CIFRADO_TYPE=crypt"
             echo "RCLONE_CONFIG_CIFRADO_REMOTE=r2:$R2_BUCKET"
             echo "RCLONE_CONFIG_CIFRADO_DIRECTORY_NAME_ENCRYPTION=false"
