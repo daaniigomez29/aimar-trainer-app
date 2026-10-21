@@ -140,10 +140,12 @@ las claves se filtran antes de llegar al log. Sí salen los nombres de archivo
 del lado de Supabase, así que el log solo debe verlo quien tenga acceso al
 repositorio.
 
-**Pendiente (2026-10-21)**: en la primera ejecución real, cada foto dio
-`501 NotImplemented` en el primer intento y se copió bien en el segundo. Contra
-el Storage local no pasa, así que viene de R2. Falta una pasada con **depurar**
-para ver qué llamada lo devuelve.
+**El 501 de R2 (resuelto el 2026-10-21)**: en la primera ejecución real, cada
+foto dio `501 NotImplemented` en el primer intento y se copió bien en el
+segundo. La pasada con **depurar** lo aclaró: el `PUT` a R2 da 200, R2 devuelve
+un `X-Amz-Version-Id`, y rclone 1.60 comprueba lo subido con un `HEAD
+?versionId=...` que R2 no admite. Se apaga esa comprobación con `no_head` en el
+remoto de R2. La integridad la cubre `cryptcheck`.
 
 ## Restaurar
 
