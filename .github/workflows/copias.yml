@@ -30,6 +30,11 @@ on:
   # Para la primera prueba y para sacar una copia a mano antes de algo delicado
   # (una migracion grande, por ejemplo).
   workflow_dispatch:
+    inputs:
+      depurar:
+        description: "Detalle HTTP de la copia de Storage (para diagnosticar errores)"
+        type: boolean
+        default: false
 
 # Dos copias a la vez se pisarian en el `rclone sync`. La segunda espera.
 concurrency:
@@ -210,13 +215,57 @@ jobs:
       # sitio, y `crypt` no puede comparar hashes. Sin la ventana, rclone cree
       # que todo ha cambiado, lo vuelve a subir cada noche y llena el historico
       # con copias de cada foto. Comprobado contra Supabase local el 2026-10-19.
+      #
+      # Con la casilla "depurar" de *Run workflow*, una sola pasada (sin
+      # reintentos) con las cabeceras HTTP de cada llamada, para ver cual
+      # devuelve un error. La autorizacion sale tapada (`Authorization: XXXX`),
+      # pero `-vv` tambien escribe cada variable de configuracion con su valor,
+      # claves incluidas: el `grep -v` las quita antes de que lleguen al log.
+      # El enmascarado de secretos de GitHub queda como segunda capa, no como
+      # la unica. Comprobado contra Supabase local el 2026-10-21.
       - name: Copiar los archivos de Storage
+        env:
+          DEPURAR: ${{ github.event.inputs.depurar }}
         run: |
           for bucket in fotos-progreso imagenes-ejercicios; do
-            rclone sync "supabase:$bucket" "cifrado:storage/$bucket" \
-              --backup-dir "cifrado:storage-historico/$FECHA/$bucket" \
-              --modify-window 1s \
-              --stats-one-line --stats 0
+            if [ "$DEPURAR" = "true" ]; then
+              rclone sync "supabase:$bucket" "cifrado:storage/$bucket" \
+                --backup-dir "cifrado:storage-historico/$FECHA/$bucket" \
+                --modify-window 1s \
+                --retries 1 -vv --dump headers 2>&1 \
+                | grep -v -E 'Setting [a-z0-9_]+=.* from environment variable'
+              estado=${PIPESTATUS[0]}
+              [ "$estado" -eq 0 ] || exit "$estado"
+            else
+              rclone sync "supabase:$bucket" "cifrado:storage/$bucket" \
+                --backup-dir "cifrado:storage-historico/$FECHA/$bucket" \
+                --modify-window 1s \
+                --stats-one-line --stats 0
+            fi
+          done
+
+      # Que el `sync` salga bien solo dice que cada archivo esta en R2 con su
+      # tamano. Esto comprueba que su contenido es identico al de Supabase:
+      # `cryptcheck` cifra la huella (md5) de cada original con los datos de
+      # cifrado de su copia y la compara con la huella que R2 guarda de la copia.
+      # No descarga nada. Si un solo archivo no coincide, el job sale en rojo.
+      #
+      # `--one-way`: lo que importa es que todo lo de Supabase este bien
+      # copiado. En R2 no deberia haber nada de mas, porque el `sync` ya lo
+      # habria movido al historico.
+      #
+      # Probado contra Supabase local el 2026-10-21: con la copia intacta da
+      # "0 differences found", y con un byte de la copia cifrada cambiado,
+      # "hashes differ" y error.
+      #
+      # La copia de la base de datos no necesita este paso: es un archivo
+      # local subido sin `crypt`, y `rclone copyto` ya compara su md5 con el de
+      # R2 al terminar la subida.
+      - name: Verificar la copia de Storage
+        run: |
+          for bucket in fotos-progreso imagenes-ejercicios; do
+            rclone cryptcheck "supabase:$bucket" "cifrado:storage/$bucket" \
+              --one-way
           done
 
       - name: Resumen

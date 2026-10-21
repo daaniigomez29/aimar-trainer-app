@@ -2739,3 +2739,41 @@ recuperada byte a byte, noches sin cambios sin subidas.
   restauracion en un **proyecto nuevo** de Supabase.
 - Ensayo de restauracion cada 3 meses o tras un cambio grande de esquema.
 - Anadir Cloudflare como encargado del tratamiento en el registro del RGPD.
+
+### 2026-10-21
+
+**Hecho:**
+
+- **Verificacion nocturna de las fotos copiadas** (`copias.yml`, paso nuevo
+  "Verificar la copia de Storage"). Tras el `sync`, `rclone cryptcheck
+  --one-way` compara la huella cifrada de cada original con la que R2 guarda
+  de su copia, sin descargar nada. Un solo archivo distinto pone el job en
+  rojo. Hasta ahora el verde solo decia que cada archivo estaba en R2 con su
+  tamano.
+- **Casilla "depurar"** en *Run workflow*: una pasada sin reintentos con las
+  cabeceras HTTP de cada llamada, para ver que operacion devuelve un error.
+- Probado contra Supabase local: `cryptcheck` da "0 differences found" con la
+  copia intacta y "hashes differ" (con error) con un byte cambiado en la copia
+  cifrada. La rama de diagnostico conserva el codigo de salida de rclone (0 si
+  va bien, error si falla) y muestra el codigo HTTP de cada llamada.
+
+**Corregido:**
+
+- Antes de llegar a produccion: con `-vv`, rclone 1.60 escribe cada variable de
+  configuracion **con su valor**, claves de Storage incluidas
+  (`Setting secret_access_key="..." from environment variable`). En GitHub
+  saldria tapado por el enmascarado de secretos, pero la contrasena de `crypt`
+  va "ofuscada", que se revierte. El modo de diagnostico filtra esas lineas con
+  `grep -v`; comprobado que despues no queda ninguna clave en el log.
+
+**Pendiente / notas:**
+
+- **El 501 de la primera copia real**: cada foto dio `501 NotImplemented` en el
+  primer intento y se copio bien en el segundo, asi que el job salio en verde.
+  Contra Storage local no pasa: viene de R2. Falta una pasada con **depurar**
+  para ver que llamada lo devuelve, y corregirlo en vez de vivir del reintento.
+- Ver en la proxima ejecucion que `cryptcheck` funciona contra R2 de verdad.
+  Necesita que R2 de la huella md5 de cada archivo, y en local se probo con una
+  carpeta, no con R2.
+- Las entradas del 19 y el 20 quedaron bajo el encabezado del 14, sin fecha
+  propia. No se han movido.
