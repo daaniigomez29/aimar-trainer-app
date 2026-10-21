@@ -26,9 +26,22 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
     super.dispose();
   }
 
-  Future<void> _enviar() => ref
-      .read(controladorLoginProvider.notifier)
-      .iniciarSesion(correo: _correo.text, contrasena: _contrasena.text);
+  /// Antes de enviar se **quita el foco**, y durante la peticion los campos
+  /// quedan de solo lectura en vez de desactivados.
+  ///
+  /// POR QUE (2026-10-21): con la contrasena visible, fallar el login dejaba el
+  /// movil sin teclado: tocar los campos ya no lo abria. Al pulsar Acceder el
+  /// campo seguia enfocado y la peticion lo desactivaba (`enabled: false`), y
+  /// desactivar un campo con el foco obliga al motor web a desmontar su
+  /// `<input>` a la fuerza. Con la contrasena oculta ese `<input>` es de tipo
+  /// `password` y se recuperaba; visible es de tipo `text` y no. Sin foco al
+  /// cambiar de estado, y sin desactivar, no hay nada que desmontar.
+  Future<void> _enviar() {
+    FocusScope.of(context).unfocus();
+    return ref
+        .read(controladorLoginProvider.notifier)
+        .iniciarSesion(correo: _correo.text, contrasena: _contrasena.text);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +59,7 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
         TextField(
           key: const Key('campo_correo'),
           controller: _correo,
-          enabled: !estado.enCurso,
+          readOnly: estado.enCurso,
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
           textInputAction: TextInputAction.next,
@@ -60,7 +73,7 @@ class _EstadoPantallaLogin extends ConsumerState<PantallaLogin> {
         TextField(
           key: const Key('campo_contrasena'),
           controller: _contrasena,
-          enabled: !estado.enCurso,
+          readOnly: estado.enCurso,
           obscureText: !_contrasenaVisible,
           autofillHints: const [AutofillHints.password],
           textInputAction: TextInputAction.done,

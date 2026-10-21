@@ -824,6 +824,45 @@ segmento, con `(storage.foldername(name))[1] = auth.uid()::text`. El cliente
 gestiona lo suyo; el entrenador solo lee; el administrador, sin política, no
 accede.
 
+## Renumerado al borrar (2026-10-21)
+
+Migración `20261021090000_renumerar_al_borrar.sql`. Al quitar un ejercicio de
+un bloque, o un bloque de una sesión, los demás se renumeran del 1 al N sin
+huecos.
+
+**Por qué**: borrar dejaba huecos (1-5 y 7 tras quitar el 6.º de 7), y lo que
+calculaba la siguiente posición como "cuántos hay + 1" chocaba con una ocupada.
+Le pasó a Aimar en producción. La app ya usa "la más alta + 1", pero en los
+bloques el hueco se ve ("BLOQUE 1, BLOQUE 3"), y `aplicar_pack_a_bloque`
+contaba filas.
+
+- `renumerar_ejercicios_del_bloque(uuid)` y `renumerar_bloques_de_la_sesion(uuid)`:
+  renumeran respetando el orden actual, en dos fases como `reordenar_bloques`
+  (aquí apartando hacia arriba, `+ 1000000`). Si no hay huecos no tocan nada.
+  `revoke execute ... from public`: la app no puede llamarlas (el cliente
+  recibe 403). Así no le dan al cliente, que tiene política de `update` sobre
+  sus ejercicios planificados, una forma de tocar el orden.
+- Triggers `renumerar_tras_borrar_ejercicios` y `renumerar_tras_borrar_bloques`:
+  `after delete ... referencing old table as borrados for each statement`. Uno
+  por sentencia, así un borrado múltiple renumera cada padre una sola vez. Se
+  saltan los padres que ya no existen, que es lo que pasa en una cascada. Son
+  `security definer` porque las funciones están cerradas a la app; `auth.uid()`
+  no cambia, así que "lo pasado no se toca" sigue aplicando (y en una semana
+  pasada tampoco se puede borrar).
+- Un `do` corrige una vez los huecos existentes, también en semanas pasadas
+  (corre como el rol de las migraciones, al que no afecta el trigger de "lo
+  pasado no se toca").
+- `aplicar_pack_a_bloque` calcula la posición con `coalesce(max(orden), 0)` en
+  vez de `count(*)`.
+
+**Las sesiones no se renumeran**, a propósito: el "Día 3" que el cliente quizá
+ya hizo dejaría de llamarse así.
+
+Probado contra local como el entrenador real (token simulado, RLS y triggers
+activos): quitar el 6.º de 7, quitar dos a la vez, quitar el último, quitar un
+bloque, cascadas de bloque y de sesión, el cliente sin permiso, la corrección
+de huecos existentes y el pack con hueco. Y en `probar_local.sh`, por la API.
+
 ## Packs de entrenamiento (RF-25)
 
 Migración `20261019090000_packs_de_entrenamiento.sql`. Plantillas de ejercicios

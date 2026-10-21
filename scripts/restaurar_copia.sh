@@ -32,6 +32,14 @@ set -euo pipefail
 # `docker cp` y `docker exec` no encuentran los archivos dentro del contenedor.
 export MSYS_NO_PATHCONV=1
 
+# Y por lo mismo, a los programas nativos de Windows (age instalado con winget,
+# docker.exe) hay que pasarles las rutas ya convertidas: con la conversion
+# apagada recibirian `/c/Users/...` y no encontrarian nada. En Linux y macOS no
+# existe cygpath y las rutas valen tal cual.
+ruta_nativa() {
+  if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi
+}
+
 AGE="${AGE:-age}"
 
 if [ $# -lt 2 ]; then
@@ -71,7 +79,8 @@ TRABAJO=$(mktemp -d)
 trap 'rm -rf "$TRABAJO"' EXIT
 
 echo "== Descifrando =="
-"$AGE" -d -i "$IDENTIDAD" -o "$TRABAJO/copia.tar.gz" "$COPIA"
+"$AGE" -d -i "$(ruta_nativa "$IDENTIDAD")" \
+  -o "$(ruta_nativa "$TRABAJO/copia.tar.gz")" "$(ruta_nativa "$COPIA")"
 tar -xzf "$TRABAJO/copia.tar.gz" -C "$TRABAJO"
 for archivo in roles.sql schema.sql data.sql; do
   [ -f "$TRABAJO/$archivo" ] || {
@@ -94,12 +103,7 @@ echo "== Cargando los datos =="
 #     desde config.toml, y la copia tambien los trae. Sin esto, la carga choca
 #     con la clave primaria en la primera fila.
 #   - `--single-transaction` y `ON_ERROR_STOP`: o entra todo, o nada.
-# La ruta de origen es del lado de Windows: con la conversion automatica
-# apagada (ver arriba), en Git Bash hay que pasarla a mano con `cygpath`. En
-# Linux y macOS no existe cygpath y la ruta ya vale tal cual.
-ORIGEN="$TRABAJO/data.sql"
-if command -v cygpath >/dev/null 2>&1; then ORIGEN=$(cygpath -w "$ORIGEN"); fi
-docker cp "$ORIGEN" "$CONTENEDOR:/tmp/restaurar_data.sql"
+docker cp "$(ruta_nativa "$TRABAJO/data.sql")" "$CONTENEDOR:/tmp/restaurar_data.sql"
 docker exec "$CONTENEDOR" psql -U postgres -q \
   --single-transaction -v ON_ERROR_STOP=1 \
   -c "SET session_replication_role = replica" \

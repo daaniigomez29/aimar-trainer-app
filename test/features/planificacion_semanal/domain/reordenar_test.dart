@@ -6,6 +6,26 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_pl
 /// elemento una posicion hacia abajo y que se quede donde estaba es el fallo
 /// clasico de `ReorderableListView`, y no se ve en una captura: se ve al soltar.
 void main() {
+  // Quitar no renumera, asi que puede haber huecos: "cuantos hay + 1" choca
+  // con una posicion ocupada (le paso a Aimar el 2026-10-21).
+  group('siguientePosicion', () {
+    test('sin nada, empieza en 1', () {
+      expect(siguientePosicion(const []), 1);
+    });
+
+    test('sin huecos, coincide con cuantos hay + 1', () {
+      expect(siguientePosicion(const [1, 2, 3]), 4);
+    });
+
+    test('con un hueco, va detras del mas alto', () {
+      expect(siguientePosicion(const [1, 2, 3, 4, 5, 7]), 8);
+    });
+
+    test('da igual el orden en que lleguen', () {
+      expect(siguientePosicion(const [7, 1, 3]), 8);
+    });
+  });
+
   group('reordenarLista', () {
     final lista = ['a', 'b', 'c', 'd'];
 

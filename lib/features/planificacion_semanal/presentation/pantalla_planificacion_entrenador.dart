@@ -1336,6 +1336,10 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
     final textos = Theme.of(context).textTheme;
     final ficha = widget.ejercicio.ejercicio;
     final vaPorMinutos = ficha?.tipo.vaPorMinutos ?? false;
+    final porLado = ficha?.pesoPorLado ?? false;
+    // En movil la pastilla va debajo del nombre: al lado, junto a la miniatura
+    // y los dos botones, dejaba el nombre en dos palabras por linea.
+    final pastillaDebajo = porLado && !esEscritorio(context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -1369,12 +1373,19 @@ class _EjercicioEditableState extends ConsumerState<_EjercicioEditable> {
                       ].where((t) => t.isNotEmpty).join(' · '),
                       style: textos.bodySmall,
                     ),
+                    if (pastillaDebajo) ...[
+                      const SizedBox(height: 4),
+                      const Pastilla(
+                        key: Key('kg_por_lado_debajo'),
+                        texto: 'Kg por lado',
+                      ),
+                    ],
                   ],
                 ),
               ),
               // Para que el entrenador escriba el numero que toca: el peso de
               // este ejercicio se cuenta por lado, no en total.
-              if (ficha?.pesoPorLado ?? false) ...[
+              if (porLado && !pastillaDebajo) ...[
                 const Pastilla(texto: 'Kg por lado'),
                 const SizedBox(width: 6),
               ],
@@ -2032,7 +2043,7 @@ class _PanelBibliotecaState extends ConsumerState<_PanelBiblioteca> {
     final bloque = await _bloqueDestino(ejercicio.nombre);
     if (bloque == null || !mounted) return;
 
-    final orden = bloque.ejercicios.length + 1;
+    final orden = siguientePosicion(bloque.ejercicios.map((e) => e.orden));
     // Valores de partida razonables, que el entrenador ajusta en la cuadricula.
     // Cardio necesita minutos si o si (lo exige un trigger); lo que va por
     // series (Fuerza y Fortalecimiento), las mismas que propone el formulario

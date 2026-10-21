@@ -76,6 +76,7 @@ el detalle de casos de uso y RF vive en el ERS (Doc del proyecto).
 **Reglas de dominio**
 - No puede haber dos bloques con el mismo `orden` en la misma sesión.
 - El `orden` lo cambia el entrenador **con flechas** (arriba / abajo; hasta el 2026-10-19 se arrastraba), y se renumera el conjunto entero de una vez: no se mueve un bloque suelto dejando huecos ni repetidos. El cliente no reordena lo que le han planificado.
+- **Sin huecos**: al quitar un bloque, los demás de la sesión se renumeran solos (trigger en la base, desde el 2026-10-21). Un bloque nuevo va en la posición más alta + 1.
 - Eliminar un bloque elimina en cascada sus ejercicios planificados (no afecta a la biblioteca general de Ejercicio).
 
 ## 5. Ejercicio (biblioteca)
@@ -143,6 +144,7 @@ series, Cardio por minutos.
 **Reglas de dominio**
 - **Series y minutos son mutuamente excluyentes**, y lo que decide cuál se usa es el **modo de planificación** del tipo: Fuerza y Fortalecimiento usan series (no minutos); Cardio usa minutos (no series). La pregunta no es por el tipo a propósito: con un tercer tipo, preguntar "¿es cardio?" convierte a Fortalecimiento en Fuerza sin que nadie lo decida.
 - No puede haber dos "Ejercicio planificado" con el mismo `orden` en el mismo bloque. Se reordena con flechas, igual que los bloques, y también es cosa solo del entrenador.
+- **Sin huecos**: al quitar un ejercicio, los demás del bloque se renumeran solos, igual que los bloques. Antes se quedaba el hueco y el siguiente ejercicio, en "cuántos hay + 1", chocaba con una posición ocupada (le pasó a Aimar el 2026-10-21).
 - **Lo planificado puede quedarse sin rellenar**: un Cardio puede no tener minutos, igual que uno por series puede no tener series. Pasa al aplicar un pack que no los traía (2026-10-19): la base ya no exige los minutos, para no inventarse una cifra que el entrenador no puso. Añadido a mano desde el formulario de CU-08, en cambio, se siguen pidiendo.
 - `estadoRegistro` pasa a "registrado" si existe al menos una Serie realizada (tipos por series) o si `minutosRealizados` tiene valor (Cardio).
 - Eliminarlo no elimina el Ejercicio de la biblioteca, solo la referencia en ese bloque.
