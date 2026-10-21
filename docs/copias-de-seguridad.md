@@ -120,6 +120,31 @@ existen `bd/diarias/bd-<hoy>.tar.gz.age` y `storage/`, y **hacer el primer
 ensayo de restauración** (abajo). Hasta que no se haya restaurado una vez, no
 se sabe si funciona.
 
+## Verificación y diagnóstico
+
+**Cada noche se comprueba que las fotos copiadas son idénticas a las de
+Supabase**, no solo que están. Tras el `sync`, `rclone cryptcheck` toma la
+huella (md5) de cada original, la cifra con los mismos datos de cifrado que su
+copia y la compara con la huella que R2 guarda de la copia. No descarga nada.
+Si un solo archivo no coincide, el job sale en rojo y llega el correo. La copia
+de la base de datos no lo necesita: `rclone copyto` ya compara su md5 con el de
+R2 al subirla.
+
+**Errores de rclone**: rclone reintenta hasta 3 veces y solo da el paso por
+bueno si al final todo está copiado. Errores en el primer intento con el job en
+verde no son una copia a medias, pero conviene saber de dónde salen. Para
+verlo: Actions → *Copias de seguridad* → *Run workflow* con la casilla
+**depurar** marcada. Hace una sola pasada sin reintentos y muestra cada llamada
+HTTP con su código de respuesta. La autorización sale tapada y las líneas con
+las claves se filtran antes de llegar al log. Sí salen los nombres de archivo
+del lado de Supabase, así que el log solo debe verlo quien tenga acceso al
+repositorio.
+
+**Pendiente (2026-10-21)**: en la primera ejecución real, cada foto dio
+`501 NotImplemented` en el primer intento y se copió bien en el segundo. Contra
+el Storage local no pasa, así que viene de R2. Falta una pasada con **depurar**
+para ver qué llamada lo devuelve.
+
 ## Restaurar
 
 ### Ensayo en local (o para mirar un día concreto)
