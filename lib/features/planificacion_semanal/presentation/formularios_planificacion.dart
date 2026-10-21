@@ -353,7 +353,9 @@ class _EstadoDialogoBloque extends ConsumerState<_DialogoBloque> {
     super.initState();
     _notas = TextEditingController(text: widget.bloque?.notas ?? '');
     _tipo = widget.bloque?.tipo ?? TipoBloque.fuerza;
-    _orden = widget.bloque?.orden ?? widget.sesion.bloques.length + 1;
+    _orden =
+        widget.bloque?.orden ??
+        siguientePosicion(widget.sesion.bloques.map((b) => b.orden));
   }
 
   @override
@@ -393,7 +395,11 @@ class _EstadoDialogoBloque extends ConsumerState<_DialogoBloque> {
   Widget build(BuildContext context) {
     final estado = ref.watch(controladorPlanificacionProvider);
     final controlador = ref.read(controladorPlanificacionProvider.notifier);
-    final posiciones = widget.sesion.bloques.length + 1;
+    // Hasta la siguiente libre al final, no "cuantos hay + 1": con un hueco
+    // (se quito un bloque) esa ya esta ocupada. Ver `siguientePosicion`.
+    final posiciones = siguientePosicion(
+      widget.sesion.bloques.map((b) => b.orden),
+    );
 
     return AlertDialog(
       title: Text(widget.bloque == null ? 'Nuevo bloque' : 'Editar bloque'),

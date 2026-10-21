@@ -35,23 +35,27 @@ que Daniel lo pruebe todo en el navegador.
   `ordenar_planning_test.dart`, contra la pantalla. Mismo contrato
   `desde`/`hasta`, asi que las funciones de Postgres no cambian.
 
-**Copias de seguridad, montadas pero sin activar** (2026-10-19). Hasta hoy no
-habia ninguna. `.github/workflows/copias.yml` copia cada noche la base y los
-archivos de Storage, cifrados, a Cloudflare R2. `scripts/restaurar_copia.sh`
-las restaura en local. Para activarlas hace falta crear el bucket de R2, las
-claves y el Environment `copias` de GitHub (pasos en
-`docs/copias-de-seguridad.md`), lanzar la primera a mano y hacer el primer
-ensayo de restauracion.
+**Copias de seguridad, activas y ensayadas** (2026-10-21).
+`.github/workflows/copias.yml` copia cada noche la base y los archivos de
+Storage, cifrados, a Cloudflare R2 (jurisdiccion UE), y verifica con
+`cryptcheck` que las fotos copiadas son identicas. Ensayo completo superado con
+una copia real: `scripts/restaurar_copia.sh` (base) y
+`scripts/restaurar_storage.sh` (fotos). Proximo ensayo hacia enero de 2027 o
+tras un cambio grande de esquema. Detalle en `docs/copias-de-seguridad.md`.
 
-**Sin commitear** (unas 30 entradas en `git status`, dos de ellas borrados sin pasar al indice), y **sin desplegar**: hay tres migraciones nuevas
-que el CI aplicara en el primer push a `dev`.
+**Migracion nueva sin desplegar** (2026-10-21):
+`20261021090000_renumerar_al_borrar.sql`. Al quitar un ejercicio de un bloque o
+un bloque de una sesion, los demas se renumeran solos; corrige una vez los
+huecos que ya hay en produccion, y `aplicar_pack_a_bloque` pasa a usar la
+posicion mas alta. Verificada contra local (9 casos, y 4 comprobaciones nuevas
+en `probar_local.sh`). La aplica el CI en el siguiente push a `dev`.
 
-- `20261018090000_recordatorios_fallan_a_la_vista.sql`
-- `20261019090000_packs_de_entrenamiento.sql`
-- `20261019090100_cardio_sin_minutos.sql`
+Las tres migraciones del 18 y el 19 (recordatorios, packs, cardio sin minutos)
+estaban pendientes de desplegar; desde entonces ha habido pushes, asi que
+probablemente ya estan. Confirmarlo con `supabase migration list --linked`.
 
-El script que las verifico esta fuera del repo (era de usar y tirar); la base
-local ya las tiene aplicadas con `supabase db reset`.
+**Push en produccion roto** hasta cambiar el secreto: `VAPID_SUBJECT` vale
+`prueba@gmail.com` y tiene que ser `mailto:...`. Mientras, avisan por correo.
 
 **Ojo con el token de despliegue**: el `SUPABASE_ACCESS_TOKEN` de `main` caduco
 el 2026-10-18 (trampa 35). Si no se ha regenerado, el job de despliegue sigue
@@ -69,8 +73,8 @@ fallando en `supabase link`.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Hecho y en uso** |
 
-Verificación actual: `supabase db reset` aplica **25 migraciones** limpias,
-`./scripts/probar_local.sh` da **200/200**, `flutter test` **551**,
+Verificación actual: `supabase db reset` aplica **29 migraciones** limpias,
+`./scripts/probar_local.sh` da **204/204**, `flutter test` **567**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**

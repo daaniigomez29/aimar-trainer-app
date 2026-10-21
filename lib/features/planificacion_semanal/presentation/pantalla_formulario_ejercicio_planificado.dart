@@ -60,7 +60,12 @@ class _EstadoFormularioEjercicioPlanificado
     final previo = widget.ejercicioPlanificado;
     _ejercicio = previo?.ejercicio;
     _orden = TextEditingController(
-      text: (previo?.orden ?? widget.bloque.ejercicios.length + 1).toString(),
+      text:
+          (previo?.orden ??
+                  siguientePosicion(
+                    widget.bloque.ejercicios.map((e) => e.orden),
+                  ))
+              .toString(),
     );
     _descanso = TextEditingController(
       text: previo?.descansoPlanificadoSeg?.toString() ?? '',

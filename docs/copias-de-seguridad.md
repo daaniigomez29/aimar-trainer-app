@@ -145,7 +145,8 @@ foto dio `501 NotImplemented` en el primer intento y se copió bien en el
 segundo. La pasada con **depurar** lo aclaró: el `PUT` a R2 da 200, R2 devuelve
 un `X-Amz-Version-Id`, y rclone 1.60 comprueba lo subido con un `HEAD
 ?versionId=...` que R2 no admite. Se apaga esa comprobación con `no_head` en el
-remoto de R2. La integridad la cubre `cryptcheck`.
+remoto de R2. La integridad la cubre `cryptcheck`, comprobado contra R2 de
+verdad el mismo día ("0 differences found").
 
 ## Restaurar
 
@@ -172,8 +173,26 @@ no restaura el día que hace falta, no.
 
 ### Los archivos de Storage
 
-Con rclone (`winget install Rclone.Rclone`) y la misma configuración que el
-workflow, por variables de entorno:
+**Para el ensayo, después de `restaurar_copia.sh`:**
+
+```bash
+./scripts/restaurar_storage.sh
+```
+
+Pide las credenciales de R2 y la contraseña y la sal de `crypt` (las que no
+estén en variables de entorno, sin mostrarlas), sube las fotos a tu Storage
+local y comprueba con `cryptcheck` que cada una es idéntica a la copia, y que
+no falta ninguna. Necesita rclone (`winget install Rclone.Rclone`).
+
+**Trampa cazada en el primer ensayo (2026-10-21):** el Storage de Supabase
+responde al listado desde la tabla `storage.objects`. Después de restaurar la
+base, esa tabla ya trae cada foto con su tamaño y su fecha, y un `rclone copy`
+normal las da por presentes y **no sube ninguna**: las fotos siguen en blanco
+sin un solo error. Por eso el script usa `--no-check-dest`, y hay que usarlo
+siempre que se suban fotos después de restaurar una base.
+
+Para mirar o bajar fotos a mano, con la misma configuración que el workflow,
+por variables de entorno:
 
 ```bash
 export RCLONE_CONFIG_R2_TYPE=s3 RCLONE_CONFIG_R2_PROVIDER=Cloudflare
@@ -193,9 +212,9 @@ rclone ls cifrado:storage-historico
 rclone copy cifrado:storage-historico/AAAA-MM-DD/fotos-progreso ./recuperadas
 ```
 
-Para subirlas a un proyecto, añadir un remoto `supabase` con las variables
-`RCLONE_CONFIG_SUPABASE_*` del workflow y hacer `rclone copy` de
-`cifrado:storage/<bucket>` a `supabase:<bucket>`.
+Para subirlas a un proyecto: `restaurar_storage.sh` con las variables
+`STORAGE_S3_*` del proyecto de destino definidas (ver la cabecera del script).
+A mano, siempre con `--no-check-dest` (ver la trampa de arriba).
 
 Comprobado el 2026-10-19 contra el Storage local, con una carpeta en lugar de
 R2: los nombres salen cifrados, ningún contenido en claro, una foto borrada se
@@ -223,7 +242,9 @@ proyecto:
    `data.sql` sale de descifrar la copia:
    `age -d -i aimar-copias.age.txt bd-...tar.gz.age | tar -xz`.
 4. Si faltan los buckets, crearlos con `supabase seed buckets` (salen de
-   `config.toml`). Después, subir los archivos con rclone (arriba).
+   `config.toml`). Después, subir los archivos con `restaurar_storage.sh` y las
+   variables `STORAGE_S3_*` del proyecto nuevo. **Con `--no-check-dest`**, que
+   el script ya pone: tras el paso 3, un `copy` normal no subiría ninguna foto.
 5. Volver a poner lo que no está en la copia: secretos de Vault y de las Edge
    Functions, configuración de Auth, desplegar las funciones, y cambiar
    `SUPABASE_URL`/`SUPABASE_PUBLISHABLE_KEY` en Vercel y los secretos del CI.

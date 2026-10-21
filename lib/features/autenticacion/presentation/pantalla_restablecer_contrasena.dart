@@ -47,12 +47,18 @@ class _EstadoPantallaRestablecerContrasena
     super.dispose();
   }
 
-  Future<void> _enviar() => ref
-      .read(controladorRestablecerContrasenaProvider.notifier)
-      .establecerContrasena(
-        contrasena: _contrasena.text,
-        repeticion: _repeticion.text,
-      );
+  /// Mismo motivo que en `PantallaLogin._enviar`: sin foco y sin desactivar los
+  /// campos durante la peticion, el motor web no tiene que desmontar un
+  /// `<input>` enfocado, que en el login dejaba el movil sin teclado.
+  Future<void> _enviar() {
+    FocusScope.of(context).unfocus();
+    return ref
+        .read(controladorRestablecerContrasenaProvider.notifier)
+        .establecerContrasena(
+          contrasena: _contrasena.text,
+          repeticion: _repeticion.text,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +117,7 @@ class _EstadoPantallaRestablecerContrasena
         TextField(
           key: const Key('campo_contrasena'),
           controller: _contrasena,
-          enabled: !estado.enCurso,
+          readOnly: estado.enCurso,
           obscureText: true,
           autofillHints: const [AutofillHints.newPassword],
           textInputAction: TextInputAction.next,
@@ -125,7 +131,7 @@ class _EstadoPantallaRestablecerContrasena
         TextField(
           key: const Key('campo_repeticion'),
           controller: _repeticion,
-          enabled: !estado.enCurso,
+          readOnly: estado.enCurso,
           obscureText: true,
           autofillHints: const [AutofillHints.newPassword],
           textInputAction: TextInputAction.done,

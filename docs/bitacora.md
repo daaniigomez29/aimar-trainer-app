@@ -2794,3 +2794,137 @@ recuperada byte a byte, noches sin cambios sin subidas.
 
 - Tras el push, otra pasada con "depurar": tiene que salir el `PUT` con 200 y
   ningun 501. Despues, una normal, para ver `cryptcheck` en verde contra R2.
+- **Comprobado contra R2 de verdad**: tras el arreglo, la verificacion sale en
+  verde con "0 differences found". `cryptcheck` funciona con R2 y las fotos
+  copiadas son identicas a las de Supabase.
+- Sigue pendiente el **primer ensayo de restauracion con una copia real**:
+  descargar una `bd-...tar.gz.age` de R2 y pasarla por
+  `scripts/restaurar_copia.sh`. Hasta ahora solo se ha restaurado una copia
+  sacada de la base local.
+- **`restaurar_copia.sh` fallaba en Windows al descifrar** ("El sistema no puede
+  encontrar la ruta especificada"). El script apaga la conversion de rutas de
+  Git Bash (`MSYS_NO_PATHCONV=1`, por `docker cp`), y el `age` de winget es un
+  ejecutable nativo de Windows: recibia `/c/Users/...` sin convertir. En el
+  ensayo del 19 no salio porque se uso un `age` dentro de Docker que traducia
+  las rutas el solo. Ahora las rutas que reciben programas nativos pasan por
+  `ruta_nativa` (`cygpath -w` si existe). Comprobado con el `age` de winget: una
+  copia cifrada y descifrada con esas rutas sale intacta.
+
+**Hecho (ensayo completo de restauracion con una copia real):**
+
+- **Base de datos**: copia real de R2 (`bd-2026-10-21`) descifrada y cargada en
+  local con `restaurar_copia.sh`. Bien.
+- **Fotos**: `scripts/restaurar_storage.sh` (nuevo) sube los archivos de R2 al
+  Storage local y comprueba con `cryptcheck` que cada uno es identico a la
+  copia, descargandolo. Resultado: "Todo correcto", 0 diferencias en los dos
+  buckets (3 fotos de progreso y 140 imagenes de ejercicios), y las imagenes se
+  ven en la app local.
+- Con esto, la cadena entera esta probada de verdad: copia nocturna, R2,
+  descifrado y restauracion de la base y de las fotos.
+
+**Corregido (cazado por el ensayo):**
+
+- **Tras restaurar la base, `rclone copy` no subia ninguna foto, sin dar
+  error.** El Storage de Supabase responde al listado desde `storage.objects`,
+  no desde los archivos; la base restaurada ya traia las 143 fichas con su
+  tamano y su fecha, y rclone las dio por subidas. Las fotos salian en blanco.
+  **El procedimiento de desastre de la guia tenia el mismo fallo.** Arreglado
+  con `--no-check-dest` en el script y en la guia; reproducido y comprobado
+  antes en local (ficha sin archivo: GET 500; con `--no-check-dest`: se sube y
+  se descarga identica).
+- La primera version del script tenia una "comprobacion del indice" que no
+  servia: comparaba `storage.objects` con un listado que sale de esa misma
+  tabla. Quitada; la comprobacion buena es `cryptcheck`, que descarga.
+- La comprobacion guardaba la salida de rclone y se quedaba minutos callada
+  mientras reintentaba. Ahora muestra la salida en el momento, con reintentos
+  cortos y tiempos maximos.
+
+**Pendiente / notas:**
+
+- `supabase db reset` en local tras el ensayo, para quitar los datos y fotos
+  reales de los clientes.
+- Proximo ensayo: dentro de 3 meses o tras un cambio grande de esquema.
+- Sin ensayar la restauracion en un **proyecto nuevo** de Supabase.
+- winget instala rclone 1.75 en local y el workflow usa el 1.60 de apt. El
+  ensayo funciono con el 1.75; si algun dia algo se comporta distinto en local
+  y en CI, empezar por ahi.
+
+**Corregido (errores vistos en produccion):**
+
+- **No se podia anadir un ejercicio a un bloque tras quitar uno.** Aimar quito
+  el 6.o de 7: quitar no renumera, quedaban las posiciones 1-5 y 7, y la app
+  proponia "cuantos hay + 1" = 7, ocupada. Pasaba en cuatro sitios: el
+  formulario de ejercicio, el "+" del panel, y el formulario de bloque (su
+  posicion por defecto y el selector). Ahora todos usan `siguientePosicion`
+  (`datos_planificacion.dart`): la mas alta + 1. Sin migracion. Tests: la
+  funcion, y el caso de Aimar en el panel (propone la 8).
+- **"Kg por lado" en movil** iba al lado del nombre y lo dejaba sin sitio.
+  Ahora, por debajo de `anchoEscritorio`, va debajo del nombre; en escritorio
+  sigue al lado. Tests de los dos casos.
+- `flutter test` **567**, analyze y format limpios.
+
+**Pendiente / notas:**
+
+- **Quedan huecos en las posiciones**: el arreglo evita el choque, pero no
+  renumera. En bloques se ve ("BLOQUE 1, BLOQUE 3", tambien en la vista del
+  cliente). Y `aplicar_pack_a_bloque` calcula la posicion con `count(*)`, asi
+  que aplicar un pack a un bloque con huecos tambien choca. Propuesta pendiente
+  de OK: migracion que renumere al borrar, corrija los huecos que ya hay y haga
+  que la RPC use `max(orden)`.
+- **Push en produccion**: "Vapid subject is not a valid URL. prueba@gmail.com".
+  El secreto `VAPID_SUBJECT` de las Edge Functions tiene que ser una URL
+  (`mailto:...`). Arreglo de configuracion pendiente (lo hace Daniel). Mientras,
+  el correo sigue de respaldo.
+
+**Hecho (renumerado al borrar, con OK de Daniel):**
+
+- Migracion `20261021090000_renumerar_al_borrar.sql`: al quitar un ejercicio de
+  un bloque o un bloque de una sesion, los demas se renumeran solos (triggers
+  por sentencia que llaman a `renumerar_ejercicios_del_bloque` y
+  `renumerar_bloques_de_la_sesion`). Corrige una vez los huecos que ya hay en
+  produccion, como el bloque de Aimar. `aplicar_pack_a_bloque` pasa a
+  `max(orden)`. Las sesiones no se renumeran, a proposito.
+- Diseno corregido antes de probar: con las funciones cerradas a la app
+  (`revoke from public`), un trigger normal no habria podido llamarlas, porque
+  corre con el rol de quien borra. Los triggers son `security definer`.
+- Probada contra local como el entrenador real, en 9 casos (ver
+  `sql-schema.md`), y 4 comprobaciones nuevas en `probar_local.sh` por la API:
+  quitar el primero deja 1,2; cabe uno en "cuantos hay + 1"; el cliente recibe
+  403 al llamar al renumerado.
+
+**Corregido:**
+
+- `probar_local.sh` tenia una comprobacion rota desde el 19: "Cardio con
+  minutos" insertaba en la posicion 2, que ya ocupaba "Cardio SIN minutos" desde
+  que esa se acepta (`20261019090100`): 409. Ahora usa la 3.
+
+**Pendiente / notas:**
+
+- `probar_local.sh` **204/204**, **29 migraciones** limpias, `flutter test`
+  **567**.
+- Migracion sin desplegar: la aplica el CI en el siguiente push a `dev`.
+- Push: falta cambiar `VAPID_SUBJECT` a `mailto:...` en produccion. Sin
+  decidir si se endurece la Edge Function para aceptar un correo sin `mailto:`.
+
+**Corregido (login sin teclado en el movil):**
+
+- Con la contrasena **visible**, fallar el login dejaba el movil sin teclado:
+  tocar los campos ya no lo abria. Con la contrasena oculta no pasaba. Causa
+  probable (no se puede reproducir el teclado del navegador en un test): al
+  pulsar Acceder el campo seguia enfocado y la peticion lo desactivaba
+  (`enabled: !enCurso`); desactivar un campo enfocado obliga al motor web a
+  desmontar su `<input>` a la fuerza, y visible es de tipo `text` en vez de
+  `password`.
+- Arreglo en `pantalla_login.dart` y, por el mismo patron, en
+  `pantalla_restablecer_contrasena.dart`: se quita el foco antes de enviar y,
+  durante la peticion, los campos pasan a `readOnly` en vez de desactivarse.
+- Test nuevo: contrasena visible, enviar desde el teclado, durante la peticion
+  el campo esta sin foco, de solo lectura y no desactivado; tras el fallo,
+  tocarlo lo vuelve a enfocar. Comprobado que falla con el codigo anterior.
+
+**Pendiente / notas:**
+
+- **Probarlo en el movil**, que es donde se veia: contrasena visible, fallar y
+  tocar otra vez el campo.
+- `VAPID_SUBJECT` ya cambiado por Daniel a `mailto:...`: la Edge Function no se
+  toca.

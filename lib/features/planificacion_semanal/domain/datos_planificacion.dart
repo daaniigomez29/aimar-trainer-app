@@ -487,6 +487,18 @@ ErrorValidacion? validarReordenacion({
   return null;
 }
 
+/// La posicion que le toca a un elemento nuevo al final: **la mas alta + 1**, no
+/// "cuantos hay + 1".
+///
+/// POR QUE (2026-10-21): quitar un ejercicio o un bloque no renumera los demas,
+/// asi que puede haber huecos. Con 7 ejercicios, quitar el 6.o deja 1-5 y 7;
+/// "cuantos hay + 1" daba 7, que sigue ocupado, y el indice unico de
+/// `(bloque_id, orden)` rechazaba el ejercicio nuevo. Le paso a Aimar en
+/// produccion.
+int siguientePosicion(Iterable<int> ordenes) =>
+    ordenes.fold<int>(0, (maximo, orden) => orden > maximo ? orden : maximo) +
+    1;
+
 /// Aplica un movimiento a una lista: saca el elemento de [desde] y lo mete en
 /// [hasta], que es su posicion **final**.
 ///
