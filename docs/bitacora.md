@@ -2928,3 +2928,32 @@ recuperada byte a byte, noches sin cambios sin subidas.
   tocar otra vez el campo.
 - `VAPID_SUBJECT` ya cambiado por Daniel a `mailto:...`: la Edge Function no se
   toca.
+
+### 2026-10-25
+
+**Corregido:**
+
+- **Un dia nuevo no ensenaba "la ultima vez" de ningun ejercicio.** Aimar
+  planifico 4 dias a un cliente cuya semana anterior tenia 3, y en el Dia 4 no
+  salia ninguna referencia; el mismo ejercicio en el Dia 3, si. Causa: sin Dia 4
+  en la semana anterior, `referenciasDelDia` devolvia un `const {}`, y
+  `referenciasDeSesion` le hacia `removeWhere`, que **lanza** sobre un mapa
+  constante ("Cannot modify unmodifiable map"). El calculo moria antes de llegar
+  al historico, y la pantalla, que trata el error de esa ayuda como "no hay
+  nada" (`.value ?? {}`), dejaba el dia en blanco sin avisar.
+- Arreglo: `referenciasDelDia` devuelve un mapa normal tambien sin sesion, y
+  `referenciasDeSesion` filtra al copiar, sin modificar lo que recibe.
+- Antes de encontrarlo se descartaron, con datos de produccion: que faltara
+  `fecha_realizada` (el historico del cliente tiene 102 filas para esos
+  ejercicios) y que la consulta fallara por tiempo (14 ms, todo con 200).
+- Tests: el recorrido de Aimar (semana anterior de 3 dias, Dia 4 abierto vacio,
+  anadir un ejercicio) y un control con el Dia 4 ya relleno; los dos fallaban
+  antes del arreglo. Mas uno de dominio: el mapa vacio se puede modificar.
+- `flutter test` **571**, analyze y format limpios.
+
+**Pendiente / notas:**
+
+- El error estuvo oculto porque la pantalla se traga los fallos de las
+  referencias. Se valoro registrarlo y ensenar un aviso; Daniel decidio que no
+  hace falta, con el arreglo basta.
+- Sin desplegar ni commitear.

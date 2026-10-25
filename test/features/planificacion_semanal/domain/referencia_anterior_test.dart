@@ -207,6 +207,13 @@ void main() {
     test('si aquella semana no tenia ese Día N, no hay nada', () {
       expect(referenciasDelDia(anterior: semanaPasada(), orden: 3), isEmpty);
     });
+
+    // Antes devolvia `const {}`, y quien lo filtraba con `removeWhere` reventaba:
+    // el Dia 4 de una semana nueva se quedaba sin referencias (2026-10-25).
+    test('sin ese Día N, el mapa vacío se puede modificar', () {
+      final referencias = referenciasDelDia(anterior: semanaPasada(), orden: 3);
+      expect(() => referencias.removeWhere((_, _) => true), returnsNormally);
+    });
   });
 
   group('comoPlanificadas (el boton de copiar)', () {

@@ -72,10 +72,13 @@ Map<String, ReferenciaAnterior> referenciasDelDia({
   required PlanningSemanal anterior,
   required int orden,
 }) {
-  final sesion = anterior.sesionNumero(orden);
-  if (sesion == null) return const {};
-
   final referencias = <String, ReferenciaAnterior>{};
+  // Mapa normal tambien cuando no hay sesion, no `const {}`: quien lo reciba
+  // puede querer filtrarlo, y un mapa constante lanza al modificarlo (ver
+  // `referenciasDeSesion`).
+  final sesion = anterior.sesionNumero(orden);
+  if (sesion == null) return referencias;
+
   for (final bloque in sesion.bloques) {
     for (final ejercicio in bloque.ejercicios) {
       final series = [...ejercicio.seriesRealizadas]
