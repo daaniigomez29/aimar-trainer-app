@@ -110,7 +110,7 @@ final class ReferenciasDeSesionProvider
 }
 
 String _$referenciasDeSesionHash() =>
-    r'2f70c0e5c78591ed8daf0fa5f68f140cb72e76bd';
+    r'46a678a80cd53d6d77a9e309407116acb717db52';
 
 /// Lo que el cliente hizo la ultima vez en cada ejercicio del Dia [orden], para
 /// que el entrenador planifique mirandolo.

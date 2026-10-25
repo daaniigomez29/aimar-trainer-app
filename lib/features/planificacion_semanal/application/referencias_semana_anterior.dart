@@ -54,10 +54,19 @@ Future<Map<String, ReferenciaAnterior>> referenciasDeSesion(
     if (anterior != null) {
       final completo = await repositorio.obtenerPlanningCompleto(anterior.id);
       if (completo case Success(valor: final semanaPasada)) {
-        referencias.addAll(
-          referenciasDelDia(anterior: semanaPasada, orden: orden)
-            ..removeWhere((id, _) => !ejerciciosDelDia.contains(id)),
-        );
+        // Se filtra al copiar, sin tocar el mapa que devuelve `referenciasDelDia`.
+        //
+        // POR QUE (2026-10-25): antes se hacia `..removeWhere(...)` sobre ese
+        // mapa, y cuando la semana anterior no tenia ese dia (la nueva tiene 4 y
+        // la anterior 3), el mapa era un `const {}`: modificarlo lanzaba
+        // "Cannot modify unmodifiable map", el calculo moria antes de llegar al
+        // historico y el Dia 4 salia sin ninguna referencia. Le paso a Aimar.
+        for (final MapEntry(:key, :value) in referenciasDelDia(
+          anterior: semanaPasada,
+          orden: orden,
+        ).entries) {
+          if (ejerciciosDelDia.contains(key)) referencias[key] = value;
+        }
       }
     }
   }
