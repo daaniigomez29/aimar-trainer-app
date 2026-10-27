@@ -24,7 +24,7 @@ void main() {
   final pack = Pack(
     id: 'p-1',
     nombre: 'Torso A',
-    tipo: TipoEjercicio.fuerza,
+    tipos: const [TipoEjercicio.fuerza],
     creadoEn: DateTime.utc(2026, 10, 19),
   );
 
@@ -47,7 +47,7 @@ void main() {
   group('crear', () {
     test('un nombre vacío ni llega al repositorio', () async {
       final resultado = await controlador().crear(
-        const DatosPack(nombre: '  ', tipo: TipoEjercicio.fuerza),
+        const DatosPack(nombre: '  ', tipos: {TipoEjercicio.fuerza}),
       );
 
       expect(resultado.esFallo, isTrue);
@@ -64,7 +64,7 @@ void main() {
       await contenedor.read(listaPacksProvider.future);
 
       final resultado = await controlador().crear(
-        const DatosPack(nombre: 'Torso A', tipo: TipoEjercicio.fuerza),
+        const DatosPack(nombre: 'Torso A', tipos: {TipoEjercicio.fuerza}),
       );
 
       expect(resultado.esExito, isTrue);
@@ -77,7 +77,7 @@ void main() {
           .thenAnswer((_) async => const Failure(ErrorConexion()));
 
       final resultado = await controlador().crear(
-        const DatosPack(nombre: 'Torso A', tipo: TipoEjercicio.fuerza),
+        const DatosPack(nombre: 'Torso A', tipos: {TipoEjercicio.fuerza}),
       );
 
       expect(resultado.esFallo, isTrue);

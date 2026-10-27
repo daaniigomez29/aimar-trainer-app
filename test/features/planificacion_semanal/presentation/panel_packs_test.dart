@@ -60,7 +60,7 @@ void main() {
       Pack(
         id: id,
         nombre: nombre,
-        tipo: TipoEjercicio.fuerza,
+        tipos: const [TipoEjercicio.fuerza],
         creadoEn: DateTime.utc(2026, 10, 19),
         ejercicios: [
           for (var i = 1; i <= cuantos; i++)

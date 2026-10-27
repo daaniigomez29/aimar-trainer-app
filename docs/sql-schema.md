@@ -881,10 +881,13 @@ ahorrarse tres tablas que no comparten ni la mitad de las columnas.
 create table packs (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
-  tipo tipo_ejercicio not null,
+  -- Etiquetas de tipo, solo descriptivas (20261027090000). Hasta entonces era
+  -- `tipo tipo_ejercicio not null` y mandaba sobre los ejercicios.
+  tipos tipo_ejercicio[] not null,
   creado_en timestamptz not null default now(),
 
-  constraint nombre_no_vacio check (length(trim(nombre)) > 0)
+  constraint nombre_no_vacio check (length(trim(nombre)) > 0),
+  constraint al_menos_un_tipo check (cardinality(tipos) >= 1)
 );
 
 -- Sin dos packs con el mismo nombre, mirando igual mayusculas y minusculas.
@@ -948,60 +951,47 @@ borrar un pack es físico y se lleva sus ejercicios y sus series en cascada. Lo
 ya planificado a partir de él no se toca, porque se copió. Ni el cliente ni el
 administrador tienen política, así que no ven ningún pack.
 
-**El tipo del pack manda** (decisión del 2026-10-19: tipo estricto). Dos
-triggers lo imponen:
+**Varios tipos, solo descriptivos** (migración `20261027090000_packs_varios_tipos.sql`).
+Del 2026-10-19 al 27 el tipo era uno y mandaba: un trigger rechazaba los
+ejercicios de otro tipo y el tipo no se podía cambiar. Desde el 27, a petición
+de Aimar (packs que mezclan cardio y fuerza) y por decisión de Daniel, las
+etiquetas son varias, al menos una, y **no limitan** qué ejercicios admite el
+pack. Lo que sigue igual es la exclusión de series y minutos, ahora según el
+tipo **del ejercicio**:
 
 ```sql
-create function validar_ejercicio_del_pack() returns trigger
+-- Sin repetidos y en el orden del enum, lo mande quien lo mande (un `check` no
+-- admite subconsultas).
+create function normalizar_tipos_del_pack() returns trigger
   language plpgsql
   set search_path = public, pg_temp
 as $$
-declare
-  v_tipo_pack tipo_ejercicio;
-  v_tipo_ejercicio tipo_ejercicio;
 begin
-  select tipo into v_tipo_pack from packs where id = new.pack_id;
-  select tipo into v_tipo_ejercicio from ejercicios where id = new.ejercicio_id;
-
-  if v_tipo_ejercicio is null then
-    raise exception 'El ejercicio % no existe', new.ejercicio_id;
-  end if;
-
-  if v_tipo_ejercicio <> v_tipo_pack then
-    raise exception
-      'Este pack es de % y el ejercicio es de %', v_tipo_pack, v_tipo_ejercicio
-      using errcode = 'check_violation';
-  end if;
-
-  -- Los minutos son de lo que va por minutos. Aqui pueden faltar.
-  if not planifica_con_minutos(v_tipo_pack) and new.minutos is not null then
-    raise exception 'Un pack de % no lleva minutos, lleva series', v_tipo_pack
-      using errcode = 'check_violation';
-  end if;
-
+  new.tipos := array(select distinct t from unnest(new.tipos) as t order by t);
   return new;
 end;
 $$;
 
-create trigger comprobar_ejercicio_del_pack
-  before insert or update on pack_ejercicios
-  for each row execute function validar_ejercicio_del_pack();
+create trigger normalizar_tipos_del_pack
+  before insert or update of tipos on packs
+  for each row execute function normalizar_tipos_del_pack();
 
--- Y al reves: nada de series en un pack de cardio.
-create function validar_serie_del_pack() returns trigger
+create or replace function validar_ejercicio_del_pack() returns trigger
   language plpgsql
   set search_path = public, pg_temp
 as $$
 declare
   v_tipo tipo_ejercicio;
 begin
-  select p.tipo into v_tipo
-  from pack_ejercicios pe
-  join packs p on p.id = pe.pack_id
-  where pe.id = new.pack_ejercicio_id;
+  select tipo into v_tipo from ejercicios where id = new.ejercicio_id;
 
-  if planifica_con_minutos(v_tipo) then
-    raise exception 'Un pack de % no lleva series, lleva minutos', v_tipo
+  if v_tipo is null then
+    raise exception 'El ejercicio % no existe', new.ejercicio_id;
+  end if;
+
+  -- Cualquier tipo vale. Los minutos, solo en lo que va por minutos.
+  if not planifica_con_minutos(v_tipo) and new.minutos is not null then
+    raise exception 'Un ejercicio de % no lleva minutos, lleva series', v_tipo
       using errcode = 'check_violation';
   end if;
 
@@ -1009,13 +999,39 @@ begin
 end;
 $$;
 
-create trigger comprobar_serie_del_pack
-  before insert or update on pack_series
-  for each row execute function validar_serie_del_pack();
+create or replace function validar_serie_del_pack() returns trigger
+  language plpgsql
+  set search_path = public, pg_temp
+as $$
+declare
+  v_tipo tipo_ejercicio;
+begin
+  select e.tipo into v_tipo
+  from pack_ejercicios pe
+  join ejercicios e on e.id = pe.ejercicio_id
+  where pe.id = new.pack_ejercicio_id;
+
+  if planifica_con_minutos(v_tipo) then
+    raise exception 'Un ejercicio de % no lleva series, lleva minutos', v_tipo
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$$;
 ```
 
-Por eso la app no deja cambiar el tipo de un pack al editarlo: dejaría dentro
-ejercicios que no encajan.
+Los triggers `comprobar_ejercicio_del_pack` (en `pack_ejercicios`) y
+`comprobar_serie_del_pack` (en `pack_series`) siguen siendo los de
+`20261019090000`; solo cambian las funciones. Al cambiar un ejercicio de
+fuerza por uno de cardio, `guardar_ejercicio_del_pack` borra sus series antes
+de insertar las nuevas, así que no se quedan series colgando.
+
+Probado contra local como el entrenador: etiquetas repetidas y desordenadas,
+pack sin etiquetas, cambiar etiquetas al editar, ejercicios de tipos que no
+están en las etiquetas, series en un cardio y minutos en una fuerza (rechazados),
+editar de fuerza a cardio, aplicar un pack mixto a un bloque, y los packs
+existentes convertidos (`tipo` → `tipos = array[tipo]`).
 
 ### `guardar_ejercicio_del_pack` (RPC)
 

@@ -6,10 +6,10 @@ import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
 import 'package:aimar_trainer_app/features/packs/presentation/dialogos_pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/widgets/tipos_del_pack.dart';
 
 /// Los packs del entrenador (RF-25).
 ///
@@ -105,15 +105,7 @@ class _FilaPack extends StatelessWidget {
       onTap: () => context.go(Rutas.packConcreto(pack.id)),
       hijo: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: pack.tipo.color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(pack.tipo.icono, size: 20, color: pack.tipo.color),
-          ),
+          IconoDelPack(tipos: pack.tipos),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -127,7 +119,7 @@ class _FilaPack extends StatelessWidget {
                       // que mas vale decirlo aqui que al intentarlo.
                       ? 'Sin ejercicios · no se puede aplicar'
                       : '$cuantos ${cuantos == 1 ? 'ejercicio' : 'ejercicios'} '
-                            '· ${pack.tipo.etiqueta}',
+                            '· ${etiquetaDeTipos(pack.tipos)}',
                   style: textos.bodySmall?.copyWith(
                     color: cuantos == 0 ? Tokens.secundario : null,
                   ),

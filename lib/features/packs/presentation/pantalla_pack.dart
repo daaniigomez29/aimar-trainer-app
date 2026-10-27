@@ -6,11 +6,11 @@ import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
 import 'package:aimar_trainer_app/features/packs/presentation/dialogos_pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/widgets/tipos_del_pack.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/lista_ordenable.dart';
 
 /// La ficha de un pack: sus ejercicios, en orden, con lo que tengan preparado.
@@ -97,7 +97,7 @@ class _Contenido extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Icon(pack.tipo.icono, size: 22, color: pack.tipo.color),
+            IconoDelPack(tipos: pack.tipos, lado: 34),
             const SizedBox(width: 10),
             Expanded(child: Text(pack.nombre, style: textos.headlineSmall)),
           ],
@@ -108,7 +108,7 @@ class _Contenido extends ConsumerWidget {
               ? 'Sin ejercicios. Añade el primero para poder usarlo.'
               : '${ejercicios.length} '
                     '${ejercicios.length == 1 ? 'ejercicio' : 'ejercicios'} · '
-                    '${pack.tipo.etiqueta}',
+                    '${etiquetaDeTipos(pack.tipos)}',
           style: textos.bodySmall?.copyWith(
             color: ejercicios.isEmpty ? Tokens.secundario : null,
           ),

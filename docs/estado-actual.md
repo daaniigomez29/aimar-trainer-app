@@ -43,7 +43,13 @@ una copia real: `scripts/restaurar_copia.sh` (base) y
 `scripts/restaurar_storage.sh` (fotos). Proximo ensayo hacia enero de 2027 o
 tras un cambio grande de esquema. Detalle en `docs/copias-de-seguridad.md`.
 
-**Migracion nueva sin desplegar** (2026-10-21):
+**Migracion nueva sin desplegar** (2026-10-27):
+`20261027090000_packs_varios_tipos.sql`. Un pack puede mezclar tipos de
+ejercicio y sus etiquetas de tipo pasan a ser varias y solo descriptivas
+(`packs.tipo` → `packs.tipos[]`). **Desplegar la base y la app juntas**: la app
+anterior lee `tipo`, que deja de existir. Verificada contra local (8 casos).
+
+**Migracion del 2026-10-21, probablemente ya desplegada**:
 `20261021090000_renumerar_al_borrar.sql`. Al quitar un ejercicio de un bloque o
 un bloque de una sesion, los demas se renumeran solos; corrige una vez los
 huecos que ya hay en produccion, y `aplicar_pack_a_bloque` pasa a usar la

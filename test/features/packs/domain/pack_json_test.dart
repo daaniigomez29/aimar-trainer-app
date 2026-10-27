@@ -12,7 +12,7 @@ void main() {
   Map<String, dynamic> filaDeLaBase() => {
     'id': 'p-1',
     'nombre': 'Torso A',
-    'tipo': 'fuerza',
+    'tipos': ['fuerza', 'cardio'],
     'creado_en': '2026-10-19T10:00:00.000Z',
     'pack_ejercicios': [
       {
@@ -73,7 +73,7 @@ void main() {
     final pack = Pack.fromJson(filaDeLaBase());
 
     expect(pack.nombre, 'Torso A');
-    expect(pack.tipo, TipoEjercicio.fuerza);
+    expect(pack.tipos, [TipoEjercicio.fuerza, TipoEjercicio.cardio]);
     expect(pack.ejercicios, hasLength(2));
     expect(pack.ejercicios.first.ejercicio?.nombre, 'Dominadas');
     expect(pack.ejercicios.first.series, hasLength(2));
