@@ -19,11 +19,11 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/clientes/application/controlador_clientes.dart';
 import 'package:aimar_trainer_app/features/clientes/domain/cliente.dart';
 import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/widgets/tipos_del_pack.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
@@ -2152,15 +2152,7 @@ class _FilaPackDelPanel extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       hijo: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: pack.tipo.color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(pack.tipo.icono, size: 18, color: pack.tipo.color),
-          ),
+          IconoDelPack(tipos: pack.tipos, lado: 34),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -2171,7 +2163,7 @@ class _FilaPackDelPanel extends StatelessWidget {
                   cuantos == 0
                       ? 'Sin ejercicios'
                       : '$cuantos ${cuantos == 1 ? 'ejercicio' : 'ejercicios'}'
-                            ' · ${pack.tipo.etiqueta}',
+                            ' · ${etiquetaDeTipos(pack.tipos)}',
                   style: textos.bodySmall?.copyWith(
                     color: cuantos == 0 ? Tokens.secundario : null,
                   ),

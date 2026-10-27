@@ -9,12 +9,12 @@ import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/packs/application/controlador_packs.dart';
 import 'package:aimar_trainer_app/features/packs/domain/datos_pack.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
+import 'package:aimar_trainer_app/features/packs/presentation/widgets/tipos_del_pack.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/widgets/fila_de_serie.dart';
 
@@ -26,9 +26,10 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/wi
 /// 1. **Lo preparado es opcional.** Se puede guardar el ejercicio sin series y
 ///    sin minutos: lo que falte se rellena al planificar. Por eso la tabla de
 ///    series empieza vacia, con un boton para anadir la primera.
-/// 2. **Solo se eligen ejercicios del tipo del pack**, que es lo que impone el
-///    trigger de la base. El filtro se abre ya restringido a ese tipo, asi que
-///    no se puede elegir algo que luego se rechace al guardar.
+/// 2. **Vale un ejercicio de cualquier tipo**, aunque no este entre las
+///    etiquetas del pack (son solo descriptivas desde el 2026-10-27). Si lleva
+///    series o minutos lo decide **el ejercicio elegido**: cambiar de una
+///    sentadilla a una cinta cambia la parte de abajo del formulario.
 class PantallaFormularioEjercicioPack extends ConsumerStatefulWidget {
   const PantallaFormularioEjercicioPack({
     required this.pack,
@@ -77,17 +78,6 @@ class _EstadoFormularioEjercicioPack
           ),
         ),
     ];
-
-    // El filtro se restringe al tipo del pack en cuanto se pinta: elegir un
-    // ejercicio de otro tipo acabaria en un rechazo del trigger.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(
-            filtroBibliotecaProvider(AmbitoDeFiltro.formularioPack).notifier,
-          )
-          .cambiarTipo(widget.pack.tipo);
-    });
   }
 
   @override
@@ -122,7 +112,7 @@ class _EstadoFormularioEjercicioPack
     return DatosPackEjercicio(
       packId: widget.pack.id,
       ejercicioId: ejercicio.id,
-      tipo: widget.pack.tipo,
+      tipo: ejercicio.tipo,
       orden: widget.ejercicioDelPack?.orden ?? widget.pack.siguienteOrden,
       descansoSeg: _comoEntero(_descanso.text),
       minutos: _comoDecimal(_minutos.text),
@@ -159,14 +149,14 @@ class _EstadoFormularioEjercicioPack
     return FormularioCentrado(
       seccion: SeccionDeNavegacion.packs,
       titulo: widget.esEdicion ? 'Editar ejercicio' : 'Añadir al pack',
-      subtitulo: '${widget.pack.nombre} · ${widget.pack.tipo.etiqueta}',
+      subtitulo:
+          '${widget.pack.nombre} · ${etiquetaDeTipos(widget.pack.tipos)}',
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
           AvisoEnLinea(mensaje: mensaje),
           const SizedBox(height: 16),
         ],
         _SelectorEjercicio(
-          tipo: widget.pack.tipo,
           elegido: ejercicio,
           habilitado: !estado.enCurso,
           error: estado.errorDelCampo('ejercicioId'),
@@ -177,7 +167,7 @@ class _EstadoFormularioEjercicioPack
         ),
         if (ejercicio != null) ...[
           const Divider(height: 32),
-          if (widget.pack.tipo.vaPorMinutos)
+          if (ejercicio.tipo.vaPorMinutos)
             _Minutos(
               controlador: _minutos,
               habilitado: !estado.enCurso,
@@ -230,18 +220,16 @@ class _EstadoFormularioEjercicioPack
   }
 }
 
-/// Elegir el ejercicio, con el buscador y el filtro de la biblioteca, ya
-/// restringidos al tipo del pack.
+/// Elegir el ejercicio, con el buscador y el filtro de la biblioteca. Vale
+/// cualquier tipo: el filtro de tipo esta para buscar, no para restringir.
 class _SelectorEjercicio extends ConsumerWidget {
   const _SelectorEjercicio({
-    required this.tipo,
     required this.elegido,
     required this.habilitado,
     required this.error,
     required this.onElegir,
   });
 
-  final TipoEjercicio tipo;
   final Ejercicio? elegido;
   final bool habilitado;
   final String? error;
@@ -295,12 +283,6 @@ class _SelectorEjercicio extends ConsumerWidget {
             style: textos.bodySmall?.copyWith(color: Tokens.peligro),
           ),
         ],
-        const SizedBox(height: 4),
-        Text(
-          'Solo de ${tipo.etiqueta.toLowerCase()}: todos los ejercicios de un '
-          'pack son de su tipo.',
-          style: textos.bodySmall,
-        ),
         const SizedBox(height: 8),
         FiltroDeEjercicios(
           ambito: AmbitoDeFiltro.formularioPack,
@@ -321,8 +303,7 @@ class _SelectorEjercicio extends ConsumerWidget {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'Ningún ejercicio de ${tipo.etiqueta.toLowerCase()} '
-                    'coincide con la búsqueda.',
+                    'Ningún ejercicio coincide con la búsqueda.',
                     style: textos.bodySmall,
                   ),
                 );
@@ -346,8 +327,15 @@ class _SelectorEjercicio extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(ejercicio.nombre, style: textos.titleSmall),
-                              if (ejercicio.resumenMuscular case final resumen?)
-                                Text(resumen, style: textos.bodySmall),
+                              // Con el tipo: en un pack mixto es lo que decide
+                              // si se le preparan series o minutos.
+                              Text(
+                                [
+                                  ?ejercicio.resumenMuscular,
+                                  ejercicio.tipo.etiqueta,
+                                ].join(' · '),
+                                style: textos.bodySmall,
+                              ),
                             ],
                           ),
                         ),
@@ -369,7 +357,7 @@ class _SelectorEjercicio extends ConsumerWidget {
   }
 }
 
-/// Los minutos de un pack de cardio. **Opcionales**: si no se ponen, el
+/// Los minutos de un ejercicio de cardio del pack. **Opcionales**: si no se ponen, el
 /// ejercicio llega al planning sin ellos y se rellenan alli.
 class _Minutos extends StatelessWidget {
   const _Minutos({

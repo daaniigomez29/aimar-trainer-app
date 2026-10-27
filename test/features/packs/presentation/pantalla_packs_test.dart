@@ -13,6 +13,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercici
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/estado_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/packs/data/pack_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/packs/domain/datos_pack.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
 import 'package:aimar_trainer_app/features/packs/domain/pack_repositorio.dart';
 import 'package:aimar_trainer_app/features/packs/presentation/pantalla_pack.dart';
@@ -49,13 +50,22 @@ void main() {
     ejercicio: ficha,
   );
 
-  Pack pack({List<PackEjercicio> ejercicios = const []}) => Pack(
+  Pack pack({
+    List<PackEjercicio> ejercicios = const [],
+    List<TipoEjercicio> tipos = const [TipoEjercicio.fuerza],
+  }) => Pack(
     id: 'p-1',
     nombre: 'Torso A',
-    tipo: TipoEjercicio.fuerza,
+    tipos: tipos,
     creadoEn: DateTime.utc(2026, 10, 19),
     ejercicios: ejercicios,
   );
+
+  setUpAll(() {
+    registerFallbackValue(
+      const DatosPack(nombre: 'x', tipos: {TipoEjercicio.fuerza}),
+    );
+  });
 
   setUp(() {
     repositorio = PackFalso();
@@ -231,6 +241,68 @@ void main() {
       );
 
       expect(find.text('DE BAJA'), findsOneWidget);
+    });
+  });
+
+  // Desde el 2026-10-27 un pack puede llevar varias etiquetas de tipo.
+  group('etiquetas de tipo', () {
+    testWidgets('un pack mixto se lee con sus dos tipos', (tester) async {
+      await montar(
+        tester,
+        lista: [
+          pack(
+            tipos: const [TipoEjercicio.fuerza, TipoEjercicio.cardio],
+            ejercicios: [
+              delPack('pe-1', 1, ejercicio('ej-1', 'Press banca')),
+              delPack('pe-2', 2, ejercicio('ej-2', 'Dominadas')),
+            ],
+          ),
+        ],
+      );
+
+      expect(find.text('2 ejercicios · Fuerza + Cardio'), findsOneWidget);
+    });
+
+    testWidgets('al crear se pueden elegir varios tipos', (tester) async {
+      when(() => repositorio.crear(any())).thenAnswer(
+        (_) async => Success(pack(tipos: const [TipoEjercicio.fuerza])),
+      );
+      await montar(tester, lista: const []);
+
+      await tester.tap(find.byKey(const Key('boton_nuevo_pack')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('campo_nombre_pack')),
+        'Mixto',
+      );
+      // Fuerza viene marcado; se anade Cardio.
+      await tester.tap(find.byKey(const Key('tipo_pack_cardio')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('boton_guardar_pack')));
+      await tester.pumpAndSettle();
+
+      final datos =
+          verify(() => repositorio.crear(captureAny())).captured.single
+              as DatosPack;
+      expect(datos.tipos, {TipoEjercicio.fuerza, TipoEjercicio.cardio});
+    });
+
+    testWidgets('sin ningún tipo no se guarda y lo dice', (tester) async {
+      await montar(tester, lista: const []);
+
+      await tester.tap(find.byKey(const Key('boton_nuevo_pack')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('campo_nombre_pack')),
+        'Sin tipo',
+      );
+      await tester.tap(find.byKey(const Key('tipo_pack_fuerza')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('boton_guardar_pack')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Elige al menos un tipo para el pack.'), findsOneWidget);
+      verifyNever(() => repositorio.crear(any()));
     });
   });
 }

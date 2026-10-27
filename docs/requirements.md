@@ -41,8 +41,8 @@ demás archivos de `docs/`. Actores: **Administrador**, **Entrenador**,
 
 ### Packs de entrenamiento
 
-- **RF-25** — El entrenador crea packs: un nombre, un tipo (Fuerza, Cardio o Fortalecimiento) y un conjunto de ejercicios de la biblioteca, **todos de ese tipo**. Los packs solo los ve el entrenador.
-- **RF-25.1** — De cada ejercicio del pack puede dejar **preparadas** sus series (Fuerza y Fortalecimiento) o sus minutos (Cardio). Es opcional: un pack puede ser solo la lista de ejercicios.
+- **RF-25** — El entrenador crea packs: un nombre, una o varias etiquetas de tipo (Fuerza, Cardio, Fortalecimiento) y un conjunto de ejercicios de la biblioteca, **de cualquier tipo**: un pack puede mezclar, por ejemplo, cardio y fuerza. Las etiquetas son descriptivas y se pueden cambiar. Los packs solo los ve el entrenador. (Hasta el 2026-10-27, un solo tipo y todos los ejercicios de ese tipo.)
+- **RF-25.1** — De cada ejercicio del pack puede dejar **preparadas** sus series (Fuerza y Fortalecimiento) o sus minutos (Cardio), según el tipo de ese ejercicio. Es opcional: un pack puede ser solo la lista de ejercicios.
 - **RF-25.2** — Los ejercicios de un pack se reordenan con flechas (arriba / abajo).
 - **RF-25.3** — Un pack se aplica a un bloque de una sesión: sus ejercicios se **copian** al final del bloque con lo que tuvieran preparado. Los dados de baja se omiten y se informa de cuántos; un pack sin ejercicios no se puede aplicar.
 - **RF-25.4** — Lo copiado pertenece al planning: **editar el pack después no cambia lo ya planificado**.

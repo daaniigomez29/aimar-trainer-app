@@ -16,10 +16,11 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Pack {
 
- String get id; String get nombre;/// Mismo enum que la biblioteca, y **manda sobre sus ejercicios**: todos
-/// son de este tipo (lo impone un trigger). Es lo que decide ademas si el
-/// pack preconfigura series o minutos.
- TipoEjercicio get tipo; DateTime get creadoEn;@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> get ejercicios;
+ String get id; String get nombre;/// Etiquetas de tipo, al menos una, sin repetidos y en el orden del enum
+/// (lo normaliza un trigger). **Solo descriptivas** desde el 2026-10-27:
+/// dicen de que va el pack, pero no limitan que ejercicios admite. Si un
+/// ejercicio lleva series o minutos lo decide su propio tipo.
+ List<TipoEjercicio> get tipos; DateTime get creadoEn;@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> get ejercicios;
 /// Create a copy of Pack
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,20 +34,20 @@ $PackCopyWith<Pack> get copyWith => _$PackCopyWithImpl<Pack>(this as Pack, _$ide
 @override
 bool operator ==(Object other) {
   final _this = this as Pack;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Pack&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&(identical(other.tipo, _this.tipo) || other.tipo == _this.tipo)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn)&&const DeepCollectionEquality().equals(other.ejercicios, _this.ejercicios));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Pack&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.nombre, _this.nombre) || other.nombre == _this.nombre)&&const DeepCollectionEquality().equals(other.tipos, _this.tipos)&&(identical(other.creadoEn, _this.creadoEn) || other.creadoEn == _this.creadoEn)&&const DeepCollectionEquality().equals(other.ejercicios, _this.ejercicios));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Pack;
-  return Object.hash(runtimeType,_this.id,_this.nombre,_this.tipo,_this.creadoEn,const DeepCollectionEquality().hash(_this.ejercicios));
+  return Object.hash(runtimeType,_this.id,_this.nombre,const DeepCollectionEquality().hash(_this.tipos),_this.creadoEn,const DeepCollectionEquality().hash(_this.ejercicios));
 }
 
 @override
 String toString() {
   final _this = this as Pack;
-  return 'Pack(id: ${_this.id}, nombre: ${_this.nombre}, tipo: ${_this.tipo}, creadoEn: ${_this.creadoEn}, ejercicios: ${_this.ejercicios})';
+  return 'Pack(id: ${_this.id}, nombre: ${_this.nombre}, tipos: ${_this.tipos}, creadoEn: ${_this.creadoEn}, ejercicios: ${_this.ejercicios})';
 }
 
 
@@ -57,7 +58,7 @@ abstract mixin class $PackCopyWith<$Res>  {
   factory $PackCopyWith(Pack value, $Res Function(Pack) _then) = _$PackCopyWithImpl;
 @useResult
 $Res call({
- String id, String nombre, TipoEjercicio tipo, DateTime creadoEn,@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> ejercicios
+ String id, String nombre, List<TipoEjercicio> tipos, DateTime creadoEn,@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> ejercicios
 });
 
 
@@ -74,12 +75,12 @@ class _$PackCopyWithImpl<$Res>
 
 /// Create a copy of Pack
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nombre = null,Object? tipo = null,Object? creadoEn = null,Object? ejercicios = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? nombre = null,Object? tipos = null,Object? creadoEn = null,Object? ejercicios = null,}) {
   return _then(Pack(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
-as String,tipo: null == tipo ? _self.tipo : tipo // ignore: cast_nullable_to_non_nullable
-as TipoEjercicio,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
+as String,tipos: null == tipos ? _self.tipos : tipos // ignore: cast_nullable_to_non_nullable
+as List<TipoEjercicio>,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
 as DateTime,ejercicios: null == ejercicios ? _self.ejercicios : ejercicios // ignore: cast_nullable_to_non_nullable
 as List<PackEjercicio>,
   ));
@@ -166,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String nombre,  TipoEjercicio tipo,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String nombre,  List<TipoEjercicio> tipos,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Pack() when $default != null:
-return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios);case _:
+return $default(_that.id,_that.nombre,_that.tipos,_that.creadoEn,_that.ejercicios);case _:
   return orElse();
 
 }
@@ -187,10 +188,10 @@ return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String nombre,  TipoEjercicio tipo,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String nombre,  List<TipoEjercicio> tipos,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)  $default,) {final _that = this;
 switch (_that) {
 case _Pack():
-return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios);case _:
+return $default(_that.id,_that.nombre,_that.tipos,_that.creadoEn,_that.ejercicios);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +208,10 @@ return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String nombre,  TipoEjercicio tipo,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String nombre,  List<TipoEjercicio> tipos,  DateTime creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios)?  $default,) {final _that = this;
 switch (_that) {
 case _Pack() when $default != null:
-return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios);case _:
+return $default(_that.id,_that.nombre,_that.tipos,_that.creadoEn,_that.ejercicios);case _:
   return null;
 
 }
@@ -222,15 +223,26 @@ return $default(_that.id,_that.nombre,_that.tipo,_that.creadoEn,_that.ejercicios
 @JsonSerializable()
 
 class _Pack extends Pack {
-  const _Pack({required this.id, required this.nombre, required this.tipo, required this.creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios = const []}): _ejercicios = ejercicios,super._();
+  const _Pack({required this.id, required this.nombre, required  List<TipoEjercicio> tipos, required this.creadoEn, @JsonKey(name: 'pack_ejercicios')  List<PackEjercicio> ejercicios = const []}): _tipos = tipos,_ejercicios = ejercicios,super._();
   factory _Pack.fromJson(Map<String, dynamic> json) => _$PackFromJson(json);
 
 @override final  String id;
 @override final  String nombre;
-/// Mismo enum que la biblioteca, y **manda sobre sus ejercicios**: todos
-/// son de este tipo (lo impone un trigger). Es lo que decide ademas si el
-/// pack preconfigura series o minutos.
-@override final  TipoEjercicio tipo;
+/// Etiquetas de tipo, al menos una, sin repetidos y en el orden del enum
+/// (lo normaliza un trigger). **Solo descriptivas** desde el 2026-10-27:
+/// dicen de que va el pack, pero no limitan que ejercicios admite. Si un
+/// ejercicio lleva series o minutos lo decide su propio tipo.
+ final  List<TipoEjercicio> _tipos;
+/// Etiquetas de tipo, al menos una, sin repetidos y en el orden del enum
+/// (lo normaliza un trigger). **Solo descriptivas** desde el 2026-10-27:
+/// dicen de que va el pack, pero no limitan que ejercicios admite. Si un
+/// ejercicio lleva series o minutos lo decide su propio tipo.
+@override List<TipoEjercicio> get tipos {
+  if (_tipos is EqualUnmodifiableListView) return _tipos;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_tipos);
+}
+
 @override final  DateTime creadoEn;
  final  List<PackEjercicio> _ejercicios;
 @override@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> get ejercicios {
@@ -253,18 +265,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Pack&&(identical(other.id, id) || other.id == id)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&(identical(other.tipo, tipo) || other.tipo == tipo)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn)&&const DeepCollectionEquality().equals(other.ejercicios, _ejercicios));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Pack&&(identical(other.id, id) || other.id == id)&&(identical(other.nombre, nombre) || other.nombre == nombre)&&const DeepCollectionEquality().equals(other.tipos, _tipos)&&(identical(other.creadoEn, creadoEn) || other.creadoEn == creadoEn)&&const DeepCollectionEquality().equals(other.ejercicios, _ejercicios));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,nombre,tipo,creadoEn,const DeepCollectionEquality().hash(_ejercicios));
+    return Object.hash(runtimeType,id,nombre,const DeepCollectionEquality().hash(_tipos),creadoEn,const DeepCollectionEquality().hash(_ejercicios));
 }
 
 @override
 String toString() {
-    return 'Pack(id: $id, nombre: $nombre, tipo: $tipo, creadoEn: $creadoEn, ejercicios: $ejercicios)';
+    return 'Pack(id: $id, nombre: $nombre, tipos: $tipos, creadoEn: $creadoEn, ejercicios: $ejercicios)';
 }
 
 
@@ -275,7 +287,7 @@ abstract mixin class _$PackCopyWith<$Res> implements $PackCopyWith<$Res> {
   factory _$PackCopyWith(_Pack value, $Res Function(_Pack) _then) = __$PackCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String nombre, TipoEjercicio tipo, DateTime creadoEn,@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> ejercicios
+ String id, String nombre, List<TipoEjercicio> tipos, DateTime creadoEn,@JsonKey(name: 'pack_ejercicios') List<PackEjercicio> ejercicios
 });
 
 
@@ -292,12 +304,12 @@ class __$PackCopyWithImpl<$Res>
 
 /// Create a copy of Pack
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nombre = null,Object? tipo = null,Object? creadoEn = null,Object? ejercicios = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? nombre = null,Object? tipos = null,Object? creadoEn = null,Object? ejercicios = null,}) {
   return _then(_Pack(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,nombre: null == nombre ? _self.nombre : nombre // ignore: cast_nullable_to_non_nullable
-as String,tipo: null == tipo ? _self.tipo : tipo // ignore: cast_nullable_to_non_nullable
-as TipoEjercicio,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
+as String,tipos: null == tipos ? _self._tipos : tipos // ignore: cast_nullable_to_non_nullable
+as List<TipoEjercicio>,creadoEn: null == creadoEn ? _self.creadoEn : creadoEn // ignore: cast_nullable_to_non_nullable
 as DateTime,ejercicios: null == ejercicios ? _self._ejercicios : ejercicios // ignore: cast_nullable_to_non_nullable
 as List<PackEjercicio>,
   ));

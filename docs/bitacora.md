@@ -2957,3 +2957,40 @@ recuperada byte a byte, noches sin cambios sin subidas.
   referencias. Se valoro registrarlo y ensenar un aviso; Daniel decidio que no
   hace falta, con el arreglo basta.
 - Sin desplegar ni commitear.
+
+### 2026-10-27
+
+**Hecho (packs con varios tipos, peticion de Aimar):**
+
+- Un pack puede **mezclar tipos de ejercicio** (por ejemplo, cardio y fuerza), y
+  sus **etiquetas de tipo** pasan a ser varias, al menos una. Decision de
+  Daniel: las etiquetas son **solo descriptivas**, no limitan que ejercicios
+  admite el pack, y se pueden cambiar al editar.
+- Migracion `20261027090000_packs_varios_tipos.sql`: `packs.tipo` pasa a
+  `packs.tipos tipo_ejercicio[]` con `check (cardinality(tipos) >= 1)`; los
+  packs existentes quedan con `array[tipo]`. Un trigger normaliza las
+  etiquetas (sin repetidos, en el orden del enum). `validar_ejercicio_del_pack`
+  ya no compara con el pack, y la exclusion series/minutos pasa a decidirla el
+  tipo **del ejercicio** (en los dos triggers, con `planifica_con_minutos`).
+  `aplicar_pack_a_bloque` no cambia: ya iba ejercicio a ejercicio, y un bloque
+  admite cualquier tipo.
+- App: `Pack.tipos`, `DatosPack.tipos` con validacion "al menos uno",
+  `DatosPackEjercicio.tipo` pasa a ser el del ejercicio elegido. Dialogo con
+  chips de seleccion multiple. El formulario de ejercicio ya no restringe el
+  filtro y elige series o minutos segun el ejercicio. Nuevo widget compartido
+  `IconoDelPack` + `etiquetaDeTipos` ("Fuerza + Cardio"), que sustituye al
+  cuadrado copiado en la lista, la ficha y el panel del planning.
+- Probada contra local como el entrenador, 8 casos (ver `sql-schema.md`), y
+  convertidos los packs que habia.
+- Tests nuevos: dominio (sin tipos; orden del enum), lista y dialogo (pack
+  mixto, crear con dos tipos, sin ninguno no guarda) y el formulario (un cardio
+  en un pack de fuerza pide minutos y se guarda asi; cambiar a fuerza vuelve a
+  las series). `flutter test` **579**, analyze y format limpios.
+
+**Pendiente / notas:**
+
+- **Desplegar la base y la app juntas**: la app anterior lee `packs.tipo`, que
+  ya no existe.
+- `build_runner` regenero `pack.freezed.dart` y `pack.g.dart`: van en el commit.
+- No se ha hecho `supabase db reset` para no borrar los datos locales de
+  Daniel; la migracion se aplico con `supabase migration up` sobre ellos.

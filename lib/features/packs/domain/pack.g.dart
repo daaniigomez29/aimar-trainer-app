@@ -9,7 +9,9 @@ part of 'pack.dart';
 _Pack _$PackFromJson(Map<String, dynamic> json) => _Pack(
   id: json['id'] as String,
   nombre: json['nombre'] as String,
-  tipo: $enumDecode(_$TipoEjercicioEnumMap, json['tipo']),
+  tipos: (json['tipos'] as List<dynamic>)
+      .map((e) => $enumDecode(_$TipoEjercicioEnumMap, e))
+      .toList(),
   creadoEn: DateTime.parse(json['creado_en'] as String),
   ejercicios:
       (json['pack_ejercicios'] as List<dynamic>?)
@@ -21,7 +23,7 @@ _Pack _$PackFromJson(Map<String, dynamic> json) => _Pack(
 Map<String, dynamic> _$PackToJson(_Pack instance) => <String, dynamic>{
   'id': instance.id,
   'nombre': instance.nombre,
-  'tipo': _$TipoEjercicioEnumMap[instance.tipo]!,
+  'tipos': instance.tipos.map((e) => _$TipoEjercicioEnumMap[e]!).toList(),
   'creado_en': instance.creadoEn.toIso8601String(),
   'pack_ejercicios': instance.ejercicios.map((e) => e.toJson()).toList(),
 };

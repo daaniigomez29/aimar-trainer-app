@@ -26,10 +26,11 @@ abstract class Pack with _$Pack {
     required String id,
     required String nombre,
 
-    /// Mismo enum que la biblioteca, y **manda sobre sus ejercicios**: todos
-    /// son de este tipo (lo impone un trigger). Es lo que decide ademas si el
-    /// pack preconfigura series o minutos.
-    required TipoEjercicio tipo,
+    /// Etiquetas de tipo, al menos una, sin repetidos y en el orden del enum
+    /// (lo normaliza un trigger). **Solo descriptivas** desde el 2026-10-27:
+    /// dicen de que va el pack, pero no limitan que ejercicios admite. Si un
+    /// ejercicio lleva series o minutos lo decide su propio tipo.
+    required List<TipoEjercicio> tipos,
     required DateTime creadoEn,
     @Default([])
     @JsonKey(name: 'pack_ejercicios')

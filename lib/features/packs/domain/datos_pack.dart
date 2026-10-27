@@ -5,12 +5,14 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_pl
 
 /// Datos de alta y edicion de un pack.
 class DatosPack {
-  const DatosPack({required this.nombre, required this.tipo});
+  const DatosPack({required this.nombre, required this.tipos});
 
   static const int longitudMaximaNombre = 120;
 
   final String nombre;
-  final TipoEjercicio tipo;
+
+  /// Etiquetas de tipo: al menos una. Solo descriptivas, ver [Pack.tipos].
+  final Set<TipoEjercicio> tipos;
 
   String get nombreNormalizado => nombre.trim();
 
@@ -28,11 +30,23 @@ class DatosPack {
     return null;
   }
 
-  ErrorValidacion? validar() => validarNombre(nombre);
+  static ErrorValidacion? validarTipos(Set<TipoEjercicio> tipos) =>
+      tipos.isEmpty
+      ? const ErrorValidacion(
+          'Elige al menos un tipo para el pack.',
+          campo: 'tipos',
+        )
+      : null;
 
+  ErrorValidacion? validar() => validarNombre(nombre) ?? validarTipos(tipos);
+
+  /// Los tipos en el orden del enum, el mismo en que los deja la base.
   Map<String, dynamic> aJson() => {
     'nombre': nombreNormalizado,
-    'tipo': tipo.name,
+    'tipos': [
+      for (final tipo in TipoEjercicio.values)
+        if (tipos.contains(tipo)) tipo.name,
+    ],
   };
 }
 
@@ -59,8 +73,9 @@ class DatosPackEjercicio {
   final String packId;
   final String ejercicioId;
 
-  /// El tipo del pack, que es el de todos sus ejercicios. Decide si lo que se
-  /// guarda son series o minutos.
+  /// El tipo **del ejercicio** elegido: decide si se guardan series o minutos.
+  /// Hasta el 2026-10-27 era el del pack, que entonces era el de todos sus
+  /// ejercicios; ahora un pack puede mezclarlos.
   final TipoEjercicio tipo;
   final int orden;
   final int? descansoSeg;
@@ -70,8 +85,9 @@ class DatosPackEjercicio {
   bool get vaPorSeries => tipo.vaPorSeries;
   bool get vaPorMinutos => tipo.vaPorMinutos;
 
-  /// Lo que de verdad se guarda de cada campo, segun el tipo: asi un cambio de
-  /// idea no deja minutos colgando en un pack de fuerza.
+  /// Lo que de verdad se guarda de cada campo, segun el tipo: asi cambiar de
+  /// ejercicio (de una sentadilla a una cinta) no deja series ni minutos
+  /// colgando.
   int? get descansoNormalizado => vaPorSeries ? descansoSeg : null;
   double? get minutosNormalizados => vaPorMinutos ? minutos : null;
   List<DatosSerie> get seriesNormalizadas =>

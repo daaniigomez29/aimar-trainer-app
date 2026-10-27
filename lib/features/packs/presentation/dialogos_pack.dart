@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
@@ -15,9 +16,10 @@ import 'package:aimar_trainer_app/features/packs/domain/pack.dart';
 /// anaden despues, en la ficha del pack, igual que una sesion del planning se
 /// crea vacia y se llena luego.
 ///
-/// **El tipo no se puede cambiar al editar**: todos los ejercicios del pack son
-/// de ese tipo (lo impone un trigger), asi que cambiarlo dejaria dentro
-/// ejercicios que no encajan. Para eso se hace otro pack.
+/// Las **etiquetas de tipo** son varias, al menos una, y se pueden cambiar
+/// tambien al editar: desde el 2026-10-27 son solo descriptivas y no limitan
+/// que ejercicios admite el pack (antes el tipo era uno, mandaba sobre los
+/// ejercicios y no se podia tocar).
 Future<Pack?> pedirDatosPack({
   required BuildContext context,
   required WidgetRef ref,
@@ -41,7 +43,7 @@ class _DialogoPack extends ConsumerStatefulWidget {
 
 class _EstadoDialogoPack extends ConsumerState<_DialogoPack> {
   late final TextEditingController _nombre;
-  late TipoEjercicio _tipo;
+  late Set<TipoEjercicio> _tipos;
 
   bool get _esEdicion => widget.pack != null;
 
@@ -49,7 +51,8 @@ class _EstadoDialogoPack extends ConsumerState<_DialogoPack> {
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.pack?.nombre ?? '');
-    _tipo = widget.pack?.tipo ?? TipoEjercicio.fuerza;
+    _tipos = {...?widget.pack?.tipos};
+    if (_tipos.isEmpty) _tipos.add(TipoEjercicio.fuerza);
   }
 
   @override
@@ -60,7 +63,7 @@ class _EstadoDialogoPack extends ConsumerState<_DialogoPack> {
 
   Future<void> _guardar() async {
     final controlador = ref.read(controladorPacksProvider.notifier);
-    final datos = DatosPack(nombre: _nombre.text, tipo: _tipo);
+    final datos = DatosPack(nombre: _nombre.text, tipos: _tipos);
     final resultado = _esEdicion
         ? await controlador.editar(id: widget.pack!.id, datos: datos)
         : await controlador.crear(datos);
@@ -98,43 +101,45 @@ class _EstadoDialogoPack extends ConsumerState<_DialogoPack> {
             ),
           ),
           const SizedBox(height: 16),
-          if (_esEdicion)
-            // El tipo se ensena, pero no se toca.
-            Row(
-              children: [
-                Icon(_tipo.icono, size: 18, color: _tipo.color),
-                const SizedBox(width: 8),
-                Text(_tipo.etiqueta),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'El tipo no se cambia: sus ejercicios son de este tipo.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+          Text('Tipos *', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tipo in TipoEjercicio.values)
+                ChipFiltro(
+                  key: Key('tipo_pack_${tipo.name}'),
+                  etiqueta: tipo.etiqueta,
+                  icono: tipo.icono,
+                  activo: _tipos.contains(tipo),
+                  onPulsar: estado.enCurso
+                      ? () {}
+                      : () {
+                          controlador.limpiarError();
+                          setState(() {
+                            // Se puede dejar sin ninguno mientras se elige; el
+                            // "al menos uno" lo dice la validacion al guardar.
+                            _tipos.contains(tipo)
+                                ? _tipos.remove(tipo)
+                                : _tipos.add(tipo);
+                          });
+                        },
                 ),
-              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (estado.errorDelCampo('tipos') case final error?)
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
             )
           else
-            DropdownButtonFormField<TipoEjercicio>(
-              key: const Key('selector_tipo_pack'),
-              initialValue: _tipo,
-              decoration: const InputDecoration(labelText: 'Tipo *'),
-              items: [
-                for (final tipo in TipoEjercicio.values)
-                  DropdownMenuItem(
-                    value: tipo,
-                    child: Row(
-                      children: [
-                        Icon(tipo.icono, size: 18, color: tipo.color),
-                        const SizedBox(width: 8),
-                        Text(tipo.etiqueta),
-                      ],
-                    ),
-                  ),
-              ],
-              onChanged: estado.enCurso
-                  ? null
-                  : (valor) => setState(() => _tipo = valor ?? _tipo),
+            Text(
+              'Para reconocerlo en la lista: puede llevar ejercicios de '
+              'cualquier tipo.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
         ],
       ),

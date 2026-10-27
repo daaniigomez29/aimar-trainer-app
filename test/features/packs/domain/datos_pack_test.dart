@@ -27,7 +27,7 @@ void main() {
   group('DatosPack', () {
     test('el nombre es obligatorio', () {
       expect(
-        const DatosPack(nombre: '   ', tipo: TipoEjercicio.fuerza).validar(),
+        const DatosPack(nombre: '   ', tipos: {TipoEjercicio.fuerza}).validar(),
         isA<ErrorValidacion>(),
       );
     });
@@ -35,18 +35,33 @@ void main() {
     test('el nombre se guarda sin espacios de sobra', () {
       const datos = DatosPack(
         nombre: '  Torso A  ',
-        tipo: TipoEjercicio.fuerza,
+        tipos: {TipoEjercicio.fuerza},
       );
 
       expect(datos.aJson()['nombre'], 'Torso A');
-      expect(datos.aJson()['tipo'], 'fuerza');
+      expect(datos.aJson()['tipos'], ['fuerza']);
+    });
+
+    // Las etiquetas son varias desde el 2026-10-27, pero al menos una.
+    test('sin ningún tipo no vale', () {
+      final error = const DatosPack(nombre: 'Torso A', tipos: {}).validar();
+      expect(error?.campo, 'tipos');
+    });
+
+    test('varios tipos se mandan en el orden del enum', () {
+      const datos = DatosPack(
+        nombre: 'Mixto',
+        tipos: {TipoEjercicio.cardio, TipoEjercicio.fuerza},
+      );
+      expect(datos.validar(), isNull);
+      expect(datos.aJson()['tipos'], ['fuerza', 'cardio']);
     });
 
     test('un nombre larguísimo se rechaza', () {
       final largo = 'x' * (DatosPack.longitudMaximaNombre + 1);
 
       expect(
-        DatosPack(nombre: largo, tipo: TipoEjercicio.fuerza).validar(),
+        DatosPack(nombre: largo, tipos: {TipoEjercicio.fuerza}).validar(),
         isA<ErrorValidacion>(),
       );
     });

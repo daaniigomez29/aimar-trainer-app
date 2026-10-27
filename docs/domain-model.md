@@ -226,12 +226,12 @@ y lo que un planning lleva encima para eso (`estadoRegistro`,
 | --- | --- | --- |
 | id | uuid | Clave |
 | nombre | text | Único entre packs, sin distinguir mayúsculas ni espacios de los extremos |
-| tipo | enum (fuerza / cardio / fortalecimiento) | El mismo de la biblioteca. **Manda sobre sus ejercicios** |
+| tipos | colección de enum (fuerza / cardio / fortalecimiento) | Etiquetas, al menos una. **Solo descriptivas** (desde el 2026-10-27) |
 | creadoEn | timestamptz | Fecha de creación |
 | ejercicios | colección de Ejercicio del pack | Composición |
 
 **Reglas de dominio**
-- **Todos sus ejercicios son del tipo del pack** (lo impone un trigger). Por eso el tipo **no se cambia** al editar: dejaría dentro ejercicios que no encajan.
+- **Puede mezclar tipos de ejercicio** (por ejemplo, cardio y fuerza). Sus etiquetas de tipo dicen de qué va, para reconocerlo en la lista, pero **no limitan** qué ejercicios admite, y se pueden cambiar al editar. Al menos una; sin repetidos. Hasta el 2026-10-27 el tipo era uno y mandaba sobre los ejercicios.
 - Solo lo ve y lo toca el **entrenador**: ni el cliente ni el administrador (RLS).
 - **Aplicar un pack a un bloque copia** sus ejercicios, con lo que tuvieran preparado, **al final** del bloque, en una sola transacción (`aplicar_pack_a_bloque`). A partir de ahí lo copiado es del planning: **editar el pack después no cambia lo ya planificado**.
 - Al aplicar, los ejercicios **dados de baja se omiten** (un ejercicio eliminado no se añade a bloques nuevos) y se informa de cuántos. Un pack **sin ejercicios no se puede aplicar**.
@@ -247,12 +247,12 @@ y lo que un planning lleva encima para eso (`estadoRegistro`,
 | ejercicioId | referencia a Ejercicio | Ejercicio de la biblioteca |
 | orden | integer (> 0) | Posición dentro del pack |
 | descansoSeg | integer (> 0)? | Descanso preparado |
-| minutos | numeric (> 0)? | Solo en packs de Cardio |
-| series | colección de Serie del pack | Solo en packs que van por series |
+| minutos | numeric (> 0)? | Solo en ejercicios que van por minutos (Cardio) |
+| series | colección de Serie del pack | Solo en ejercicios que van por series |
 
 **Reglas de dominio**
 - **Todo lo preparado es opcional**, a diferencia del planning: un pack puede ser solo la lista de ejercicios. Lo que falte se rellena en el planning después de aplicarlo.
-- **Series y minutos son excluyentes**, según el modo de planificación del tipo del pack: un pack de Cardio no lleva series y uno por series no lleva minutos (triggers).
+- **Series y minutos son excluyentes**, según el modo de planificación del tipo **del ejercicio** (no del pack): un cardio no lleva series y lo que va por series no lleva minutos (triggers).
 - No puede haber dos con el mismo `orden` en el mismo pack. Se reordena con **flechas**, renumerando el conjunto entero de una vez (`reordenar_pack_ejercicios`).
 - Un ejercicio que se da de baja en la biblioteca **se queda** en el pack, marcado, pero no se copia al aplicarlo.
 - Se guarda con sus series de una pieza (`guardar_ejercicio_del_pack`): o entra todo, o nada.
