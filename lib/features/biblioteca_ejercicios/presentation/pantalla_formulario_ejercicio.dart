@@ -18,6 +18,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/grupo_mu
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/musculo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/dialogos_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/lista_musculos_plegable.dart';
@@ -196,9 +197,37 @@ class _EstadoPantallaFormularioEjercicio
       controladorFormularioEjercicioProvider.notifier,
     );
 
+    void alternarSecundario(Musculo musculo) => setState(() {
+      _secundarios = _secundarios.contains(musculo)
+          ? _secundarios.where((m) => m != musculo).toList()
+          : [..._secundarios, musculo];
+    });
+
     return FormularioCentrado(
       seccion: SeccionDeNavegacion.biblioteca,
       titulo: widget.esEdicion ? 'Editar ejercicio' : 'Nuevo ejercicio',
+      anchoEnEscritorio: FormularioCentrado.anchoFormularioLargo,
+      panelLateral: ListView(
+        padding: const EdgeInsets.all(Tokens.margenPantalla),
+        children: [
+          Text(
+            'Músculos secundarios',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Los que entran además del principal, de cualquier grupo.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          _ListaSecundarios(
+            secundarios: _secundarios,
+            principal: _principal,
+            habilitado: !estado.enCurso,
+            onAlternar: alternarSecundario,
+          ),
+        ],
+      ),
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
           AvisoEnLinea(mensaje: mensaje),
@@ -241,11 +270,7 @@ class _EstadoPantallaFormularioEjercicio
             // la base de datos rechaza tenerlo en los dos sitios.
             _secundarios = _secundarios.where((m) => m != musculo).toList();
           }),
-          onAlternarSecundario: (musculo) => setState(() {
-            _secundarios = _secundarios.contains(musculo)
-                ? _secundarios.where((m) => m != musculo).toList()
-                : [..._secundarios, musculo];
-          }),
+          onAlternarSecundario: alternarSecundario,
         ),
         // Solo tiene sentido en lo que se planifica con peso: en un cardio no
         // hay kg que etiquetar.
@@ -458,46 +483,49 @@ class _SelectorMusculatura extends StatelessWidget {
           onCambio: onPrincipal,
         ),
         const SizedBox(height: 8),
-        // Dos niveles de plegado, y el de fuera cerrado: los seis grupos a la
-        // vista alargaban el formulario aunque no se vaya a poner ningun
-        // secundario, que es el caso mas comun.
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            key: const Key('secundarios'),
-            // Al editar un ejercicio que ya tiene secundarios se abre solo: si
-            // no, pareceria que no tiene ninguno.
-            initiallyExpanded: secundarios.isNotEmpty,
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
-            title: Text('Músculos secundarios', style: textos.labelLarge),
-            subtitle: Text(
-              secundarios.isEmpty
-                  ? 'Ninguno'
-                  : secundarios.map((m) => m.etiqueta).join(', '),
-              style: textos.bodySmall,
-            ),
-            children: [
-              // Se eligen de **toda** la taxonomia, no solo del grupo del
-              // principal: en un press de banca el principal es del pecho y
-              // los secundarios son deltoides y triceps, de otros dos grupos.
-              ListaMusculosPlegable(
-                grupos: GrupoMuscular.values,
-                musculosDe: Musculo.delGrupo,
-                seleccionados: secundarios.toSet(),
-                onMusculo: onAlternarSecundario,
-                ocultar: {?principal},
-                habilitado: habilitado,
-                resumenDe: (grupo) {
-                  final elegidos = Musculo.delGrupo(grupo)
-                      .where(secundarios.contains)
-                      .map((m) => m.etiqueta);
-                  return elegidos.isEmpty ? '—' : elegidos.join(', ');
-                },
-              ),
-            ],
+        // En escritorio se eligen en el panel de la derecha; aqui queda lo
+        // elegido, a la vista junto al resto de la clasificacion.
+        if (esEscritorio(context)) ...[
+          const SizedBox(height: 8),
+          Text('Músculos secundarios', style: textos.labelLarge),
+          const SizedBox(height: 2),
+          Text(
+            secundarios.isEmpty
+                ? 'Ninguno. Elígelos en el panel de la derecha.'
+                : secundarios.map((m) => m.etiqueta).join(', '),
+            key: const Key('resumen_secundarios'),
+            style: textos.bodySmall,
           ),
-        ),
+        ] else
+          // Dos niveles de plegado, y el de fuera cerrado: los seis grupos a la
+          // vista alargaban el formulario aunque no se vaya a poner ningun
+          // secundario, que es el caso mas comun.
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              key: const Key('secundarios'),
+              // Al editar un ejercicio que ya tiene secundarios se abre solo: si
+              // no, pareceria que no tiene ninguno.
+              initiallyExpanded: secundarios.isNotEmpty,
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
+              title: Text('Músculos secundarios', style: textos.labelLarge),
+              subtitle: Text(
+                secundarios.isEmpty
+                    ? 'Ninguno'
+                    : secundarios.map((m) => m.etiqueta).join(', '),
+                style: textos.bodySmall,
+              ),
+              children: [
+                _ListaSecundarios(
+                  secundarios: secundarios,
+                  principal: principal,
+                  habilitado: habilitado,
+                  onAlternar: onAlternarSecundario,
+                ),
+              ],
+            ),
+          ),
         if (error case final mensaje?) ...[
           const SizedBox(height: 4),
           Text(
@@ -511,6 +539,41 @@ class _SelectorMusculatura extends StatelessWidget {
 }
 
 /// Desplegable con una opcion "sin valor" al principio, controlado por `valor`.
+/// Los musculos para elegir como secundarios. Va plegado entre los campos en
+/// movil y en el panel lateral en escritorio.
+class _ListaSecundarios extends StatelessWidget {
+  const _ListaSecundarios({
+    required this.secundarios,
+    required this.principal,
+    required this.habilitado,
+    required this.onAlternar,
+  });
+
+  final List<Musculo> secundarios;
+  final Musculo? principal;
+  final bool habilitado;
+  final ValueChanged<Musculo> onAlternar;
+
+  // Se eligen de **toda** la taxonomia, no solo del grupo del principal: en un
+  // press de banca el principal es del pecho y los secundarios son deltoides y
+  // triceps, de otros dos grupos.
+  @override
+  Widget build(BuildContext context) => ListaMusculosPlegable(
+    grupos: GrupoMuscular.values,
+    musculosDe: Musculo.delGrupo,
+    seleccionados: secundarios.toSet(),
+    onMusculo: onAlternar,
+    ocultar: {?principal},
+    habilitado: habilitado,
+    resumenDe: (grupo) {
+      final elegidos = Musculo.delGrupo(grupo)
+          .where(secundarios.contains)
+          .map((m) => m.etiqueta);
+      return elegidos.isEmpty ? '—' : elegidos.join(', ');
+    },
+  );
+}
+
 class _Desplegable<T> extends StatelessWidget {
   const _Desplegable({
     required this.clave,

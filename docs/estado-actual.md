@@ -79,8 +79,8 @@ fallando en `supabase link`.
 | 6 | Notificaciones (CU-22) | Hecha y verificada en local |
 | — | Despliegue en la nube (Supabase + Vercel + CI/CD) | **Hecho y en uso** |
 
-Verificación actual: `supabase db reset` aplica **29 migraciones** limpias,
-`./scripts/probar_local.sh` da **204/204**, `flutter test` **567**,
+Verificación actual: `supabase db reset` aplica **29 migraciones** limpias (la 30, `packs_varios_tipos`, probada con `migration up` sobre datos, aun no con un reset),
+`./scripts/probar_local.sh` da **204/204**, `flutter test` **616**,
 `dart analyze --fatal-infos` sin incidencias.
 
 Para que el script llegue a las Edge Functions hace falta **también**

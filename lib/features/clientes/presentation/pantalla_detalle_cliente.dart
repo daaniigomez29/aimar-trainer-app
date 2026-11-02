@@ -136,8 +136,7 @@ class _Contenido extends ConsumerWidget {
                   'Medidas, fotos y check-in (solo consulta)',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                // El entrenador consulta; registrar es del cliente (la ruta
-                // entra en modo solo lectura).
+                // El entrenador consulta; registrar es del cliente.
                 onTap: () => context.go(Rutas.controlDeCliente(cliente.id)),
               ),
             ),

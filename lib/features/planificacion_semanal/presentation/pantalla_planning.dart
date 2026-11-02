@@ -37,10 +37,15 @@ class PantallaPlanning extends ConsumerStatefulWidget {
   const PantallaPlanning({
     required this.planningId,
     this.diaInicial,
+    this.seccion = SeccionDeNavegacion.clientes,
     super.key,
   });
 
   final String planningId;
+
+  /// Destino marcado en la navegacion: Clientes si se llega desde la ficha, el
+  /// inicio (la planificacion) si se llega desde el editor.
+  final SeccionDeNavegacion seccion;
 
   /// Dia por el que abrir, si se pide uno. Lo inyecta el enrutador desde la URL
   /// (`?dia=`): es como llega el boton "Visualizar resultados de la sesion" del
@@ -62,7 +67,7 @@ class _EstadoPantallaPlanning extends ConsumerState<PantallaPlanning> {
     ref.watch(controladorPlanificacionProvider);
 
     return PantallaConNavegacion(
-      seccion: SeccionDeNavegacion.clientes,
+      seccion: widget.seccion,
       appBar: AppBar(
         title: const Text('Resultados de la semana'),
         actions: [

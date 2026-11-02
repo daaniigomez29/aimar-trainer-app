@@ -127,10 +127,10 @@ void main() {
               builder: (_, _) => const PantallaPlanificacionEntrenador(),
             ),
             GoRoute(
-              path: '${Rutas.clientesEntrenador}/:idCliente/plannings/:id',
+              path: '${Rutas.inicioEntrenador}/plannings/:id/resultados',
               builder: (_, estado) => Scaffold(
                 body: Text(
-                  'resultados de ${estado.pathParameters['idCliente']} '
+                  'resultados de ${estado.pathParameters['id']} '
                   'dia=${estado.uri.queryParameters[Rutas.paramDia]}',
                 ),
               ),
@@ -250,7 +250,7 @@ void main() {
     await tester.tap(find.byKey(const Key('ver_resultados_s-1')));
     await tester.pumpAndSettle();
 
-    expect(find.text('resultados de cli-1 dia=1'), findsOneWidget);
+    expect(find.text('resultados de p-1 dia=1'), findsOneWidget);
   });
 
   // Anadir desde el panel de la biblioteca y anadir desde el formulario de

@@ -7,6 +7,7 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/facetas_
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/estilo_tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/lista_musculos_plegable.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/musculos_a_la_vista.dart';
 
 /// Buscador y filtro muscular para **elegir un ejercicio de la biblioteca**.
 ///
@@ -19,7 +20,8 @@ import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/wi
 /// Son **dos niveles de plegado** a proposito: el filtro entero vive dentro de
 /// un desplegable, y los musculos dentro del suyo. Asi de partida no se ve mas
 /// que el buscador y una linea que dice por que se esta filtrando, que es lo
-/// unico que hace falta cuando ya sabes el nombre de lo que buscas.
+/// unico que hace falta cuando ya sabes el nombre de lo que buscas. Con una
+/// columna entera disponible ([musculosALaVista]) no se pliega nada.
 ///
 /// Escribe en el filtro del ambito [widget.ambito], que es suyo y
 /// **no** el de la pantalla de biblioteca: buscar aqui no puede dejar la
@@ -32,6 +34,9 @@ class FiltroDeEjercicios extends ConsumerStatefulWidget {
   const FiltroDeEjercicios({
     required this.ambito,
     this.habilitado = true,
+    this.musculosAbiertos = false,
+    this.musculosALaVista = false,
+    this.autofocus = false,
     super.key,
   });
 
@@ -39,6 +44,16 @@ class FiltroDeEjercicios extends ConsumerStatefulWidget {
   final AmbitoDeFiltro ambito;
 
   final bool habilitado;
+
+  /// Abre de partida el filtro muscular. En el panel lateral de un formulario
+  /// hay sitio de sobra, y plegarlo solo obligaria a un clic mas.
+  final bool musculosAbiertos;
+
+  /// Sin desplegables: todos los musculos pintados, a un clic.
+  final bool musculosALaVista;
+
+  /// El cursor ya en el buscador, para quien sabe el nombre de lo que busca.
+  final bool autofocus;
 
   @override
   ConsumerState<FiltroDeEjercicios> createState() => _FiltroDeEjerciciosState();
@@ -85,6 +100,7 @@ class _FiltroDeEjerciciosState extends ConsumerState<FiltroDeEjercicios> {
         CampoBusqueda(
           clave: const Key('busqueda_ejercicio'),
           controlador: _busqueda,
+          autofocus: widget.autofocus,
           onCambio: notificador.cambiarTexto,
         ),
         // Los tipos tambien aqui: es donde se monta el bloque, y "ponme un
@@ -117,54 +133,82 @@ class _FiltroDeEjerciciosState extends ConsumerState<FiltroDeEjercicios> {
             ],
           ),
         ],
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            key: const Key('filtro_muscular'),
-            // Se abre solo si ya se estaba filtrando, para que al volver no
-            // parezca que faltan ejercicios.
-            initiallyExpanded: hayFiltroMuscular,
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
-            leading: const Icon(Icons.filter_alt_outlined, size: 18),
-            title: Text('Filtrar por músculo', style: textos.labelLarge),
-            subtitle: Text(resumen, style: textos.bodySmall),
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ChipFiltro(
-                  key: const Key('musculo_todos'),
-                  etiqueta: 'Todos',
-                  activo: !hayFiltroMuscular,
-                  onPulsar: widget.habilitado
-                      ? () => notificador.cambiarGrupo(null)
-                      : () {},
-                ),
-              ),
-              const SizedBox(height: 4),
-              ListaMusculosPlegable(
-                grupos: facetas.grupos,
-                musculosDe: facetas.musculosDe,
-                habilitado: widget.habilitado,
-                resumenDe: facetas.resumenDe,
-                seleccionados: {?filtro.musculo},
-                onMusculo: (musculo) => notificador.cambiarMusculo(
-                  filtro.musculo == musculo ? null : musculo,
-                ),
-                // El chip "Todo el grupo" solo se ve marcado cuando no hay un
-                // musculo concreto elegido: elegirlo fija tambien su grupo.
-                grupoSeleccionado: filtro.musculo == null ? filtro.grupo : null,
-                // `verTodoElGrupo` y no `cambiarGrupo`: con un musculo elegido,
-                // el segundo lo conserva y el chip se quedaba sin marcar.
-                onGrupo: (grupo) => notificador.verTodoElGrupo(
-                  filtro.grupo == grupo && filtro.musculo == null
-                      ? null
-                      : grupo,
-                ),
-              ),
-            ],
+        if (widget.musculosALaVista) ...[
+          const SizedBox(height: 12),
+          ChipFiltro(
+            key: const Key('musculo_todos'),
+            etiqueta: 'Todos los músculos',
+            compacto: true,
+            activo: !hayFiltroMuscular,
+            onPulsar: widget.habilitado
+                ? () => notificador.cambiarGrupo(null)
+                : () {},
           ),
-        ),
+          MusculosALaVista(
+            grupos: facetas.grupos,
+            musculosDe: facetas.musculosDe,
+            resumenDe: facetas.resumenDe,
+            habilitado: widget.habilitado,
+            musculoSeleccionado: filtro.musculo,
+            grupoSeleccionado: filtro.musculo == null ? filtro.grupo : null,
+            onMusculo: (musculo) => notificador.cambiarMusculo(
+              filtro.musculo == musculo ? null : musculo,
+            ),
+            onGrupo: (grupo) => notificador.verTodoElGrupo(
+              filtro.grupo == grupo && filtro.musculo == null ? null : grupo,
+            ),
+          ),
+        ] else
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              key: const Key('filtro_muscular'),
+              // Se abre solo si ya se estaba filtrando, para que al volver no
+              // parezca que faltan ejercicios.
+              initiallyExpanded: hayFiltroMuscular || widget.musculosAbiertos,
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
+              leading: const Icon(Icons.filter_alt_outlined, size: 18),
+              title: Text('Filtrar por músculo', style: textos.labelLarge),
+              subtitle: Text(resumen, style: textos.bodySmall),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ChipFiltro(
+                    key: const Key('musculo_todos'),
+                    etiqueta: 'Todos',
+                    activo: !hayFiltroMuscular,
+                    onPulsar: widget.habilitado
+                        ? () => notificador.cambiarGrupo(null)
+                        : () {},
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ListaMusculosPlegable(
+                  grupos: facetas.grupos,
+                  musculosDe: facetas.musculosDe,
+                  habilitado: widget.habilitado,
+                  resumenDe: facetas.resumenDe,
+                  seleccionados: {?filtro.musculo},
+                  onMusculo: (musculo) => notificador.cambiarMusculo(
+                    filtro.musculo == musculo ? null : musculo,
+                  ),
+                  // El chip "Todo el grupo" solo se ve marcado cuando no hay un
+                  // musculo concreto elegido: elegirlo fija tambien su grupo.
+                  grupoSeleccionado: filtro.musculo == null
+                      ? filtro.grupo
+                      : null,
+                  // `verTodoElGrupo` y no `cambiarGrupo`: con un musculo elegido,
+                  // el segundo lo conserva y el chip se quedaba sin marcar.
+                  onGrupo: (grupo) => notificador.verTodoElGrupo(
+                    filtro.grupo == grupo && filtro.musculo == null
+                        ? null
+                        : grupo,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }

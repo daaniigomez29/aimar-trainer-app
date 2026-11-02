@@ -108,6 +108,11 @@ abstract final class Rutas {
   static String controlDeCliente(String id) =>
       '$clientesEntrenador/$id/$controlDelCliente';
 
+  /// Un control concreto de un cliente. [fecha] va como `2026-10-19`.
+  static const String unControl = ':fecha';
+  static String controlDeClienteEnDia(String id, String fecha) =>
+      '${controlDeCliente(id)}/$fecha';
+
   /// Un planning concreto. El cliente llega desde su historico; el entrenador,
   /// desde la ficha del cliente, por eso cuelgan de sitios distintos.
   static const String unPlanning = ':planningId';
@@ -117,19 +122,6 @@ abstract final class Rutas {
     String idCliente,
     String planningId,
   ) => '${planningsDeCliente(idCliente)}/$planningId';
-
-  /// Los resultados de un dia concreto de la semana de un cliente.
-  ///
-  /// Es la misma pantalla, abierta por el dia que interesa: asi el boton del
-  /// editor ("Visualizar resultados de la sesion") cae en el dia que se estaba
-  /// planificando y no en el primero.
-  static String resultadosDeLaSesion({
-    required String idCliente,
-    required String planningId,
-    required int orden,
-  }) =>
-      '${planningDeClienteConcreto(idCliente, planningId)}'
-      '?$paramDia=$orden';
 
   /// Registro del resultado de una sesión (CU-20) y de un ejercicio suelto.
   static const String sesiones = 'sesiones';
@@ -168,6 +160,22 @@ abstract final class Rutas {
   /// a él por una lista, pero el formulario de un ejercicio sí necesita ruta.
   static String planningEnEdicion(String planningId) =>
       '$inicioEntrenador/$plannings/$planningId';
+
+  /// Los resultados de un dia, abiertos **desde el editor** ("Visualizar
+  /// resultados de la sesion"), en el dia que se estaba planificando.
+  ///
+  /// POR QUE CUELGA DEL EDITOR y no de la ficha del cliente: la pila de una
+  /// ruta anidada son sus padres. Colgando de la ficha, atras llevaba a la lista
+  /// de semanas del cliente, por la que no se habia pasado, y se perdia el
+  /// editor con su cliente, su semana, su dia y lo que hubiera sin guardar.
+  /// Colgando de aqui, el editor sigue vivo debajo: es lo mismo que hace el
+  /// formulario de un ejercicio.
+  static const String resultadosDelPlanning = 'resultados';
+  static String resultadosDesdeElEditor({
+    required String planningId,
+    required int orden,
+  }) =>
+      '${planningEnEdicion(planningId)}/$resultadosDelPlanning?$paramDia=$orden';
 
   /// Nombre del parametro que dice **de donde se venia**.
   static const String paramVolver = 'volver';

@@ -61,12 +61,16 @@ class ChipFiltro extends StatelessWidget {
     required this.activo,
     required this.onPulsar,
     this.icono,
+    this.compacto = false,
     super.key,
   });
 
   final String etiqueta;
   final bool activo;
   final VoidCallback onPulsar;
+
+  /// Menos relleno, para cuando van muchos juntos a la vista.
+  final bool compacto;
 
   /// Icono delante de la etiqueta. Lo llevan los chips de **tipo** de
   /// ejercicio, que comparten fila con los de grupo muscular y filtran otra
@@ -84,7 +88,9 @@ class ChipFiltro extends StatelessWidget {
         onTap: onPulsar,
         borderRadius: BorderRadius.circular(Tokens.radioPastilla),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          padding: compacto
+              ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+              : const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Tokens.radioPastilla),
             border: Border.all(color: activo ? Tokens.acento : Tokens.borde),
@@ -100,11 +106,16 @@ class ChipFiltro extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
               ],
-              Text(
-                etiqueta,
-                style: textos.bodyMedium?.copyWith(
-                  color: activo ? Tokens.acento : Tokens.textoSuave,
-                  fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+              // Flexible: en una columna estrecha, recortar antes que desbordar.
+              Flexible(
+                child: Text(
+                  etiqueta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textos.bodyMedium?.copyWith(
+                    color: activo ? Tokens.acento : Tokens.textoSuave,
+                    fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
               ),
             ],
@@ -341,6 +352,7 @@ class CampoBusqueda extends StatelessWidget {
     required this.onCambio,
     this.pista = 'Buscar ejercicio',
     this.clave,
+    this.autofocus = false,
     super.key,
   });
 
@@ -348,6 +360,7 @@ class CampoBusqueda extends StatelessWidget {
   final ValueChanged<String> onCambio;
   final String pista;
   final Key? clave;
+  final bool autofocus;
 
   /// `ValueListenableBuilder` sobre el controlador: hace falta para que la X
   /// aparezca y desaparezca al teclear. Quien escribe en el filtro es Riverpod,
@@ -358,6 +371,7 @@ class CampoBusqueda extends StatelessWidget {
     builder: (context, valor, _) => TextField(
       key: clave,
       controller: controlador,
+      autofocus: autofocus,
       onChanged: onCambio,
       decoration: InputDecoration(
         hintText: pista,

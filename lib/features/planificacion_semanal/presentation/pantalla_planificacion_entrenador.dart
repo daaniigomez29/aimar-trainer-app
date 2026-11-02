@@ -911,8 +911,7 @@ class _Sesion extends ConsumerWidget {
               tooltip: 'Visualizar resultados de la sesión',
               icon: const Icon(Icons.fact_check_outlined, size: 18),
               onPressed: () => context.go(
-                Rutas.resultadosDeLaSesion(
-                  idCliente: planning.clienteId,
+                Rutas.resultadosDesdeElEditor(
                   planningId: planning.id,
                   orden: sesion.orden,
                 ),

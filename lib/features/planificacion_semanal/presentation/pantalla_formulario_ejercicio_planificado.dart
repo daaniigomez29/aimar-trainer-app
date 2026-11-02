@@ -9,10 +9,11 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegac
 import 'package:aimar_trainer_app/core/presentacion/widgets/formulario_centrado.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/application/controlador_biblioteca.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/navegacion.dart';
+import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/elegir_de_biblioteca.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/ejercicio.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/filtro_ejercicios.dart';
-import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/filtro_de_ejercicios.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/application/controlador_planificacion.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/datos_planificacion.dart';
@@ -175,11 +176,27 @@ class _EstadoFormularioEjercicioPlanificado
     final controlador = ref.read(controladorPlanificacionProvider.notifier);
     final biblioteca = ref.watch(bibliotecaEjerciciosProvider);
     final ejercicio = _ejercicio;
+    final escritorio = esEscritorio(context);
+
+    Widget elegirDeBiblioteca({bool enPanel = false}) => ElegirDeBiblioteca(
+      ambito: AmbitoDeFiltro.formularioBloque,
+      prefijoClave: 'elegir_ejercicio',
+      habilitado: !estado.enCurso,
+      enPanel: enPanel,
+      elegido: ejercicio,
+      onElegir: (elegido) {
+        controlador.limpiarError();
+        setState(() => _ejercicio = elegido);
+      },
+    );
 
     return FormularioCentrado(
       seccion: SeccionDeNavegacion.inicio,
       titulo: widget.esEdicion ? 'Editar ejercicio' : 'Añadir ejercicio',
       subtitulo: 'Bloque de ${widget.bloque.tipo.etiqueta}',
+      anchoEnEscritorio: FormularioCentrado.anchoFormularioLargo,
+      panelLateral: elegirDeBiblioteca(enPanel: true),
+      panelOcupaElResto: true,
       hijos: [
         if (estado.errorGeneral case final mensaje?) ...[
           AvisoEnLinea(mensaje: mensaje),
@@ -202,6 +219,8 @@ class _EstadoFormularioEjercicioPlanificado
               elegido: ejercicio,
               habilitado: !estado.enCurso,
               error: estado.errorDelCampo('ejercicioId'),
+              // En escritorio la biblioteca ya esta en el panel de la derecha.
+              biblioteca: escritorio ? null : elegirDeBiblioteca(),
               onElegir: (elegido) {
                 controlador.limpiarError();
                 setState(() => _ejercicio = elegido);
@@ -285,23 +304,26 @@ class _EstadoFormularioEjercicioPlanificado
 /// Con uno ya elegido **no se pinta la lista**, solo lo elegido y un boton para
 /// cambiarlo: al editar, lo que importa de esta pantalla son las series, no
 /// volver a buscar el ejercicio.
-class _SelectorEjercicio extends ConsumerWidget {
+class _SelectorEjercicio extends StatelessWidget {
   const _SelectorEjercicio({
     required this.elegido,
     required this.habilitado,
     required this.error,
+    required this.biblioteca,
     required this.onElegir,
   });
 
   final Ejercicio? elegido;
   final bool habilitado;
   final String? error;
+
+  /// Donde elegir, en la columna del formulario. `null` en escritorio, donde
+  /// esta en el panel lateral.
+  final Widget? biblioteca;
   final ValueChanged<Ejercicio?> onElegir;
 
-  static const double _altoMaximoLista = 260;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final textos = Theme.of(context).textTheme;
 
     if (elegido case final ejercicio?) {
@@ -348,10 +370,6 @@ class _SelectorEjercicio extends ConsumerWidget {
       );
     }
 
-    final filtrados = ref.watch(
-      ejerciciosFiltradosProvider(AmbitoDeFiltro.formularioBloque),
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -364,71 +382,13 @@ class _SelectorEjercicio extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 4),
-        FiltroDeEjercicios(
-          ambito: AmbitoDeFiltro.formularioBloque,
-          habilitado: habilitado,
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          // Acotada a proposito: dentro de un formulario que ya se desplaza,
-          // una lista sin limite empuja los demas campos fuera de la pantalla.
-          constraints: const BoxConstraints(maxHeight: _altoMaximoLista),
-          child: filtrados.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) =>
-                AvisoEnLinea(mensaje: mensajeDeErrorPlanificacion(error)),
-            data: (lista) => lista.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'Ningún ejercicio coincide con la búsqueda.',
-                      style: textos.bodySmall,
-                    ),
-                  )
-                : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: lista.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, indice) {
-                      final ejercicio = lista[indice];
-                      return Tarjeta(
-                        key: Key('elegir_ejercicio_${ejercicio.id}'),
-                        padding: const EdgeInsets.all(10),
-                        onTap: habilitado ? () => onElegir(ejercicio) : null,
-                        hijo: Row(
-                          children: [
-                            MiniaturaEjercicio(ejercicio: ejercicio, lado: 34),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ejercicio.nombre,
-                                    style: textos.titleSmall,
-                                  ),
-                                  Text(
-                                    [
-                                      ?ejercicio.resumenMuscular,
-                                      ejercicio.tipo.etiqueta,
-                                    ].join(' · '),
-                                    style: textos.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: Tokens.textoTenue,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ),
+        if (biblioteca == null)
+          Text(
+            'Elige un ejercicio en la biblioteca de la derecha.',
+            style: textos.bodySmall,
+          )
+        else
+          biblioteca!,
       ],
     );
   }

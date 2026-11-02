@@ -25,16 +25,9 @@ import 'package:aimar_trainer_app/features/progreso/presentation/widgets/fotos_p
 /// La flecha atras del paso 2 vuelve al 1 **sin perder nada**: los controladores
 /// de texto viven en este estado, no en cada paso.
 class PantallaControlSemanal extends ConsumerStatefulWidget {
-  const PantallaControlSemanal({
-    required this.clienteId,
-    this.soloLectura = false,
-    super.key,
-  });
+  const PantallaControlSemanal({required this.clienteId, super.key});
 
   final String clienteId;
-
-  /// El entrenador entra asi: ve lo de su cliente, sin poder escribir por el.
-  final bool soloLectura;
 
   @override
   ConsumerState<PantallaControlSemanal> createState() =>
@@ -208,7 +201,6 @@ class _PantallaControlSemanalState
                 campos: _camposMedidas,
                 registro: medidas,
                 clienteId: widget.clienteId,
-                soloLectura: widget.soloLectura,
                 onCambiarFecha: () => _elegirFecha(fecha),
               )
             : _PasoCheckin(
@@ -217,7 +209,6 @@ class _PantallaControlSemanalState
                 estres: _estres,
                 agujetas: _agujetas,
                 fatiga: _fatiga,
-                soloLectura: widget.soloLectura,
                 onEstres: (v) => setState(() => _estres = v),
                 onAgujetas: (v) => setState(() => _agujetas = v),
                 onFatiga: (v) => setState(() => _fatiga = v),
@@ -234,9 +225,7 @@ class _PantallaControlSemanalState
                     // en este estado, no en el paso.
                     onPressed: () => setState(() => _paso = 0),
                   ),
-            title: Text(
-              widget.soloLectura ? 'Control del cliente' : 'Mi control',
-            ),
+            title: const Text('Mi control'),
             actions: [
               Padding(
                 padding: const EdgeInsets.only(right: Tokens.margenPantalla),
@@ -263,9 +252,7 @@ class _PantallaControlSemanalState
               ],
             ],
           ),
-          ctaInferior: widget.soloLectura
-              ? null
-              : _paso == 0
+          ctaInferior: _paso == 0
               ? BotonCta(
                   key: const Key('boton_guardar_medidas'),
                   etiqueta: 'Continuar',
@@ -306,7 +293,6 @@ class _PasoMedidas extends ConsumerWidget {
     required this.campos,
     required this.registro,
     required this.clienteId,
-    required this.soloLectura,
     required this.onCambiarFecha,
   });
 
@@ -315,7 +301,6 @@ class _PasoMedidas extends ConsumerWidget {
   final List<(String, String, TextEditingController, String)> campos;
   final RegistroMedidas? registro;
   final String clienteId;
-  final bool soloLectura;
   final VoidCallback onCambiarFecha;
 
   @override
@@ -367,7 +352,6 @@ class _PasoMedidas extends ConsumerWidget {
           TextField(
             key: Key('medida_$clave'),
             controller: controlador,
-            enabled: !soloLectura,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               hintText: etiqueta,
@@ -382,7 +366,7 @@ class _PasoMedidas extends ConsumerWidget {
         FotosProgreso(
           clienteId: clienteId,
           registro: registro,
-          soloLectura: soloLectura,
+          soloLectura: false,
         ),
       ],
     );
@@ -396,7 +380,6 @@ class _PasoCheckin extends StatelessWidget {
     required this.estres,
     required this.agujetas,
     required this.fatiga,
-    required this.soloLectura,
     required this.onEstres,
     required this.onAgujetas,
     required this.onFatiga,
@@ -407,7 +390,6 @@ class _PasoCheckin extends StatelessWidget {
   final int estres;
   final int agujetas;
   final int fatiga;
-  final bool soloLectura;
   final ValueChanged<int> onEstres;
   final ValueChanged<int> onAgujetas;
   final ValueChanged<int> onFatiga;
@@ -435,7 +417,6 @@ class _PasoCheckin extends StatelessWidget {
         TextField(
           key: const Key('campo_horas_sueno'),
           controller: horasSueno,
-          enabled: !soloLectura,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(
             hintText: 'Horas de sueno (media de la semana)',
@@ -452,7 +433,6 @@ class _PasoCheckin extends StatelessWidget {
           minimo: 1,
           maximo: 10,
           divisiones: 9,
-          habilitado: !soloLectura,
           onCambio: (v) => onEstres(v.round()),
         ),
         SliderConValor(
@@ -462,7 +442,6 @@ class _PasoCheckin extends StatelessWidget {
           minimo: 1,
           maximo: 10,
           divisiones: 9,
-          habilitado: !soloLectura,
           onCambio: (v) => onAgujetas(v.round()),
         ),
         SliderConValor(
@@ -472,14 +451,12 @@ class _PasoCheckin extends StatelessWidget {
           minimo: 1,
           maximo: 10,
           divisiones: 9,
-          habilitado: !soloLectura,
           onCambio: (v) => onFatiga(v.round()),
         ),
         const SizedBox(height: 10),
         TextField(
           key: const Key('campo_notas_checkin'),
           controller: notas,
-          enabled: !soloLectura,
           maxLines: 4,
           decoration: const InputDecoration(
             hintText:

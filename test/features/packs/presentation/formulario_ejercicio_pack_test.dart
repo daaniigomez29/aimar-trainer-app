@@ -70,8 +70,11 @@ void main() {
     ).thenAnswer((_) async => const Success('pe-nuevo'));
   });
 
-  Future<void> montar(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 2000);
+  Future<void> montar(
+    WidgetTester tester, {
+    Size tamano = const Size(1200, 2000),
+  }) async {
+    tester.view.physicalSize = tamano;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -149,5 +152,46 @@ void main() {
 
     expect(find.byKey(const Key('boton_anadir_serie_pack')), findsOneWidget);
     expect(find.byKey(const Key('campo_minutos_pack')), findsNothing);
+  });
+
+  // Peticion de Aimar (2026-11-02): en PC la biblioteca va a la derecha.
+  testWidgets('en escritorio la biblioteca va en el panel y sigue a la vista', (
+    tester,
+  ) async {
+    await montar(tester);
+
+    final panel = find.byKey(const Key('panel_lateral_formulario'));
+    expect(panel, findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: panel,
+        matching: find.byKey(const Key('elegir_para_pack_ej-f')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('cambiar_ejercicio_pack')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.byKey(const Key('elegir_para_pack_ej-c')),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('en móvil la biblioteca va entre los campos, sin panel', (
+    tester,
+  ) async {
+    await montar(tester, tamano: const Size(900, 2000));
+
+    expect(find.byKey(const Key('panel_lateral_formulario')), findsNothing);
+    expect(find.byKey(const Key('elegir_para_pack_ej-f')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('elegir_para_pack_ej-f')));
+    await tester.pumpAndSettle();
+
+    // Elegido, la lista se retira: en una columna no cabe todo.
+    expect(find.byKey(const Key('elegir_para_pack_ej-c')), findsNothing);
   });
 }
