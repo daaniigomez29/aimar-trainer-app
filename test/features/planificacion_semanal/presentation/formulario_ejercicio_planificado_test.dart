@@ -53,11 +53,13 @@ void main() {
   Future<void> montar(
     WidgetTester tester, {
     EjercicioPlanificado? previo,
+    // Por debajo de `anchoEscritorio`: la disposicion de movil, una columna.
+    Size tamano = const Size(900, 2400),
   }) async {
     // El viewport por defecto son 600 px de alto y la pantalla lleva ahora
     // barra de navegacion: sin agrandarlo, el boton de anadir serie cae debajo
     // de la barra y el `tap` no acierta.
-    tester.view.physicalSize = const Size(1200, 2400);
+    tester.view.physicalSize = tamano;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -427,5 +429,61 @@ void main() {
     await montar(tester);
 
     expect(find.textContaining('La biblioteca está vacía'), findsOneWidget);
+  });
+
+  // Peticion de Aimar (2026-11-02): en PC la biblioteca a la derecha y el
+  // formulario mas ancho, para no desaprovechar la pantalla.
+  group('en escritorio', () {
+    const escritorio = Size(1400, 1200);
+
+    testWidgets('la biblioteca va en el panel y sigue a la vista al elegir', (
+      tester,
+    ) async {
+      await montar(tester, tamano: escritorio);
+
+      final panel = find.byKey(const Key('panel_lateral_formulario'));
+      expect(panel, findsOneWidget);
+      expect(
+        find.descendant(of: panel, matching: find.text('Press banca')),
+        findsOneWidget,
+      );
+      // Con el filtro muscular ya abierto: hay sitio.
+      expect(
+        find.descendant(
+          of: panel,
+          matching: find.byKey(const Key('musculo_todos')),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.descendant(of: panel, matching: find.text('Press banca')),
+      );
+      await tester.pumpAndSettle();
+
+      // Elegido a la izquierda, y la lista sigue ahi para cambiar de un toque.
+      expect(find.byKey(const Key('cambiar_ejercicio')), findsOneWidget);
+      expect(
+        find.descendant(of: panel, matching: find.text('Cinta')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('el formulario gana ancho', (tester) async {
+      await montar(tester, tamano: escritorio);
+
+      expect(
+        tester.getSize(find.byKey(const Key('campo_orden_ejercicio'))).width,
+        greaterThan(420),
+      );
+    });
+
+    testWidgets('en móvil no hay panel', (tester) async {
+      await montar(tester, tamano: const Size(900, 2400));
+
+      expect(find.byKey(const Key('panel_lateral_formulario')), findsNothing);
+      expect(find.byKey(const Key('busqueda_ejercicio')), findsOneWidget);
+    });
   });
 }

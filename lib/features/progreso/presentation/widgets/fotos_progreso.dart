@@ -140,7 +140,26 @@ class _Miniatura extends ConsumerWidget {
                   ),
                 ),
                 error: (_, _) => const Center(child: Icon(Icons.broken_image)),
-                data: (uri) => Image.network(uri.toString(), fit: BoxFit.cover),
+                // Recortada al cuadrado para que la cuadricula quede pareja: en
+                // una foto vertical se pierde casi todo, asi que se abre entera
+                // al tocarla.
+                data: (uri) => Semantics(
+                  button: true,
+                  label: 'Ver la foto a tamaño completo',
+                  child: GestureDetector(
+                    key: Key('ver_foto_${foto.id}'),
+                    onTap: () => _abrirFoto(context, uri),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.zoomIn,
+                      child: Image.network(
+                        uri.toString(),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            const Center(child: Icon(Icons.broken_image)),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -160,3 +179,55 @@ class _Miniatura extends ConsumerWidget {
     );
   }
 }
+
+/// La foto entera, sobre fondo negro y a pantalla completa. Se puede acercar:
+/// pellizcando en el movil y con la rueda en el ordenador.
+Future<void> _abrirFoto(BuildContext context, Uri uri) => showDialog<void>(
+  context: context,
+  builder: (contexto) => Dialog.fullscreen(
+    backgroundColor: Colors.black,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        InteractiveViewer(
+          maxScale: 5,
+          child: Image.network(
+            uri.toString(),
+            key: const Key('foto_completa'),
+            fit: BoxFit.contain,
+            loadingBuilder: (_, imagen, progreso) => progreso == null
+                ? imagen
+                : const Center(child: CircularProgressIndicator()),
+            // El enlace firmado caduca: si lleva mucho rato abierta la pantalla,
+            // volver a entrar pide uno nuevo.
+            errorBuilder: (_, _, _) => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'No se ha podido cargar la foto. Sal de esta pantalla y '
+                  'vuelve a entrar.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: IconButton.filledTonal(
+                key: const Key('cerrar_foto'),
+                tooltip: 'Cerrar',
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(contexto).pop(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+);

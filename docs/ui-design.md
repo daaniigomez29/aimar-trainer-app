@@ -94,6 +94,16 @@ Debajo, **"Instalar la app en el móvil"**: desplegable (plegado por defecto) co
 ### 6.5bis Packs — entrenador
 Quinto destino de su navegación, debajo de Biblioteca. Lista de packs con sus etiquetas de tipo ("Fuerza + Cardio", con un icono por tipo), cuántos ejercicios tiene cada uno y un aviso en ámbar en los vacíos ("Sin ejercicios · no se puede aplicar"). Dentro, la ficha: sus ejercicios en orden, con lo que tengan preparado debajo, y **flechas arriba/abajo** para moverlos —no se arrastra—. El formulario de añadir reutiliza el buscador y el filtro de la biblioteca, **sin restringir el tipo** (las etiquetas del pack son descriptivas), y enseña la tabla de series o el campo de minutos según el ejercicio elegido. El diálogo del pack elige sus etiquetas con chips, al menos una.
 
+### 6.5ter Formularios de ejercicio en escritorio — entrenador
+Por encima de 1000 px, los tres formularios largos aprovechan el ancho: el formulario crece hasta 720 px y a su derecha va un **panel fijo** de 400 px, que se desplaza por su cuenta. Al añadir un ejercicio a un bloque o a un pack, el panel es la biblioteca (buscador, tipos, filtro muscular ya abierto y lista); sigue a la vista después de elegir, con el elegido marcado, para cambiar de un toque. Al crear o editar un ejercicio, el panel son los **músculos secundarios**, y a la izquierda queda el resumen de los elegidos. En móvil no cambia nada: una columna, con eso entre los campos.
+
+**Elegir ejercicio en escritorio (bloque y pack).** El panel de biblioteca se queda con todo el ancho que no necesita el formulario (que se mueve entre 500 y 768 px). Si el panel llega a 640 px, va en dos columnas con scroll propio: a la izquierda buscador, tipos y todos los músculos a la vista, a un clic, y el nombre del grupo filtra el grupo entero; a la derecha los ejercicios, en varias columnas si caben, que vuelven arriba con cada filtro nuevo. Con menos ancho sigue la columna única con el filtro plegable. Al añadir, el cursor empieza en el buscador; al editar, no.
+
+### 6.5quater Control semanal del cliente — entrenador (solo consulta)
+Desde la ficha del cliente: lista de los días con control, **por meses**, con flechas para viajar de uno a otro hasta donde haya controles; abre en el mes del último. Cada fila dice el día y un resumen (peso, sueño, estrés, agujetas, fatiga), o lo que falta ("Sin check-in"), porque medidas y check-in son guardados independientes. Al pulsar un día, su detalle en una sola pantalla: medidas, fotos y check-in, sin campos. Atrás vuelve a la lista en el mismo mes.
+
+Las fotos de progreso, aquí y en el control del cliente, son miniaturas cuadradas y recortadas: al tocarlas se abren enteras a pantalla completa, sobre negro, con zoom.
+
 ### 6.6 Planificación semanal — entrenador, escritorio
 Barra superior: marca, selector de cliente, navegación de semana, botón "Guardar cambios". Barra lateral de navegación. Área principal: pestañas de día, bloques de ejercicios con series editables (kg/reps/RIR) en cuadrícula. Panel fijo a la derecha para añadir a la sesión, con dos pestañas: **Biblioteca** (buscador, filtros, lista con botón "+") y **Packs** (lista de packs con su "+", que copia el pack entero al bloque que se elija; los vacíos salen con el "+" apagado). Bloques y ejercicios se reordenan con **flechas arriba/abajo** en su cabecera, no arrastrando.
 

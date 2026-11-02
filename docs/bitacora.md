@@ -2994,3 +2994,63 @@ recuperada byte a byte, noches sin cambios sin subidas.
 - `build_runner` regenero `pack.freezed.dart` y `pack.g.dart`: van en el commit.
 - No se ha hecho `supabase db reset` para no borrar los datos locales de
   Daniel; la migracion se aplico con `supabase migration up` sobre ellos.
+
+### 2026-11-02
+
+**Hecho (peticiones de Aimar):**
+
+- **Formularios de ejercicio en PC.** `FormularioCentrado` acepta un panel
+  lateral y mas ancho en escritorio (720 px y panel de 400). Al anadir a un
+  bloque o a un pack, la biblioteca con su filtro muscular va a la derecha; al
+  crear un ejercicio, los musculos secundarios. En movil, igual que antes. La
+  lista de elegir ejercicio estaba copiada en los dos formularios y pasa a ser
+  un widget compartido, `ElegirDeBiblioteca`.
+- **Control semanal del cliente.** Pantalla nueva, `PantallaControlesCliente`:
+  lista de dias con control, por meses, con flechas hasta donde haya controles.
+  Se unen medidas y check-in por fecha (`unirControles`), porque son guardados
+  independientes: un dia con solo medidas tambien se puede consultar. Sin
+  migracion: RLS ya deja leer al entrenador.
+- `PantallaDetalleControl`: medidas, fotos y check-in en una pantalla, sin
+  campos. `PantallaControlSemanal` queda solo para el cliente y pierde
+  `soloLectura`.
+
+**Corregido:**
+
+- **El entrenador nunca veia el check-in de sus clientes.** En solo lectura el
+  check-in estaba en un paso 2 al que solo se llegaba pulsando "Continuar", un
+  boton que el entrenador no tenia. Ademas, los campos rellenos no decian que
+  eran (la etiqueta era el `hint`) y llevaba la barra de navegacion del cliente.
+  Lo arregla la pantalla de detalle.
+- **Atras desde "Visualizar resultados de la sesion"** llevaba a la lista de
+  semanas del cliente, por la que no se habia pasado. La ruta colgaba de la ficha
+  del cliente, y la pila de una ruta anidada son sus padres. Ahora cuelga del
+  editor (`Rutas.resultadosDesdeElEditor`), como los formularios de ejercicio:
+  el editor sigue vivo debajo y conserva cliente, semana, dia y series sin
+  guardar. Test contra el enrutador real.
+
+**Pendiente / notas:**
+
+- `flutter test` **603**, analyze y format limpios. `build_runner` regenero
+  `controlador_control_semanal.g.dart`.
+- Sin probar en el navegador; lo prueba el. Mirar sobre todo los formularios a
+  anchos justo por encima de 1000 px, donde mas aprieta el panel.
+- Si se recarga la pagina estando en resultados, atras vuelve al editor pero con
+  su estado de partida: ese estado vive en memoria.
+- **Fotos de progreso a tamano completo** (peticion de Aimar). La miniatura las
+  recorta al cuadrado y de una foto vertical se perdia casi todo. Al tocarla se
+  abre entera a pantalla completa, con zoom. Esta en `FotosProgreso`, asi que
+  vale para el cliente y para el entrenador. Sin dependencias ni migracion: la
+  URL firmada es la misma de la miniatura. Si caducara con la pantalla abierta,
+  el visor lo dice y pide volver a entrar. `flutter test` **607**. Sin probar en
+  el navegador, ni el zoom ni la carga de una foto real: en los tests no hay red.
+- **Elegir ejercicio en PC, sin tres clics ni scroll** (queja de Aimar). Era
+  filtrar por musculo -> abrir grupo -> elegir musculo, y despues bajar: filtro
+  y lista compartian scroll y el filtro empujaba la lista. Ahora, en el
+  formulario del bloque y en el del pack, el panel se queda con el ancho sobrante
+  (`panelOcupaElResto`) y, desde 640 px de panel, va en dos columnas con scroll
+  propio: `MusculosALaVista` a un clic y los ejercicios en una a tres columnas,
+  que vuelven arriba con cada filtro. Con menos ancho, el panel de antes. El
+  panel del propio planning y el movil no cambian. Cursor en el buscador al
+  anadir. `ChipFiltro` recorta el texto en vez de desbordar. `flutter test`
+  **616**. Sin probar en el navegador: mirar si los 21 musculos caben sin scroll
+  en la pantalla de Aimar, y a que ancho trabaja.

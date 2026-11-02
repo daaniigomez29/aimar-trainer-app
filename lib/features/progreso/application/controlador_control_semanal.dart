@@ -5,6 +5,7 @@ import 'package:aimar_trainer_app/core/errores/error_app.dart';
 import 'package:aimar_trainer_app/core/errores/result.dart';
 import 'package:aimar_trainer_app/core/plataforma/servicio_imagenes_flutter.dart';
 import 'package:aimar_trainer_app/features/progreso/data/progreso_repositorio_supabase.dart';
+import 'package:aimar_trainer_app/features/progreso/domain/controles_del_cliente.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/datos_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/medidas.dart';
 
@@ -70,6 +71,18 @@ Future<List<CheckinRecuperacion>> historialCheckins(
     Success(:final valor) => valor,
     Failure(:final error) => throw error,
   };
+}
+
+/// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+/// y check-in unidos por fecha (ver [ControlDelDia]).
+@riverpod
+Future<List<ControlDelDia>> controlesDelCliente(
+  Ref ref,
+  String clienteId,
+) async {
+  final medidas = await ref.watch(historialMedidasProvider(clienteId).future);
+  final checkins = await ref.watch(historialCheckinsProvider(clienteId).future);
+  return unirControles(medidas: medidas, checkins: checkins);
 }
 
 /// URL firmada para mostrar una foto. Caduca, asi que el provider se vuelve a

@@ -54,8 +54,12 @@ void main() {
         .thenReturn('http://localhost/imagen.png');
   });
 
-  Future<void> montar(WidgetTester tester, {Ejercicio? aEditar}) async {
-    tester.view.physicalSize = const Size(900, 1800);
+  Future<void> montar(
+    WidgetTester tester, {
+    Ejercicio? aEditar,
+    Size tamano = const Size(900, 1800),
+  }) async {
+    tester.view.physicalSize = tamano;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
@@ -204,6 +208,60 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.widget<Switch>(interruptor).value, isFalse);
+    });
+  });
+
+  // Peticion de Aimar (2026-11-02): en PC, los secundarios a la derecha y el
+  // formulario mas ancho.
+  group('en escritorio', () {
+    const escritorio = Size(1400, 1200);
+
+    testWidgets('los secundarios van en el panel y se resumen a la izquierda', (
+      tester,
+    ) async {
+      await montar(tester, tamano: escritorio);
+
+      final panel = find.byKey(const Key('panel_lateral_formulario'));
+      expect(panel, findsOneWidget);
+      // El desplegable de movil no esta, y los grupos se ven sin abrir nada.
+      expect(find.byKey(const Key('secundarios')), findsNothing);
+      expect(
+        find.descendant(of: panel, matching: find.text('Pierna')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Ninguno. Elígelos en el panel'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('elegir en el panel se refleja en el resumen', (tester) async {
+      await montar(tester, tamano: escritorio);
+      final panel = find.byKey(const Key('panel_lateral_formulario'));
+
+      await tester.tap(
+        find.descendant(of: panel, matching: find.text('Brazo')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(of: panel, matching: find.text('Tríceps')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<Text>(find.byKey(const Key('resumen_secundarios'))).data,
+        'Tríceps',
+      );
+    });
+
+    testWidgets('el formulario gana ancho', (tester) async {
+      await montar(tester, tamano: escritorio);
+
+      expect(
+        tester.getSize(find.byKey(const Key('campo_nombre'))).width,
+        greaterThan(420),
+      );
     });
   });
 }

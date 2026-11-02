@@ -359,6 +359,98 @@ final class HistorialCheckinsFamily extends $Family
   String toString() => r'historialCheckinsProvider';
 }
 
+/// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+/// y check-in unidos por fecha (ver [ControlDelDia]).
+
+@ProviderFor(controlesDelCliente)
+final controlesDelClienteProvider = ControlesDelClienteFamily._();
+
+/// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+/// y check-in unidos por fecha (ver [ControlDelDia]).
+
+final class ControlesDelClienteProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ControlDelDia>>,
+          List<ControlDelDia>,
+          FutureOr<List<ControlDelDia>>
+        >
+    with
+        $FutureModifier<List<ControlDelDia>>,
+        $FutureProvider<List<ControlDelDia>> {
+  /// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+  /// y check-in unidos por fecha (ver [ControlDelDia]).
+  ControlesDelClienteProvider._({
+    required ControlesDelClienteFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'controlesDelClienteProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$controlesDelClienteHash();
+
+  @override
+  String toString() {
+    return r'controlesDelClienteProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<ControlDelDia>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<ControlDelDia>> create(Ref ref) {
+    final argument = this.argument as String;
+    return controlesDelCliente(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ControlesDelClienteProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$controlesDelClienteHash() =>
+    r'1fcb4f36055993c45544ec471af95dd278e0c922';
+
+/// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+/// y check-in unidos por fecha (ver [ControlDelDia]).
+
+final class ControlesDelClienteFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<ControlDelDia>>, String> {
+  ControlesDelClienteFamily._()
+    : super(
+        retry: null,
+        name: r'controlesDelClienteProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Los dias de control del cliente, de lo mas reciente a lo mas antiguo: medidas
+  /// y check-in unidos por fecha (ver [ControlDelDia]).
+
+  ControlesDelClienteProvider call(String clienteId) =>
+      ControlesDelClienteProvider._(argument: clienteId, from: this);
+
+  @override
+  String toString() => r'controlesDelClienteProvider';
+}
+
 /// URL firmada para mostrar una foto. Caduca, asi que el provider se vuelve a
 /// pedir cada vez que la pantalla se reconstruye de cero.
 

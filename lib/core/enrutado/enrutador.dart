@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
+import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_cargando.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_inicio_administrador.dart';
 import 'package:aimar_trainer_app/features/autenticacion/application/controlador_sesion.dart';
@@ -22,7 +23,7 @@ import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/wi
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_ejercicio.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_sesion.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_progreso.dart';
-import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_control_semanal.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_controles_cliente.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_ajustes_entrenador.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mi_planning.dart';
@@ -135,11 +136,6 @@ GoRouter enrutador(Ref ref) {
                         path: Rutas.unPlanning,
                         builder: (context, state) => PantallaPlanning(
                           planningId: state.pathParameters['planningId']!,
-                          // `?dia=`: con que dia abrir. Lo pone el boton de
-                          // "Visualizar resultados de la sesion" del editor.
-                          diaInicial: int.tryParse(
-                            state.uri.queryParameters[Rutas.paramDia] ?? '',
-                          ),
                         ),
                         routes: [
                           GoRoute(
@@ -170,10 +166,24 @@ GoRouter enrutador(Ref ref) {
                   ),
                   GoRoute(
                     path: Rutas.controlDelCliente,
-                    builder: (context, state) => PantallaControlSemanal(
+                    builder: (context, state) => PantallaControlesCliente(
                       clienteId: state.pathParameters['idCliente']!,
-                      soloLectura: true,
                     ),
+                    routes: [
+                      GoRoute(
+                        path: Rutas.unControl,
+                        builder: (context, state) => PantallaDetalleControl(
+                          clienteId: state.pathParameters['idCliente']!,
+                          // Sin hora: es la misma clave con la que se piden las
+                          // medidas y el check-in de ese dia.
+                          fecha:
+                              DateTime.tryParse(
+                                state.pathParameters['fecha'] ?? '',
+                              ) ??
+                              DateTime(0),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -198,6 +208,21 @@ GoRouter enrutador(Ref ref) {
                 '${Rutas.unBloque}/${Rutas.ejercicioDelBloque}/'
                 '${Rutas.unEjercicioPlanificado}',
             builder: (context, state) => _formularioDeEjercicio(state),
+          ),
+          // Los resultados abiertos desde el editor: cuelgan de el para que atras
+          // vuelva a el tal como estaba (ver `Rutas.resultadosDesdeElEditor`).
+          GoRoute(
+            path:
+                '${Rutas.plannings}/${Rutas.unPlanning}/'
+                '${Rutas.resultadosDelPlanning}',
+            builder: (context, state) => PantallaPlanning(
+              planningId: state.pathParameters['planningId']!,
+              seccion: SeccionDeNavegacion.inicio,
+              // `?dia=`: el que se estaba planificando.
+              diaInicial: int.tryParse(
+                state.uri.queryParameters[Rutas.paramDia] ?? '',
+              ),
+            ),
           ),
           GoRoute(
             path: Rutas.packs,
