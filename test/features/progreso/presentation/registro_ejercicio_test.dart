@@ -118,8 +118,14 @@ void main() {
       ejercicioPlanificadoDePrueba(
         ejercicio: ejercicioDePrueba(),
         series: [
-          serieDePrueba(numeroSerie: 1, repeticiones: 10, peso: 60),
-          serieDePrueba(id: 'sp-2', numeroSerie: 2, repeticiones: 8, peso: 65),
+          serieDePrueba(numeroSerie: 1, repeticiones: 10, peso: 60, rir: 2),
+          serieDePrueba(
+            id: 'sp-2',
+            numeroSerie: 2,
+            repeticiones: 8,
+            peso: 65,
+            rir: 2,
+          ),
         ],
       ).copyWith(seriesRealizadas: realizadas);
 
@@ -695,6 +701,109 @@ void main() {
 
       expect(find.byKey(const Key('boton_ver_descripcion')), findsOneWidget);
       expect(find.byKey(const Key('boton_ver_video')), findsNothing);
+    });
+  });
+
+  // Peticion de Aimar (2026-11-12): sin reps, RIR y peso (si se planifico) el
+  // registro no sirve para compararlo con el plan.
+  group('lo que hay que rellenar', () {
+    Future<void> vaciarYConfirmar(WidgetTester tester, String campo) async {
+      await tester.enterText(find.byKey(Key('${campo}_serie_1')), '');
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('sin RIR no se confirma, y lo dice', (tester) async {
+      await montar(tester, deFuerza());
+
+      await vaciarYConfirmar(tester, 'rir');
+
+      expect(find.text('Pon el RIR de la serie 1.'), findsOneWidget);
+      verifyNever(() => repositorio.registrarResultado(any()));
+    });
+
+    testWidgets('sin el peso planificado no se confirma', (tester) async {
+      await montar(tester, deFuerza());
+
+      await vaciarYConfirmar(tester, 'peso');
+
+      expect(
+        find.text('Pon el peso que usaste en la serie 1.'),
+        findsOneWidget,
+      );
+      verifyNever(() => repositorio.registrarResultado(any()));
+    });
+
+    testWidgets('un RIR por encima de 10 no se acepta', (tester) async {
+      await montar(tester, deFuerza());
+
+      await tester.enterText(find.byKey(const Key('rir_serie_1')), '12');
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('El RIR de la serie 1 va de 0 a 10.'), findsOneWidget);
+      verifyNever(() => repositorio.registrarResultado(any()));
+    });
+
+    testWidgets('sin peso planificado, el peso es opcional', (tester) async {
+      await montar(
+        tester,
+        ejercicioPlanificadoDePrueba(
+          ejercicio: ejercicioDePrueba(),
+          series: [serieDePrueba(numeroSerie: 1, repeticiones: 12, rir: 1)],
+        ).copyWith(seriesRealizadas: const []),
+      );
+
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pumpAndSettle();
+
+      expect(ultimoEnviado().series.single.peso, isNull);
+    });
+
+    testWidgets('una serie de más pide peso si el ejercicio lo lleva', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+      await tester.tap(find.byKey(const Key('boton_serie_extra')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('peso_serie_3')), '');
+      await tester.tap(find.byKey(const Key('confirmar_serie_3')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Pon el peso que usaste en la serie 3.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('"Guardar y siguiente" no sigue con una serie a medias', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+
+      await tester.enterText(find.byKey(const Key('rir_serie_2')), '');
+      await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pon el RIR de la serie 2.'), findsOneWidget);
+      verifyNever(() => repositorio.registrarResultado(any()));
+      // Sigue en el ejercicio: no ha navegado.
+      expect(find.text('mi planning'), findsNothing);
+    });
+
+    testWidgets('"Guardar y siguiente" se salta una serie vacía del todo', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+
+      for (final campo in ['peso', 'reps', 'rir']) {
+        await tester.enterText(find.byKey(Key('${campo}_serie_2')), '');
+      }
+      await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
+      await tester.pumpAndSettle();
+
+      expect(ultimoEnviado().series.map((s) => s.numeroSerie).toList(), [1]);
     });
   });
 }

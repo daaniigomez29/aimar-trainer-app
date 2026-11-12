@@ -177,20 +177,69 @@ class _PantallaRegistroEjercicioState
   SeriePlanificada? _planificadaDe(int numero) =>
       widget.ejercicio.series.where((s) => s.numeroSerie == numero).firstOrNull;
 
-  Future<void> _confirmarSerie(int numero) async {
+  /// Si en esa serie hay que poner el peso: cuando el entrenador lo
+  /// planifico. En peso corporal no hay nada que pesar. Una serie de mas no
+  /// tiene plan propio y sigue a la ultima planificada.
+  bool _pesoObligatorio(int numero) {
+    final plan =
+        _planificadaDe(numero) ??
+        (widget.ejercicio.series.isEmpty ? null : widget.ejercicio.series.last);
+    return plan?.pesoPlanificado != null;
+  }
+
+  /// Lo escrito en esa serie, o el aviso de lo que le falta.
+  ///
+  /// Peticion de Aimar (2026-11-12): **reps y RIR siempre, y el peso si estaba
+  /// planificado**. Sin uno de ellos el registro no sirve para comparar con lo
+  /// planificado, que es para lo que se registra.
+  ({DatosSerieRealizada? serie, String? aviso}) _leerSerie(int numero) {
     final campos = _camposDe(numero);
+    final textoPeso = campos.peso.text.trim().replaceAll(',', '.');
     final repeticiones = int.tryParse(campos.repeticiones.text.trim());
-    if (repeticiones == null) {
-      _avisar('Pon cuántas repeticiones hiciste en la serie $numero.');
+    final rir = int.tryParse(campos.rir.text.trim());
+    final peso = double.tryParse(textoPeso);
+
+    final aviso = switch (()) {
+      _ when repeticiones == null =>
+        'Pon cuántas repeticiones hiciste en la serie $numero.',
+      _ when rir == null => 'Pon el RIR de la serie $numero.',
+      _ when rir < 0 || rir > 10 => 'El RIR de la serie $numero va de 0 a 10.',
+      _ when peso == null && _pesoObligatorio(numero) =>
+        'Pon el peso que usaste en la serie $numero.',
+      _ when peso == null && textoPeso.isNotEmpty =>
+        'El peso de la serie $numero no es un número.',
+      _ => null,
+    };
+    if (aviso != null) return (serie: null, aviso: aviso);
+
+    return (
+      serie: DatosSerieRealizada(
+        numeroSerie: numero,
+        repeticiones: repeticiones!,
+        peso: peso,
+        rir: rir,
+      ),
+      aviso: null,
+    );
+  }
+
+  /// Una fila sin nada escrito: la serie no se ha hecho.
+  bool _filaVacia(int numero) {
+    final campos = _camposDe(numero);
+    return [
+      campos.peso,
+      campos.repeticiones,
+      campos.rir,
+    ].every((c) => c.text.trim().isEmpty);
+  }
+
+  Future<void> _confirmarSerie(int numero) async {
+    final (:serie, :aviso) = _leerSerie(numero);
+    if (serie == null) {
+      _avisar(aviso!);
       return;
     }
 
-    final serie = DatosSerieRealizada(
-      numeroSerie: numero,
-      repeticiones: repeticiones,
-      peso: double.tryParse(campos.peso.text.trim().replaceAll(',', '.')),
-      rir: int.tryParse(campos.rir.text.trim()),
-    );
     final pendientes = {..._confirmadas, numero: serie};
 
     final resultado = await ref
@@ -230,20 +279,20 @@ class _PantallaRegistroEjercicioState
   /// rellena las series, pulsa "Guardar y siguiente ejercicio" y da por hecho
   /// que con eso vale; si no, pierde el entrenamiento sin enterarse.
   ///
-  /// Solo entran las series con repeticiones puestas: una fila vacia es una
-  /// serie que no se ha hecho, y dejar un ejercicio a medias es valido.
+  /// Una fila vacia es una serie que no se ha hecho, y dejar un ejercicio a
+  /// medias es valido: se salta. Una fila **a medias** no: se avisa de lo que
+  /// le falta y no se sigue, igual que al confirmarla.
   Future<void> _guardarYSiguiente() async {
     final pendientes = <int, DatosSerieRealizada>{..._confirmadas};
-    for (final entrada in _campos.entries) {
-      final campos = entrada.value;
-      final repeticiones = int.tryParse(campos.repeticiones.text.trim());
-      if (repeticiones == null) continue;
-      pendientes[entrada.key] = DatosSerieRealizada(
-        numeroSerie: entrada.key,
-        repeticiones: repeticiones,
-        peso: double.tryParse(campos.peso.text.trim().replaceAll(',', '.')),
-        rir: int.tryParse(campos.rir.text.trim()),
-      );
+    final numeros = _campos.keys.toList()..sort();
+    for (final numero in numeros) {
+      if (_confirmadas.containsKey(numero) || _filaVacia(numero)) continue;
+      final (:serie, :aviso) = _leerSerie(numero);
+      if (serie == null) {
+        _avisar(aviso!);
+        return;
+      }
+      pendientes[numero] = serie;
     }
 
     // Sin nada que guardar se pasa de largo: el cliente puede saltarse un
