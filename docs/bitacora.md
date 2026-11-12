@@ -3054,3 +3054,27 @@ recuperada byte a byte, noches sin cambios sin subidas.
   anadir. `ChipFiltro` recorta el texto en vez de desbordar. `flutter test`
   **616**. Sin probar en el navegador: mirar si los 21 musculos caben sin scroll
   en la pantalla de Aimar, y a que ancho trabaja.
+
+### 2026-11-12
+
+**Hecho (peticiones de Aimar):**
+
+- **Registro de una serie: reps y RIR obligatorios, y el peso si el entrenador
+  lo planifico** (en peso corporal sigue siendo opcional; una serie de mas sigue
+  a la ultima planificada). Vale para el check y para "Guardar y siguiente", que
+  ya no avanza con una serie a medias; una fila vacia del todo se sigue saltando.
+  Tambien se rechaza un RIR fuera de 0-10 con un aviso claro, en vez del error
+  de la restriccion `rir_rango`. Los campos siguen llegando rellenos con el plan
+  (decision de Daniel). Solo en la app: la base sigue aceptando nulos, no hay
+  migracion.
+
+**Pendiente / notas:**
+
+- **Progreso: "solo los ejercicios que el cliente ha hecho" ya era asi.** El
+  selector sale de `vista_ejercicios_con_registro`, que solo lista ejercicios con
+  series o minutos registrados de ese cliente. Si salen ejercicios que no ha
+  tocado es porque constan como hechos: los campos llegan con el plan puesto, y
+  "Guardar y siguiente" sin tocar nada guarda esos valores. Daniel prefiere
+  mantener el precargado, asi que eso sigue pasando. No verificado contra sus
+  datos (Docker parado; produccion no se toca).
+- `flutter test` **623**, analyze y format limpios.
