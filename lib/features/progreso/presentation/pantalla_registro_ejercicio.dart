@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:aimar_trainer_app/core/presentacion/widgets/avisos.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,9 +15,13 @@ import 'package:aimar_trainer_app/core/presentacion/widgets/componentes.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/video_ejemplo.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/presentation/widgets/miniatura_ejercicio.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referencia_anterior.dart';
 import 'package:aimar_trainer_app/features/progreso/application/controlador_registro_sesion.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/datos_progreso.dart';
+import 'package:aimar_trainer_app/features/progreso/domain/resumen_sesion.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/informe/formato_informe.dart';
 
 /// Registro del resultado de un ejercicio (CU-20, `docs/ui-design.md` 6.2).
 ///
@@ -252,11 +257,39 @@ class _PantallaRegistroEjercicioState
         );
     if (!mounted || resultado.esFallo) return;
 
+    // Que se note en la mano, no solo en la pantalla: mas fuerte si mejora.
+    // En la web solo vibra en Android; en el resto no hace nada.
+    if (_mejoraDe(serie) != null) {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
     setState(() {
       _confirmadas[numero] = serie;
       _guardadas.add(numero);
     });
   }
+
+  /// Lo que hizo el cliente la ultima vez en este ejercicio, si la pantalla
+  /// sabe de que sesion viene. Si no carga, simplemente no hay insignias.
+  ReferenciaAnterior? get _ultimaVez {
+    final sesion = widget.sesion;
+    if (sesion == null) return null;
+    return ref
+        .watch(referenciasDeSesionProvider(widget.planningId, sesion.orden))
+        .value?[widget.ejercicio.ejercicioId];
+  }
+
+  /// Si [serie] supera a la misma serie de la ultima vez.
+  Mejora? _mejoraDe(DatosSerieRealizada serie) => mejoraDeLaSerie(
+    ejercicio: widget.ejercicio.ejercicio?.nombre ?? '',
+    repeticiones: serie.repeticiones,
+    peso: serie.peso,
+    anterior: _ultimaVez?.serieNumero(serie.numeroSerie),
+    porLado: widget.ejercicio.ejercicio?.pesoPorLado ?? false,
+    deLaSemanaPasada: _ultimaVez?.esSemanaAnterior ?? false,
+    fechaAnterior: _ultimaVez?.fecha,
+  );
 
   /// Apaga el check de una serie ya confirmada en cuanto se toca uno de sus
   /// campos.
@@ -337,16 +370,23 @@ class _PantallaRegistroEjercicioState
 
   /// Pasa al siguiente ejercicio de la sesion.
   ///
-  /// Si era el ultimo, **vuelve al planning**, no a la pantalla de la sesion:
-  /// el cliente ha terminado y lo que quiere ver es como queda su semana, no la
-  /// lista de ejercicios que acaba de completar.
+  /// Si era el ultimo, **celebra la sesion terminada** y desde ahi se vuelve
+  /// al planning, no a la pantalla de la sesion: el cliente ha terminado y lo
+  /// que quiere ver es lo que ha hecho y como queda su semana, no la lista de
+  /// ejercicios que acaba de completar.
   void _siguiente() {
     final lista = _ejerciciosDeLaSesion;
     final indice = _indiceActual;
     if (lista == null || indice == null || indice + 1 >= lista.length) {
-      // Al dia que se acaba de terminar, no al siguiente: ver
-      // `Rutas.inicioClienteEnDia`.
-      context.go(Rutas.inicioClienteEnDia(widget.sesion?.orden));
+      final sesion = widget.sesion;
+      context.go(
+        sesion == null
+            // Suelto, sin sesion que resumir: al planning. Al dia que se
+            // acaba de terminar, no al siguiente: ver
+            // `Rutas.inicioClienteEnDia`.
+            ? Rutas.inicioClienteEnDia(null)
+            : Rutas.sesionCompletada(widget.planningId, sesion.id),
+      );
       return;
     }
 
@@ -486,6 +526,12 @@ class _PantallaRegistroEjercicioState
                   planificada: _planificadaDe(numero),
                   porLado: widget.ejercicio.ejercicio?.pesoPorLado ?? false,
                   confirmada: _confirmadas.containsKey(numero),
+                  // Solo con el check encendido: lo que hay escrito sin
+                  // confirmar todavia no es una marca.
+                  mejora: switch (_confirmadas[numero]) {
+                    final serie? => _mejoraDe(serie),
+                    null => null,
+                  },
                   habilitado: !estado.enCurso,
                   onEditar: () => _alEditarSerie(numero),
                   onConfirmar: () => _confirmarSerie(numero),
@@ -806,11 +852,15 @@ class _TarjetaSerie extends StatelessWidget {
     required this.habilitado,
     required this.onEditar,
     required this.onConfirmar,
+    this.mejora,
     this.onQuitar,
   });
 
   final int numero;
   final _CamposSerie campos;
+
+  /// Si esta serie, ya confirmada, supera a la de la ultima vez.
+  final Mejora? mejora;
   final SeriePlanificada? planificada;
 
   /// Si el peso de este ejercicio se cuenta por lado. Solo cambia el texto del
@@ -900,6 +950,12 @@ class _TarjetaSerie extends StatelessWidget {
               ),
             ],
           ),
+          // En su propia linea: dice respecto a que, y con el plan al lado
+          // no cabria en un movil.
+          if (mejora case final m?) ...[
+            const SizedBox(height: 10),
+            _InsigniaMejora(clave: Key('mejora_serie_$numero'), mejora: m),
+          ],
         ],
       ),
     );
@@ -967,7 +1023,10 @@ class _CampoSerie extends StatelessWidget {
   }
 }
 
-class _BotonCheck extends StatelessWidget {
+/// El check de una serie. Al confirmarla, se llena de verde con un rebote:
+/// la serie hecha se celebra en pequeño. Solo al pasar de apagado a
+/// encendido, no al abrir un ejercicio ya registrado.
+class _BotonCheck extends StatefulWidget {
   const _BotonCheck({
     required this.clave,
     required this.confirmada,
@@ -979,23 +1038,127 @@ class _BotonCheck extends StatelessWidget {
   final VoidCallback? onPulsar;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 52,
-    height: 52,
-    child: Material(
-      color: confirmada ? Tokens.exito : Tokens.superficie2,
-      borderRadius: BorderRadius.circular(Tokens.radioBoton),
-      child: InkWell(
-        key: clave,
-        onTap: onPulsar,
-        borderRadius: BorderRadius.circular(Tokens.radioBoton),
-        child: Icon(
-          Icons.check,
-          color: confirmada ? const Color(0xFF05240F) : Tokens.textoTenue,
+  State<_BotonCheck> createState() => _BotonCheckState();
+}
+
+class _BotonCheckState extends State<_BotonCheck>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rebote = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+
+  late final Animation<double> _escala = TweenSequence([
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.0,
+        end: 1.18,
+      ).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 35,
+    ),
+    TweenSequenceItem(
+      tween: Tween(
+        begin: 1.18,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.elasticOut)),
+      weight: 65,
+    ),
+  ]).animate(_rebote);
+
+  @override
+  void didUpdateWidget(covariant _BotonCheck anterior) {
+    super.didUpdateWidget(anterior);
+    if (!anterior.confirmada &&
+        widget.confirmada &&
+        !MediaQuery.disableAnimationsOf(context)) {
+      _rebote.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _rebote.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final confirmada = widget.confirmada;
+    return ScaleTransition(
+      scale: _escala,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: confirmada ? Tokens.exito : Tokens.superficie2,
+          borderRadius: BorderRadius.circular(Tokens.radioBoton),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: widget.clave,
+            onTap: widget.onPulsar,
+            borderRadius: BorderRadius.circular(Tokens.radioBoton),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (hijo, animacion) =>
+                  ScaleTransition(scale: animacion, child: hijo),
+              child: Icon(
+                Icons.check,
+                // Clave distinta por estado: si no, el switcher no ve cambio.
+                key: ValueKey(confirmada),
+                color: confirmada ? const Color(0xFF05240F) : Tokens.textoTenue,
+              ),
+            ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+/// "Mejora: +2,5 kg respecto a la semana pasada (60 kg)", bajo la serie
+/// confirmada que supera a la de la ultima vez. Dice respecto a que y desde
+/// donde se parte: el cliente no tiene por que recordar lo que hizo.
+class _InsigniaMejora extends StatelessWidget {
+  const _InsigniaMejora({required this.clave, required this.mejora});
+
+  final Key clave;
+  final Mejora mejora;
+
+  @override
+  Widget build(BuildContext context) {
+    final unidad = unidadDe(mejora);
+    final insignia = Container(
+      key: clave,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Tokens.exito.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(Tokens.radioBoton),
+        border: Border.all(color: Tokens.exito.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.trending_up, size: 16, color: Tokens.exito),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Mejora: +${kg(mejora.diferencia)} $unidad respecto '
+              '${respectoA(mejora)} (${kg(mejora.antes)} $unidad)',
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: Tokens.exito),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (MediaQuery.disableAnimationsOf(context)) return insignia;
+    return insignia
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .scaleXY(begin: 0.85, duration: 450.ms, curve: Curves.elasticOut);
+  }
 }
 
 class _Descanso extends StatelessWidget {

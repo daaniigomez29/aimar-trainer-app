@@ -3078,3 +3078,208 @@ recuperada byte a byte, noches sin cambios sin subidas.
   mantener el precargado, asi que eso sigue pasando. No verificado contra sus
   datos (Docker parado; produccion no se toca).
 - `flutter test` **623**, analyze y format limpios.
+
+### 2026-11-17
+
+**Hecho:**
+
+- **Informe de progresion en PDF** (peticion de Daniel, a partir del que Aimar
+  redacto a mano con las tres consultas SQL de metricas). En la ficha del
+  cliente, solo para el entrenador: elige las semanas, ve una vista previa,
+  escribe su valoracion y los proximos pasos, y descarga el PDF.
+  - Calculo en Dart (`calcularInforme`, dominio de `progreso`) sobre los
+    plannings completos que ya trae el repositorio: **sin migracion ni RPC**.
+    Mismas reglas que las consultas (volumen x2 si es por lado, solo Fuerza;
+    series emparejadas por numero; 1RM de Epley; inicio = serie mas pesada de
+    la primera semana, no la mas ligera, que suele ser de aproximacion).
+    Contrastado con el CSV real de un cliente: coincide cifra a cifra con las
+    consultas 1 y 3.
+  - Texto libre de Aimar y no IA (decision de Daniel): lo que no sale de los
+    datos (molestias, contexto) lo escribe el. Una IA queda para mas adelante
+    y pediria Edge Function, clave de API y revisar RGPD.
+  - Aviso en la vista previa (no en el PDF) cuando la mitad o mas de las series
+    son identicas al plan: los campos llegan rellenos y eso infla el
+    cumplimiento.
+  - **Dependencias nuevas**, aprobadas por Daniel: `pdf` (genera el documento,
+    graficas pintadas con sus propios widgets) y `printing` (lo descarga en la
+    web). La descarga va tras `DescargadorPdf`, sustituible en los tests.
+
+**Pendiente / notas:**
+
+- `flutter test` **647**, analyze y format limpios; `build_runner` genero
+  `controlador_informe.g.dart`. `flutter build web` compila.
+- Sin probar en el navegador la descarga real (`Printing.sharePdf`) ni la
+  pantalla. El PDF si se reviso visualmente, generado con datos reales.
+- La fuente del PDF es Helvetica estandar: cubre Latin-1 (tildes, n con
+  virgulilla). Un nombre con caracteres fuera de Latin-1 saldria mal; si pasa,
+  incrustar una TTF.
+- La app no conoce "patrones de movimiento": el informe agrupa por grupo
+  muscular de la biblioteca.
+- **Informe por mesociclos** (peticion de Aimar: valora en mesociclos, p. ej.
+  2 de 4 semanas). No se guardan en la base de datos: se reparten al hacer el
+  informe (`repartirEnMesociclos`), contando desde la semana mas reciente,
+  porque el informe se hace al cerrar un mesociclo y el que queda corto es el
+  primero. Cada semana se puede mover a mano. Cada mesociclo lleva sus cifras
+  y el "Foco principal" y los "Hitos" que escribe Aimar. Parte de las ultimas 8
+  semanas.
+- **Marca "AIMAR TRAINER"** en el PDF, cada palabra espaciada y con mas aire
+  entre las dos. **Resumen del periodo** como texto corrido antes de las
+  cifras, sin recuadro. Los textos admiten parrafos y listas con "-", con la
+  etiqueta antes de ":" en negrita.
+
+**Corregido:**
+
+- **Los caracteres tipograficos desaparecian del PDF sin avisar.** La fuente
+  (Helvetica) solo tiene Latin-1, y el teclado del movil mete comillas curvas,
+  rayas o flechas. `paraPdf` los cambia por su equivalente; lo que no tiene,
+  por `?`. Tildes y ene se quedan igual.
+
+**Pendiente / notas (mesociclos):**
+
+- `flutter test` **661**. Sin probar en el navegador los desplegables de
+  mesociclo; el PDF se reviso generado con los datos y textos de Jesus.
+- Para Jesus, 5 semanas en mesociclos de 4 dan un mesociclo 1 de una semana:
+  las otras 3 las hizo antes de la app. El texto de Aimar puede decirlo.
+- **Mesociclos automaticos** (propuesta de Daniel): fuera las casillas por
+  semana y los desplegables "Meso N", que obligaban a repartir a mano. Ahora se
+  elige la semana de inicio, la duracion (8 de partida) y la longitud del
+  mesociclo, y el reparto sale solo, **por fecha y hacia delante**
+  (`mesocicloDeLaSemana`, `planningsDelPeriodo`). Antes se contaba hacia atras
+  desde la semana mas reciente. Un mesociclo sin semanas no renumera a los
+  demas; si una semana se rehizo, cuenta el planning activo. Las semanas se
+  cuentan por dias de calendario (`semanasEntre`), para que un cambio de hora
+  no descuadre.
+- "Cliente:" delante del nombre en la cabecera del PDF.
+
+**Corregido (PDF):**
+
+- Un recuadro de valoracion o de proximos pasos dejaba una tira al pie de una
+  pagina y seguia en la siguiente. Ahora va entero (`Inseparable`), salvo que
+  sea tan largo que no quepa en una pagina.
+
+**Pendiente / notas (periodo):**
+
+- `flutter test` **663**. Revisado un PDF de 8 semanas con datos ficticios.
+  Sin probar en el navegador los desplegables nuevos.
+- **Semana de inicio con calendario** (peticion de Daniel): el desplegable con
+  todas las semanas obligaba a bajar sin fin con muchos plannings. Ahora un
+  calendario; cualquier dia vale y el informe empieza el lunes de su semana
+  (`Semana.de`, la misma regla que el navegador de semanas del planning).
+
+### 2026-11-20
+
+**Hecho:**
+
+- **Animaciones: enfoque elegido** (con Daniel): nativas de Flutter mas
+  `flutter_animate` (dependencia nueva, aprobada) para microinteracciones; lo
+  grande, dibujado a mano con `CustomPainter`. Descartados Lottie (peso,
+  licencias, colores fijos) y Rive (excesivo para la web). Momentos elegidos:
+  terminar la sesion (hecho hoy), confirmar una serie y superar la ultima vez
+  (pendientes).
+- **Pantalla "Sesion completada"** (`PantallaSesionCompletada`, ruta
+  `Rutas.sesionCompletada`, hija del registro de la sesion). Al guardar el
+  ultimo ejercicio ya no se vuelve directo al planning: check que se dibuja,
+  confeti, cifras que suben contando y las mejoras frente a la ultima vez. Un
+  solo `AnimationController` mueve todo, asi que un toque lo salta; respeta
+  `MediaQuery.disableAnimations`. "Volver al planning" lleva al dia terminado.
+  - `resumirSesion` (dominio de `progreso`): series hechas (tambien las de
+    mas), volumen (solo fuerza, por lado x2, como el informe), minutos y
+    mejoras. Mejora = mas peso en la mejor serie; a igual peso, mas reps; en
+    cardio, mas minutos. Igualar no cuenta.
+  - "La ultima vez" sale de `referenciasDeSesion`, el mismo calculo que ve el
+    entrenador al planificar.
+
+**Pendiente / notas:**
+
+- `flutter test` **681**, analyze y format limpios; `build_runner` regenero el
+  enrutador; `flutter build web` compila.
+- Sin probar en el navegador ni en un movil real: fluidez del confeti y como
+  se ve. Tampoco contra Supabase que el cliente pueda leer sus referencias de
+  la semana anterior (RLS deberia dejarle, son sus datos); si fallara, la
+  pantalla sale igual pero sin mejoras.
+- En los tests, los retardos de `flutter_animate` que se descartan al saltar
+  dejan temporizadores sin fotogramas: hay que avanzar el reloj con `pump`,
+  `pumpAndSettle` no los alcanza.
+- **Confirmar una serie, con animacion** (`_BotonCheck`): se llena de verde con
+  un rebote (escala 1 -> 1,18 -> 1, unos 380 ms) solo al pasar a confirmada, y
+  vibra (`HapticFeedback.lightImpact`; en la web solo en Android).
+- **Insignia "Mejora"** al confirmar una serie que supera a la misma serie de
+  la ultima vez (`mejoraDeLaSerie`, misma regla que el resumen: mas peso, o
+  igual peso con mas reps). Vibracion `mediumImpact`. "La ultima vez" sale de
+  `referenciasDeSesion`; si no carga, simplemente no hay insignias.
+
+**Corregido (finales de linea):**
+
+- Las ediciones hechas con scripts de Python en Windows dejaban los archivos en
+  CRLF en disco, contra `.gitattributes` (`eol=lf`). Al hacer commit Git los
+  normaliza, pero la copia de trabajo debe estar en LF. Devueltos a LF 18
+  archivos, entre ellos un snippet de Supabase Studio
+  (`supabase/snippets/Untitled query 380.sql`) que no tocaba la tarea: solo
+  cambiaron sus finales de linea. A partir de ahora, escribir con
+  `newline='
+'`.
+
+**Pendiente / notas (animaciones):**
+
+- `flutter test` **691**. Sin probar en un movil real: rebote, insignia y
+  vibracion.
+- **La mejora dice respecto a que** (peticion de Daniel: el cliente puede no
+  recordar lo de la semana pasada). La insignia pasa a su propia linea bajo la
+  serie: "Mejora: +2,5 kg respecto a la semana pasada (60 kg)". Si la
+  referencia no es de la semana pasada (esa semana no hizo el ejercicio), dice
+  el dia: "respecto al 01/10". `Mejora` guarda `deLaSemanaPasada` y
+  `fechaAnterior`; el texto lo arma `respectoA` en `formato_informe.dart`. Lo
+  mismo en las filas de "Sesion completada".
+- **Sin flecha en las secciones principales y transicion al entrar** (peticion
+  de Daniel). Las secciones cuelgan de la ruta de inicio del rol, asi que la
+  pila tenia una pagina debajo y la `AppBar` ponia sola la flecha (Biblioteca
+  se libraba por su cabecera). `PaginaDeSeccion` (`core/enrutado/paginas.dart`)
+  devuelve `impliesAppBarDismissal = false` y no anima; la usan las rutas de
+  la barra de los dos roles (un test recorre el enrutador para que no se cuele
+  ninguna). Las vistas de dentro entran deslizandose desde la derecha con
+  `TransicionDeslizante`, puesta en el `pageTransitionsTheme` del tema para
+  todas las plataformas. "Mi progreso" pasa a llamarse "Progreso".
+
+**Pendiente / notas (navegacion):**
+
+- **La salida no se ve animada en los tests.** Al volver, go_router quita la
+  pagina en el mismo fotograma (pasa con `go` y con `push`); con un
+  `Navigator` de paginas sin go_router, la misma salida si se anima. Sin
+  comprobar si en el navegador pasa igual. Si pasa, habra que animar la
+  salida desde nuestro `volverAtras`.
+- El video de ejemplo no se pudo ver (no hay `ffmpeg` para sacar fotogramas):
+  se asumio la transicion movil habitual, entrar y salir por la derecha.
+- `flutter test` **698** (el contador de `estado-actual.md` se habia quedado
+  en 691: faltaba el paso a 693).
+
+**Corregido (navegacion, mismo dia):**
+
+- **No habia ninguna transicion entre pantallas, nunca la hubo** (lo vio
+  Daniel al entrar en un ejercicio de la sesion). Con `builder:` en un
+  `GoRoute`, go_router fabrica la pagina y elige el tipo buscando un
+  `MaterialApp` por encima; pero go_router 18 importa su copia de Material
+  (`package:material_ui`), cuyo `MaterialApp` es otra clase que el de Flutter.
+  No lo reconoce, cree que la app no es Material y monta **todas** las paginas
+  como `NoTransitionPage`: sin animacion al entrar ni al salir. Por eso la
+  salida "no se animaba en los tests": no era cosa del test.
+  Arreglo: las 36 rutas pasan a `pageBuilder`. Las raiz (carga, login,
+  contrasena, inicio de cada rol) con `PaginaDeSeccion`; el resto con
+  `paginaDeVista`, una `MaterialPage` propia que usa la transicion del tema.
+  Un test recorre el enrutador real y falla si alguna ruta vuelve a `builder`.
+- El test de entrada que se dio por bueno antes **estaba mal**: medía la x del
+  titulo, que nunca es 0, asi que pasaba sin animacion. Ahora mide la del
+  `Scaffold`, y hay test de entrada y de salida.
+- `flutter test` **700**; `flutter build web` compila. Sin probar en el
+  navegador.
+- **La barra de navegacion ya no se desliza con la pantalla** (Daniel: parecian
+  dos barras superpuestas). La barra va dentro de cada pantalla, asi que viajaba
+  con ella. `FijoEnLaTransicion` (`core/enrutado/paginas.dart`) la desplaza en
+  sentido contrario con la misma curva (`TransicionDeslizante.desplazamiento`):
+  se queda en su sitio, encima de la de debajo, que es igual. Envuelve la barra
+  inferior de los dos roles y la lateral de escritorio; el CTA fijo de cada
+  pantalla si se desliza. Se quita la sombra del borde de la vista que entra:
+  con la barra quieta, la oscurecia al pasar. La alternativa (barra comun en
+  un `ShellRoute`) obligaba a rehacer el enrutador y las pantallas.
+- Tests: en la transicion, la pantalla a medio camino y su barra en x = 0, al
+  entrar y al salir. Sin probar en el navegador.
+

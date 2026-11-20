@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +13,9 @@ import 'package:aimar_trainer_app/core/theme/tema_app.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 import 'package:aimar_trainer_app/features/biblioteca_ejercicios/domain/tipo_ejercicio.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/enums_planificacion.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/application/referencias_semana_anterior.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/domain/planning.dart';
+import 'package:aimar_trainer_app/features/planificacion_semanal/domain/referencia_anterior.dart';
 import 'package:aimar_trainer_app/features/progreso/data/progreso_repositorio_supabase.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/datos_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/domain/metricas_progreso.dart';
@@ -56,6 +59,7 @@ void main() {
     EjercicioPlanificado ejercicio, {
     String rutaInicial = '/registro',
     SesionEntrenamiento? sesion,
+    Map<String, ReferenciaAnterior>? ultimaVez,
   }) async {
     // La pantalla muestra todas las series a la vez: con los 600 px por defecto
     // no caben y los finders no las encontrarian.
@@ -71,6 +75,11 @@ void main() {
             AutenticacionDeMentira(rol: RolUsuario.cliente),
           ),
           progresoRepositorioProvider.overrideWithValue(repositorio),
+          if (ultimaVez != null && sesion != null)
+            referenciasDeSesionProvider(
+              'p-1',
+              sesion.orden,
+            ).overrideWith((ref) async => ultimaVez),
         ],
       ),
     );
@@ -105,6 +114,13 @@ void main() {
                 planningId: 'p-1',
                 clienteId: 'cli-1',
                 sesion: sesion,
+              ),
+            ),
+            GoRoute(
+              path: Rutas.sesionCompletada(':planningId', ':idSesion'),
+              builder: (context, state) => Text(
+                'celebracion ${state.pathParameters['planningId']} '
+                '${state.pathParameters['idSesion']}',
               ),
             ),
           ],
@@ -459,9 +475,9 @@ void main() {
   // El fallo: al terminar, el inicio abre por la primera sesion sin terminar,
   // que a esas alturas es la SIGUIENTE. Al cliente le desaparecia de la vista
   // el dia que acababa de hacer y se encontraba el de despues.
-  testWidgets('terminar deja al cliente en el día que acaba de hacer', (
-    tester,
-  ) async {
+  // Peticion de Aimar (2026-11-20): terminar tiene que sentirse como un logro.
+  // Desde la celebracion se vuelve al dia terminado (ver su test).
+  testWidgets('terminar la sesión lleva a la celebración', (tester) async {
     final ejercicio = deFuerza();
     await montar(
       tester,
@@ -478,8 +494,7 @@ void main() {
     await tester.tap(find.byKey(const Key('boton_siguiente_ejercicio')));
     await tester.pumpAndSettle();
 
-    expect(find.text('mi planning'), findsOneWidget);
-    expect(find.text('dia=2'), findsOneWidget);
+    expect(find.text('celebracion p-1 s-1'), findsOneWidget);
   });
 
   // El fallo: entrando al ejercicio desde el inicio del cliente, la flecha de
@@ -499,19 +514,21 @@ void main() {
   });
 
   group('el check se apaga al corregir', () {
-    /// El check es un `Material` verde alrededor del boton: es lo que ve el
+    /// El check es un recuadro verde alrededor del boton: es lo que ve el
     /// cliente, asi que es lo que se mira.
     bool confirmada(WidgetTester tester, int numero) =>
-        tester
-            .widget<Material>(
-              find
-                  .ancestor(
-                    of: find.byKey(Key('confirmar_serie_$numero')),
-                    matching: find.byType(Material),
-                  )
-                  .first,
-            )
-            .color ==
+        (tester
+                    .widget<AnimatedContainer>(
+                      find
+                          .ancestor(
+                            of: find.byKey(Key('confirmar_serie_$numero')),
+                            matching: find.byType(AnimatedContainer),
+                          )
+                          .first,
+                    )
+                    .decoration
+                as BoxDecoration?)
+            ?.color ==
         Tokens.exito;
 
     // El fallo: confirmaba, corregia el peso y el check seguia verde. La
@@ -804,6 +821,178 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(ultimoEnviado().series.map((s) => s.numeroSerie).toList(), [1]);
+    });
+  });
+
+  // Peticion de Aimar (2026-11-20): confirmar una serie, y mas aun superar la
+  // de la ultima vez, tiene que sentirse.
+  group('al confirmar una serie', () {
+    SerieRealizada laVezAnterior(int numero, int reps, double peso) =>
+        SerieRealizada(
+          id: 'ant-$numero',
+          ejercicioPlanificadoId: 'ep-0',
+          numeroSerie: numero,
+          repeticionesRealizadas: reps,
+          fechaHoraRegistro: DateTime(2026),
+          pesoReal: peso,
+        );
+
+    /// Plan 60 x 10 y 65 x 8; la ultima vez hizo 60 x 10 y 65 x 8. Con
+    /// [deLaSemanaPasada] a `false`, aquello fue el 01/10, no la semana
+    /// pasada.
+    Future<void> montarConUltimaVez(
+      WidgetTester tester, {
+      bool deLaSemanaPasada = true,
+    }) async {
+      final ejercicio = deFuerza();
+      await montar(
+        tester,
+        ejercicio,
+        sesion: sesionDePrueba(
+          bloques: [
+            bloqueDePrueba(ejercicios: [ejercicio]),
+          ],
+        ),
+        ultimaVez: {
+          ejercicio.ejercicioId: ReferenciaAnterior(
+            series: [laVezAnterior(1, 10, 60), laVezAnterior(2, 8, 65)],
+            fecha: DateTime(2026, 10, 1),
+            esSemanaAnterior: deLaSemanaPasada,
+          ),
+        },
+      );
+    }
+
+    Future<void> confirmar(WidgetTester tester, int numero) async {
+      await tester.tap(find.byKey(Key('confirmar_serie_$numero')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('más peso que la última vez: insignia de mejora', (
+      tester,
+    ) async {
+      await montarConUltimaVez(tester);
+
+      await tester.enterText(find.byKey(const Key('peso_serie_1')), '62.5');
+      await confirmar(tester, 1);
+
+      expect(find.byKey(const Key('mejora_serie_1')), findsOneWidget);
+      expect(
+        find.text('Mejora: +2,5 kg respecto a la semana pasada (60 kg)'),
+        findsOneWidget,
+      );
+    });
+
+    // Si la semana pasada no hizo el ejercicio, se compara con el ultimo dia
+    // que lo hizo, y la insignia no puede decir "semana pasada".
+    testWidgets('si la referencia es más antigua, dice de qué día', (
+      tester,
+    ) async {
+      await montarConUltimaVez(tester, deLaSemanaPasada: false);
+
+      await tester.enterText(find.byKey(const Key('peso_serie_1')), '62.5');
+      await confirmar(tester, 1);
+
+      expect(
+        find.text('Mejora: +2,5 kg respecto a el 01/10 (60 kg)'),
+        findsNothing,
+      );
+      expect(
+        find.text('Mejora: +2,5 kg respecto al 01/10 (60 kg)'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('mismo peso con más repeticiones también cuenta', (
+      tester,
+    ) async {
+      await montarConUltimaVez(tester);
+
+      await tester.enterText(find.byKey(const Key('reps_serie_2')), '10');
+      await confirmar(tester, 2);
+
+      expect(
+        find.text('Mejora: +2 reps respecto a la semana pasada (8 reps)'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('igualar no es mejorar', (tester) async {
+      await montarConUltimaVez(tester);
+
+      await confirmar(tester, 1);
+
+      expect(find.byKey(const Key('mejora_serie_1')), findsNothing);
+    });
+
+    testWidgets('sin confirmar no hay insignia, y al corregir se va', (
+      tester,
+    ) async {
+      await montarConUltimaVez(tester);
+
+      await tester.enterText(find.byKey(const Key('peso_serie_1')), '62.5');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('mejora_serie_1')), findsNothing);
+
+      await confirmar(tester, 1);
+      await tester.enterText(find.byKey(const Key('peso_serie_1')), '60');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('mejora_serie_1')), findsNothing);
+    });
+
+    testWidgets('el check rebota al confirmarse y vuelve a su tamaño', (
+      tester,
+    ) async {
+      await montar(tester, deFuerza());
+
+      double escala() => tester
+          .widget<ScaleTransition>(
+            find
+                .ancestor(
+                  of: find.byKey(const Key('confirmar_serie_1')),
+                  matching: find.byType(ScaleTransition),
+                )
+                .last,
+          )
+          .scale
+          .value;
+
+      await tester.tap(find.byKey(const Key('confirmar_serie_1')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(escala(), greaterThan(1));
+
+      await tester.pumpAndSettle();
+      expect(escala(), 1);
+    });
+
+    testWidgets('vibra, y más fuerte si mejora', (tester) async {
+      final vibraciones = <Object?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (llamada) async {
+          if (llamada.method == 'HapticFeedback.vibrate') {
+            vibraciones.add(llamada.arguments);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await montarConUltimaVez(tester);
+
+      await confirmar(tester, 1);
+      await tester.enterText(find.byKey(const Key('peso_serie_2')), '70');
+      await confirmar(tester, 2);
+
+      expect(vibraciones, [
+        'HapticFeedbackType.lightImpact',
+        'HapticFeedbackType.mediumImpact',
+      ]);
     });
   });
 }

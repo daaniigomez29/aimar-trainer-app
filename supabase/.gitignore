@@ -2,6 +2,11 @@
 .branches
 .temp
 
+# Consultas que Supabase Studio guarda solas al usar su editor SQL. Son
+# pruebas contra local o produccion y no forman parte del proyecto: si una
+# hace falta, se pasa a una migracion o a un script a proposito.
+snippets/
+
 # dotenvx
 .env.keys
 .env.local

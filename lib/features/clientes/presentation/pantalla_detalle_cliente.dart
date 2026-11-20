@@ -124,6 +124,17 @@ class _Contenido extends ConsumerWidget {
               ),
             ),
           ),
+          Card(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              key: const Key('acceso_informe'),
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('Informe de progresión'),
+              subtitle: const Text('PDF con las semanas que elijas'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go(Rutas.informeDeCliente(cliente.id)),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Card(
