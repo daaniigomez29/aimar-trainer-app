@@ -70,7 +70,7 @@ class _PantallaProgresoState extends ConsumerState<PantallaProgreso> {
     );
 
     final barra = AppBar(
-      title: Text(widget.titulo == null ? 'Mi progreso' : 'Progreso'),
+      title: const Text('Progreso'),
       bottom: widget.titulo == null
           ? null
           : PreferredSize(

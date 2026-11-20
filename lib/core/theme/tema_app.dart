@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/paginas.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 
 /// Tema de la aplicacion, construido a mano desde los tokens de
@@ -68,6 +69,14 @@ abstract final class TemaApp {
       colorScheme: esquema,
       scaffoldBackgroundColor: Tokens.fondo,
       canvasColor: Tokens.fondo,
+      // Las vistas dentro de una seccion entran y salen deslizandose; las
+      // secciones principales no animan (ver `PaginaDeSeccion`).
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final plataforma in TargetPlatform.values)
+            plataforma: const TransicionDeslizante(),
+        },
+      ),
       textTheme: textos,
       appBarTheme: AppBarTheme(
         backgroundColor: Tokens.fondo,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/paginas.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/theme/tokens.dart';
 
@@ -39,7 +40,7 @@ const List<Destino> destinosCliente = [
     ruta: Rutas.inicioCliente,
   ),
   Destino(
-    etiqueta: 'Mi progreso',
+    etiqueta: 'Progreso',
     icono: Icons.trending_up_outlined,
     iconoActivo: Icons.trending_up,
     ruta: Rutas.progresoCliente,
@@ -290,7 +291,9 @@ class PantallaEntrenador extends StatelessWidget {
         child: escritorio
             ? Row(
                 children: [
-                  BarraLateral(rutaActual: rutaActual),
+                  FijoEnLaTransicion(
+                    child: BarraLateral(rutaActual: rutaActual),
+                  ),
                   Expanded(
                     child: Column(
                       children: [
@@ -313,7 +316,12 @@ class PantallaEntrenador extends StatelessWidget {
       ),
       bottomNavigationBar: escritorio
           ? null
-          : BarraInferior(destinos: destinosEntrenador, rutaActual: rutaActual),
+          : FijoEnLaTransicion(
+              child: BarraInferior(
+                destinos: destinosEntrenador,
+                rutaActual: rutaActual,
+              ),
+            ),
     );
   }
 }
@@ -354,7 +362,14 @@ class PantallaCliente extends StatelessWidget {
             ),
             child: cta,
           ),
-        BarraInferior(destinos: destinosCliente, rutaActual: rutaActual),
+        // El CTA de encima es de la pantalla y se desliza con ella; la barra
+        // no.
+        FijoEnLaTransicion(
+          child: BarraInferior(
+            destinos: destinosCliente,
+            rutaActual: rutaActual,
+          ),
+        ),
       ],
     ),
   );

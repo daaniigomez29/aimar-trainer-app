@@ -108,6 +108,11 @@ abstract final class Rutas {
   static String controlDeCliente(String id) =>
       '$clientesEntrenador/$id/$controlDelCliente';
 
+  /// Informe de progresion en PDF. Solo el entrenador.
+  static const String informeDelCliente = 'informe';
+  static String informeDeCliente(String id) =>
+      '$clientesEntrenador/$id/$informeDelCliente';
+
   /// Un control concreto de un cliente. [fecha] va como `2026-10-19`.
   static const String unControl = ':fecha';
   static String controlDeClienteEnDia(String id, String fecha) =>
@@ -131,6 +136,12 @@ abstract final class Rutas {
 
   static String registroDeSesion(String planningId, String idSesion) =>
       '${planningDelCliente(planningId)}/$sesiones/$idSesion';
+
+  /// La celebracion al terminar la sesion, antes de volver al planning.
+  static const String completada = 'completada';
+  static String sesionCompletada(String planningId, String idSesion) =>
+      '${registroDeSesion(planningId, idSesion)}/$completada';
+
   static String registroDeEjercicio(
     String planningId,
     String idSesion,

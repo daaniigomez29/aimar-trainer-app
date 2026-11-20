@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:aimar_trainer_app/core/enrutado/paginas.dart';
 import 'package:aimar_trainer_app/core/enrutado/rutas.dart';
 import 'package:aimar_trainer_app/core/presentacion/widgets/pantalla_con_navegacion.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_cargando.dart';
@@ -24,6 +25,8 @@ import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_regist
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_registro_sesion.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_progreso.dart';
 import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_controles_cliente.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_informe_progresion.dart';
+import 'package:aimar_trainer_app/features/progreso/presentation/pantalla_sesion_completada.dart';
 import 'package:aimar_trainer_app/features/clientes/presentation/pantalla_clientes.dart';
 import 'package:aimar_trainer_app/core/presentacion/pantallas/pantalla_ajustes_entrenador.dart';
 import 'package:aimar_trainer_app/features/planificacion_semanal/presentation/pantalla_mi_planning.dart';
@@ -59,47 +62,69 @@ GoRouter enrutador(Ref ref) {
     routes: [
       GoRoute(
         path: Rutas.cargando,
-        builder: (context, state) => const PantallaCargando(),
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: const PantallaCargando(),
+        ),
       ),
       GoRoute(
         path: Rutas.login,
-        builder: (context, state) => const PantallaLogin(),
+        pageBuilder: (context, state) =>
+            PaginaDeSeccion(key: state.pageKey, child: const PantallaLogin()),
       ),
       GoRoute(
         path: Rutas.recuperarContrasena,
-        builder: (context, state) => const PantallaRecuperarContrasena(),
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: const PantallaRecuperarContrasena(),
+        ),
       ),
       GoRoute(
         path: Rutas.restablecerContrasena,
-        builder: (context, state) => const PantallaRestablecerContrasena(),
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: const PantallaRestablecerContrasena(),
+        ),
       ),
       GoRoute(
         path: Rutas.inicioEntrenador,
         // La pantalla de entrada del entrenador es la planificacion semanal
         // (ui-design 6.6), no un panel de accesos.
-        builder: (context, state) => const PantallaPlanificacionEntrenador(),
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: const PantallaPlanificacionEntrenador(),
+        ),
         routes: [
           GoRoute(
             path: Rutas.biblioteca,
-            builder: (context, state) => const PantallaBiblioteca(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaBiblioteca(),
+            ),
             routes: [
               // `nuevo` va antes que `:idEjercicio`: si no, se tomaría
               // "nuevo" por un identificador.
               GoRoute(
                 path: Rutas.nuevo,
-                builder: (context, state) =>
-                    const PantallaFormularioEjercicio(),
+                pageBuilder: (context, state) =>
+                    paginaDeVista(state, const PantallaFormularioEjercicio()),
               ),
               GoRoute(
                 path: Rutas.detalleEjercicio,
-                builder: (context, state) => PantallaDetalleEjercicio(
-                  idEjercicio: state.pathParameters['idEjercicio']!,
+                pageBuilder: (context, state) => paginaDeVista(
+                  state,
+                  PantallaDetalleEjercicio(
+                    idEjercicio: state.pathParameters['idEjercicio']!,
+                  ),
                 ),
                 routes: [
                   GoRoute(
                     path: Rutas.editar,
-                    builder: (context, state) => PantallaFormularioEjercicio(
-                      idEjercicio: state.pathParameters['idEjercicio'],
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaFormularioEjercicio(
+                        idEjercicio: state.pathParameters['idEjercicio'],
+                      ),
                     ),
                   ),
                 ],
@@ -108,50 +133,70 @@ GoRouter enrutador(Ref ref) {
           ),
           GoRoute(
             path: Rutas.clientes,
-            builder: (context, state) => const PantallaClientes(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaClientes(),
+            ),
             routes: [
               GoRoute(
                 path: Rutas.nuevo,
-                builder: (context, state) => const PantallaFormularioCliente(),
+                pageBuilder: (context, state) =>
+                    paginaDeVista(state, const PantallaFormularioCliente()),
               ),
               GoRoute(
                 path: Rutas.detalleCliente,
-                builder: (context, state) => PantallaDetalleCliente(
-                  idCliente: state.pathParameters['idCliente']!,
+                pageBuilder: (context, state) => paginaDeVista(
+                  state,
+                  PantallaDetalleCliente(
+                    idCliente: state.pathParameters['idCliente']!,
+                  ),
                 ),
                 routes: [
                   GoRoute(
                     path: Rutas.editar,
-                    builder: (context, state) => PantallaFormularioCliente(
-                      idCliente: state.pathParameters['idCliente'],
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaFormularioCliente(
+                        idCliente: state.pathParameters['idCliente'],
+                      ),
                     ),
                   ),
                   GoRoute(
                     path: Rutas.plannings,
-                    builder: (context, state) => PantallaPlanningsCliente(
-                      clienteId: state.pathParameters['idCliente']!,
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaPlanningsCliente(
+                        clienteId: state.pathParameters['idCliente']!,
+                      ),
                     ),
                     routes: [
                       GoRoute(
                         path: Rutas.unPlanning,
-                        builder: (context, state) => PantallaPlanning(
-                          planningId: state.pathParameters['planningId']!,
+                        pageBuilder: (context, state) => paginaDeVista(
+                          state,
+                          PantallaPlanning(
+                            planningId: state.pathParameters['planningId']!,
+                          ),
                         ),
                         routes: [
                           GoRoute(
                             path:
                                 '${Rutas.bloques}/${Rutas.unBloque}/'
                                 '${Rutas.ejercicioDelBloque}',
-                            builder: (context, state) =>
-                                _formularioDeEjercicio(state),
+                            pageBuilder: (context, state) => paginaDeVista(
+                              state,
+                              _formularioDeEjercicio(state),
+                            ),
                           ),
                           GoRoute(
                             path:
                                 '${Rutas.bloques}/${Rutas.unBloque}/'
                                 '${Rutas.ejercicioDelBloque}/'
                                 '${Rutas.unEjercicioPlanificado}',
-                            builder: (context, state) =>
-                                _formularioDeEjercicio(state),
+                            pageBuilder: (context, state) => paginaDeVista(
+                              state,
+                              _formularioDeEjercicio(state),
+                            ),
                           ),
                         ],
                       ),
@@ -159,28 +204,46 @@ GoRouter enrutador(Ref ref) {
                   ),
                   GoRoute(
                     path: Rutas.progreso,
-                    builder: (context, state) => PantallaProgreso(
-                      clienteId: state.pathParameters['idCliente']!,
-                      titulo: state.uri.queryParameters['nombre'],
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaProgreso(
+                        clienteId: state.pathParameters['idCliente']!,
+                        titulo: state.uri.queryParameters['nombre'],
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: Rutas.informeDelCliente,
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaInformeProgresion(
+                        clienteId: state.pathParameters['idCliente']!,
+                      ),
                     ),
                   ),
                   GoRoute(
                     path: Rutas.controlDelCliente,
-                    builder: (context, state) => PantallaControlesCliente(
-                      clienteId: state.pathParameters['idCliente']!,
+                    pageBuilder: (context, state) => paginaDeVista(
+                      state,
+                      PantallaControlesCliente(
+                        clienteId: state.pathParameters['idCliente']!,
+                      ),
                     ),
                     routes: [
                       GoRoute(
                         path: Rutas.unControl,
-                        builder: (context, state) => PantallaDetalleControl(
-                          clienteId: state.pathParameters['idCliente']!,
-                          // Sin hora: es la misma clave con la que se piden las
-                          // medidas y el check-in de ese dia.
-                          fecha:
-                              DateTime.tryParse(
-                                state.pathParameters['fecha'] ?? '',
-                              ) ??
-                              DateTime(0),
+                        pageBuilder: (context, state) => paginaDeVista(
+                          state,
+                          PantallaDetalleControl(
+                            clienteId: state.pathParameters['idCliente']!,
+                            // Sin hora: es la misma clave con la que se piden las
+                            // medidas y el check-in de ese dia.
+                            fecha:
+                                DateTime.tryParse(
+                                  state.pathParameters['fecha'] ?? '',
+                                ) ??
+                                DateTime(0),
+                          ),
                         ),
                       ),
                     ],
@@ -200,14 +263,16 @@ GoRouter enrutador(Ref ref) {
             path:
                 '${Rutas.plannings}/${Rutas.unPlanning}/${Rutas.bloques}/'
                 '${Rutas.unBloque}/${Rutas.ejercicioDelBloque}',
-            builder: (context, state) => _formularioDeEjercicio(state),
+            pageBuilder: (context, state) =>
+                paginaDeVista(state, _formularioDeEjercicio(state)),
           ),
           GoRoute(
             path:
                 '${Rutas.plannings}/${Rutas.unPlanning}/${Rutas.bloques}/'
                 '${Rutas.unBloque}/${Rutas.ejercicioDelBloque}/'
                 '${Rutas.unEjercicioPlanificado}',
-            builder: (context, state) => _formularioDeEjercicio(state),
+            pageBuilder: (context, state) =>
+                paginaDeVista(state, _formularioDeEjercicio(state)),
           ),
           // Los resultados abiertos desde el editor: cuelgan de el para que atras
           // vuelva a el tal como estaba (ver `Rutas.resultadosDesdeElEditor`).
@@ -215,33 +280,43 @@ GoRouter enrutador(Ref ref) {
             path:
                 '${Rutas.plannings}/${Rutas.unPlanning}/'
                 '${Rutas.resultadosDelPlanning}',
-            builder: (context, state) => PantallaPlanning(
-              planningId: state.pathParameters['planningId']!,
-              seccion: SeccionDeNavegacion.inicio,
-              // `?dia=`: el que se estaba planificando.
-              diaInicial: int.tryParse(
-                state.uri.queryParameters[Rutas.paramDia] ?? '',
+            pageBuilder: (context, state) => paginaDeVista(
+              state,
+              PantallaPlanning(
+                planningId: state.pathParameters['planningId']!,
+                seccion: SeccionDeNavegacion.inicio,
+                // `?dia=`: el que se estaba planificando.
+                diaInicial: int.tryParse(
+                  state.uri.queryParameters[Rutas.paramDia] ?? '',
+                ),
               ),
             ),
           ),
           GoRoute(
             path: Rutas.packs,
-            builder: (context, state) => const PantallaPacks(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaPacks(),
+            ),
             routes: [
               GoRoute(
                 path: Rutas.unPack,
-                builder: (context, state) =>
-                    PantallaPack(packId: state.pathParameters['packId']!),
+                pageBuilder: (context, state) => paginaDeVista(
+                  state,
+                  PantallaPack(packId: state.pathParameters['packId']!),
+                ),
                 routes: [
                   // `nuevo` antes que `:idPackEjercicio`: si no, se tomaria la
                   // palabra por un identificador.
                   GoRoute(
                     path: Rutas.nuevo,
-                    builder: (context, state) => _formularioDePack(state),
+                    pageBuilder: (context, state) =>
+                        paginaDeVista(state, _formularioDePack(state)),
                   ),
                   GoRoute(
                     path: Rutas.ejercicioDelPack,
-                    builder: (context, state) => _formularioDePack(state),
+                    pageBuilder: (context, state) =>
+                        paginaDeVista(state, _formularioDePack(state)),
                   ),
                 ],
               ),
@@ -249,7 +324,10 @@ GoRouter enrutador(Ref ref) {
           ),
           GoRoute(
             path: Rutas.ajustes,
-            builder: (context, state) => const PantallaAjustesEntrenador(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaAjustesEntrenador(),
+            ),
           ),
         ],
       ),
@@ -257,46 +335,65 @@ GoRouter enrutador(Ref ref) {
         path: Rutas.inicioCliente,
         // La pantalla de entrada del cliente es su planning (ui-design 6.1), no
         // un panel de accesos: lo primero que ve es lo que toca hoy.
-        builder: (context, state) => PantallaMiPlanning(
-          // Al terminar un dia se vuelve aqui con `?dia=N` para quedarse en el
-          // que se acaba de hacer; ver `Rutas.inicioClienteEnDia`.
-          diaInicial: int.tryParse(
-            state.uri.queryParameters[Rutas.paramDia] ?? '',
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: PantallaMiPlanning(
+            // Al terminar un dia se vuelve aqui con `?dia=N` para quedarse en el
+            // que se acaba de hacer; ver `Rutas.inicioClienteEnDia`.
+            diaInicial: int.tryParse(
+              state.uri.queryParameters[Rutas.paramDia] ?? '',
+            ),
           ),
         ),
         routes: [
           GoRoute(
             path: Rutas.biblioteca,
-            builder: (context, state) => const PantallaBiblioteca(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaBiblioteca(),
+            ),
             routes: [
               GoRoute(
                 path: Rutas.detalleEjercicio,
-                builder: (context, state) => PantallaDetalleEjercicio(
-                  idEjercicio: state.pathParameters['idEjercicio']!,
+                pageBuilder: (context, state) => paginaDeVista(
+                  state,
+                  PantallaDetalleEjercicio(
+                    idEjercicio: state.pathParameters['idEjercicio']!,
+                  ),
                 ),
               ),
             ],
           ),
           GoRoute(
             path: Rutas.planning,
-            builder: (context, state) => const PantallaMisPlannings(),
+            pageBuilder: (context, state) =>
+                paginaDeVista(state, const PantallaMisPlannings()),
             routes: [
               GoRoute(
                 path: Rutas.unPlanning,
-                builder: (context, state) => PantallaPlanning(
-                  planningId: state.pathParameters['planningId']!,
+                pageBuilder: (context, state) => paginaDeVista(
+                  state,
+                  PantallaPlanning(
+                    planningId: state.pathParameters['planningId']!,
+                  ),
                 ),
                 routes: [
                   GoRoute(
                     path: '${Rutas.sesiones}/${Rutas.unaSesion}',
-                    builder: (context, state) => _registroDeSesion(state),
+                    pageBuilder: (context, state) =>
+                        paginaDeVista(state, _registroDeSesion(state)),
                     routes: [
+                      GoRoute(
+                        path: Rutas.completada,
+                        pageBuilder: (context, state) =>
+                            paginaDeVista(state, _sesionCompletada(state)),
+                      ),
                       GoRoute(
                         path:
                             '${Rutas.ejerciciosDeSesion}/'
                             '${Rutas.unEjercicioPlanificado}',
-                        builder: (context, state) =>
-                            _registroDeEjercicio(state),
+                        pageBuilder: (context, state) =>
+                            paginaDeVista(state, _registroDeEjercicio(state)),
                       ),
                     ],
                   ),
@@ -304,14 +401,16 @@ GoRouter enrutador(Ref ref) {
                     path:
                         '${Rutas.bloques}/${Rutas.unBloque}/'
                         '${Rutas.ejercicioDelBloque}',
-                    builder: (context, state) => _formularioDeEjercicio(state),
+                    pageBuilder: (context, state) =>
+                        paginaDeVista(state, _formularioDeEjercicio(state)),
                   ),
                   GoRoute(
                     path:
                         '${Rutas.bloques}/${Rutas.unBloque}/'
                         '${Rutas.ejercicioDelBloque}/'
                         '${Rutas.unEjercicioPlanificado}',
-                    builder: (context, state) => _formularioDeEjercicio(state),
+                    pageBuilder: (context, state) =>
+                        paginaDeVista(state, _formularioDeEjercicio(state)),
                   ),
                 ],
               ),
@@ -319,26 +418,38 @@ GoRouter enrutador(Ref ref) {
           ),
           GoRoute(
             path: Rutas.progreso,
-            builder: (context, state) => const PantallaMiProgreso(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaMiProgreso(),
+            ),
           ),
           GoRoute(
             path: Rutas.control,
-            builder: (context, state) => const PantallaMiControl(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaMiControl(),
+            ),
           ),
           GoRoute(
             path: Rutas.avisos,
-            builder: (context, state) =>
-                const PantallaPreferenciasNotificacion(),
+            pageBuilder: (context, state) => PaginaDeSeccion(
+              key: state.pageKey,
+              child: const PantallaPreferenciasNotificacion(),
+            ),
           ),
         ],
       ),
       GoRoute(
         path: Rutas.inicioAdministrador,
-        builder: (context, state) => const PantallaInicioAdministrador(),
+        pageBuilder: (context, state) => PaginaDeSeccion(
+          key: state.pageKey,
+          child: const PantallaInicioAdministrador(),
+        ),
         routes: [
           GoRoute(
             path: Rutas.clientes,
-            builder: (context, state) => const PantallaClientes(),
+            pageBuilder: (context, state) =>
+                paginaDeVista(state, const PantallaClientes()),
           ),
         ],
       ),
@@ -410,6 +521,21 @@ Widget _registroDeSesion(GoRouterState state) {
       sesionId: sesion.id,
       clienteId: planning.clienteId,
     ),
+  );
+}
+
+/// La celebracion de fin de sesion. Resuelve la sesion del planning recien
+/// recargado, asi que el resumen ya cuenta lo ultimo que se guardo.
+Widget _sesionCompletada(GoRouterState state) {
+  final planningId = state.pathParameters['planningId']!;
+  final idSesion = state.pathParameters['idSesion']!;
+
+  return ResolverDelPlanning<SesionEntrenamiento>(
+    planningId: planningId,
+    buscar: (planning) => sesionPorId(planning, idSesion),
+    noEncontrado: 'Esa sesión ya no existe.',
+    construir: (planning, sesion) =>
+        PantallaSesionCompletada(planningId: planningId, sesion: sesion),
   );
 }
 
